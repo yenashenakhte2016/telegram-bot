@@ -3,7 +3,6 @@ import log
 import json
 import requests
 import re
-import time
 plugins = {}
 update_id = 0
 run = True
