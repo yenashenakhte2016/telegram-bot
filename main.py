@@ -36,6 +36,19 @@ def sendMessageDefault(chatid, text, replyid):
 ).json()
     return response
 
+def checkTrigger(msg):
+    for x in plugins:
+        for regex in plugins[x].regex:
+            match = re.search(regex, msg['text'])
+            if match != None:
+                rval = plugins[x].main(msg)
+                print(type(rval))
+                if isinstance(rval, str):
+                    sendMessageDefault(msg['chat']['id'], rval, msg['message_id'])
+                elif isinstance(rval, dict):
+                    sendMessage(rval)
+                return
+
 while run:
     update = requests.get(baseurl + "/getUpdates?offset=%s" % update_id)
     getupdate = json.loads(update.text)
@@ -43,11 +56,6 @@ while run:
         msg = getupdate['result'][i]['message']
         log.main(msg, text_file)
         if 'text' in msg:
-            for x in plugins:
-                for regex in plugins[x].regex:
-                    trigger = re.search(regex, msg['text'])
-                    if trigger != None:
-                        sendMessageDefault(msg['chat']['id'],plugins[x].main(msg),msg['message_id'])
-                        break
+            checkTrigger(msg)
         if i == len(getupdate['result']) - 1:
             update_id = getupdate['result'][i]['update_id'] + 1
