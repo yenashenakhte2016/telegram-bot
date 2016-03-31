@@ -11,9 +11,9 @@ run = True
 baseurl = "https://api.telegram.org/bot%s" % config.API
 text_file = open("output.txt", "a")
 
+print("\033[1m####BOT####\033[1;m")
 update = requests.get(baseurl + "/getMe")
 botinfo = json.loads(update.text)
-print("\033[1m####BOT####\033[1;m")
 if botinfo['ok']:
     print("{0}[\033[1;32m@{1}\033[1;m]".format(botinfo['result']['first_name'], botinfo['result']['username']))
     print("ID: {0}".format(botinfo['result']['id']))
@@ -25,6 +25,7 @@ for admin in config.admins:
     print("\033[1;32m[✓]\033[1;m " + str(admin))
 print("\033[1m####PLUGINS####\033[1;m")
 for plugin in config.plugins:
+    sys.path.append("./plugins")
     plugins[plugin] = __import__(plugin)
     if plugins[plugin].main and plugins[plugin].regex and plugins[plugin].pluginname:
         print("\033[1;32m[✓]\033[1;m " + plugins[plugin].pluginname)
@@ -39,15 +40,15 @@ def shutdown():
     print("Shutting down for now :(")
 
 
-def sendMessage(sendMessageObject):
+def sendmessage(sendmessageObject):
     response = requests.post(
         url=baseurl + "/sendMessage",
-        data=sendMessageObject
+        data=sendmessageObject
     ).json()
     return response
 
 
-def sendMessageDefault(chatid, text, replyid):
+def sendmessagedefault(chatid, text, replyid):
     response = requests.post(
         url=baseurl + "/sendMessage",
         data={'chat_id': chatid, 'text': text, 'reply_to_message_id': replyid, 'parse_mode': "Markdown"}
@@ -55,16 +56,18 @@ def sendMessageDefault(chatid, text, replyid):
     return response
 
 
-def checkTrigger(msg):
+def checktrigger(msg):
     for x in plugins:
         for regex in plugins[x].regex:
+            msg['rawtext'] = msg['text']
+            msg['text'] = msg['text'].replace("@{0}".format(botinfo['result']['username']), "")
             match = re.search(regex, msg['text'])
             if match is not None:
                 rval = plugins[x].main(msg)
                 if isinstance(rval, str):
-                    sendMessageDefault(msg['chat']['id'], rval, msg['message_id'])
+                    sendmessagedefault(msg['chat']['id'], rval, msg['message_id'])
                 elif isinstance(rval, dict):
-                    sendMessage(rval)
+                    sendmessage(rval)
                 return
 
 
@@ -75,6 +78,6 @@ while run:
         msg = getupdate['result'][i]['message']
         log.main(msg, text_file)
         if 'text' in msg:
-            checkTrigger(msg)
+            checktrigger(msg)
         if i == len(getupdate['result']) - 1:
             update_id = getupdate['result'][i]['update_id'] + 1
