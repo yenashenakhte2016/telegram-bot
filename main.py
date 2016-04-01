@@ -9,10 +9,11 @@ plugins = {}
 update_id = 0
 run = True
 baseurl = "https://api.telegram.org/bot%s" % config.API
-text_file = open("output.txt", "a")
+text_file = open("output.txt", "a", encoding="utf-8")
+session = requests.Session()
 
 print("\033[1m####BOT####\033[1;m")
-update = requests.get(baseurl + "/getMe")
+update = session.get(baseurl + "/getMe")
 botinfo = json.loads(update.text)
 if botinfo['ok']:
     print("{0}[\033[1;32m@{1}\033[1;m]".format(botinfo['result']['first_name'], botinfo['result']['username']))
@@ -35,13 +36,14 @@ for plugin in config.plugins:
 
 
 def shutdown():
+    global run
     run = False
     text_file.close()
     print("Shutting down for now :(")
 
 
 def sendmessage(sendmessageObject):
-    response = requests.post(
+    response = session.post(
         url=baseurl + "/sendMessage",
         data=sendmessageObject
     ).json()
@@ -49,7 +51,7 @@ def sendmessage(sendmessageObject):
 
 
 def sendmessagedefault(chatid, text, replyid):
-    response = requests.post(
+    response = session.post(
         url=baseurl + "/sendMessage",
         data={'chat_id': chatid, 'text': text, 'reply_to_message_id': replyid, 'parse_mode': "Markdown"}
     ).json()
@@ -72,7 +74,7 @@ def checktrigger(msg):
 
 
 while run:
-    update = requests.get(baseurl + "/getUpdates?offset=%s" % update_id)
+    update = session.get(baseurl + "/getUpdates?offset=%s" % update_id)
     getupdate = json.loads(update.text)
     for i in range(len(getupdate['result'])):
         msg = getupdate['result'][i]['message']
