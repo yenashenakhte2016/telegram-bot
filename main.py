@@ -1,9 +1,13 @@
 import config
-import log
 import json
 import requests
 import re
 import sys
+import tgrequest
+
+getUpdateObj = tgrequest.TelegramRequest("getUpdates")
+getMeObj = tgrequest.TelegramRequest("getMe")
+
 
 plugins = {}
 update_id = 0
@@ -12,34 +16,26 @@ baseurl = "https://api.telegram.org/bot%s" % config.API
 text_file = open("output.txt", "a", encoding="utf-8")
 session = requests.Session()
 
-print("\033[1m####BOT####\033[1;m")
-update = session.get(baseurl + "/getMe")
-botinfo = json.loads(update.text)
-if botinfo['ok']:
-    print("{0}[\033[1;32m@{1}\033[1;m]".format(botinfo['result']['first_name'], botinfo['result']['username']))
-    print("ID: {0}".format(botinfo['result']['id']))
+print("####BOT####")
+getMe = getMeObj.fetch()
+if getMe['ok']:
+    print("{0}[{1}]".format(getMe['result']['first_name'], getMe['result']['username']))
+    print("ID: {0}".format(getMe['result']['id']))
 else:
-    print("\033[1;31m[✖]\033[1;m There seems to be something wrong with your api key in config.py :(")
+    print("[✖] There seems to be something wrong with your api key in config.py :(")
     sys.exit(0)
-print("\033[1m####ADMINS####\033[1;m")
+print("####ADMINS####")
 for admin in config.admins:
-    print("\033[1;32m[✓]\033[1;m " + str(admin))
-print("\033[1m####PLUGINS####\033[1;m")
+    print("[✓] {0}".format(str(admin)))
+print("####PLUGINS####")
 for plugin in config.plugins:
     sys.path.append("./plugins")
     plugins[plugin] = __import__(plugin)
     if plugins[plugin].main and plugins[plugin].regex and plugins[plugin].pluginname:
-        print("\033[1;32m[✓]\033[1;m " + plugins[plugin].pluginname)
+        print("[✓] {0}".format(plugins[plugin].pluginname))
     else:
-        print("\033[1;31m[✖]\033[1;m " + plugin)
+        print("[✖] {0}".format(plugin))
         del plugins[plugin]
-
-
-def shutdown():
-    global run
-    run = False
-    text_file.close()
-    print("Shutting down for now :(")
 
 
 def sendmessage(sendmessageObject):
@@ -74,12 +70,11 @@ def checktrigger(msg):
 
 
 while run:
-    update = session.get(baseurl + "/getUpdates?offset=%s" % update_id)
-    getupdate = json.loads(update.text)
-    for i in range(len(getupdate['result'])):
-        msg = getupdate['result'][i]['message']
-        log.main(msg, text_file)
+    getUpdate = getUpdateObj.fetch("?offset={0}".format(update_id))
+    for i in range(len(getUpdate['result'])):
+        msg = getUpdate['result'][i]['message']
         if 'text' in msg:
             checktrigger(msg)
-        if i == len(getupdate['result']) - 1:
-            update_id = getupdate['result'][i]['update_id'] + 1
+        if i == len(getUpdate['result']) - 1:
+            update_id = getUpdate['result'][i]['update_id'] + 1
+
