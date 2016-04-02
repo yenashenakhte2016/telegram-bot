@@ -1,14 +1,14 @@
+import config
+import requests
+import json
+
+
 class TelegramRequest:
 
     def __init__(self, type):
-        import config
         self.url = "https://api.telegram.org/bot{0}/{1}".format(config.API, type)
 
     def fetch(self, append=""):
-        import requests
-        import json
-        session = requests.Session()
+        session = requests.Session()  # Make this part of init and global
         response = session.get(self.url + append)
         return json.loads(response.text)
-
-    #is append="" the best solution here?
