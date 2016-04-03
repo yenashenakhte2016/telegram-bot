@@ -1,14 +1,14 @@
 import config
-import requests
 import json
+import requests
 
 
 class TelegramRequest:
 
-    def __init__(self, type):
-        self.url = "https://api.telegram.org/bot{0}/{1}".format(config.API, type)
+    def __init__(self, request_type):  # Create session
+        self.url = "https://api.telegram.org/bot{0}/{1}".format(config.API, request_type)
+        self.session = requests.session()
 
     def fetch(self, append=""):
-        session = requests.Session()  # Make this part of init and global
-        response = session.get(self.url + append)
+        response = self.session.get(self.url + append)
         return json.loads(response.text)

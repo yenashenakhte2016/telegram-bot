@@ -1,15 +1,15 @@
-import requests
 import config
+import requests
 
 
 class TelegramResponse:
 
-    def __init__(self, type):
-        self.url = "https://api.telegram.org/bot{0}/{1}".format(config.API, type)
+    def __init__(self, method):
+        self.url = "https://api.telegram.org/bot{0}/{1}".format(config.API, method)
+        self.session = requests.session()
 
     def make_request(self, content, append=""):
-        session = requests.Session()  # Make this part of init and global
-        response = session.post(
+        response = self.session.post(
             url=self.url + append,
             data=content
         ).json()
