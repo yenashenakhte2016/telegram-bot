@@ -20,9 +20,6 @@ class PluginInit:
                 for regex in self.plugins[x].regex:
                     match = re.findall(regex, msg['text'])
                     if match:
-                        print(msg['text'])
-                        print(regex)
-                        print(match)
                         for index, v in enumerate(match[0]):
                             self.msg['matches{}'.format(index)] = v
                             response = self.plugins[x].main(self.msg)
