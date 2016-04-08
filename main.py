@@ -1,20 +1,9 @@
-from tgrequest import TelegramRequest
-from plugin import PluginInit
+from tgapi import TelegramAPI
 import config
-import requests
+import time
 
-offset = 0
-session = requests.Session()
-getUpdateObj = TelegramRequest("getUpdates")
-getMeObj = TelegramRequest("getMe")
-getMe = getMeObj.fetch()
-plugins = PluginInit(config.plugins)
-
+bot = TelegramAPI(config.API, config.plugins)
 
 while True:  # Main loop
-    append = "?offset={}".format(offset)
-    getUpdate = getUpdateObj.fetch(append)
-    for i in getUpdate['result']:
-        msg = i['message']
-        plugins.process_regex(msg)
-        offset = i['update_id'] + 1
+    bot.get_update()
+    time.sleep(.5)

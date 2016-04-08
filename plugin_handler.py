@@ -1,13 +1,13 @@
 import re
 import sys
-from tgresponse import TelegramResponse
+
 
 class PluginInit:
 
-    def __init__(self, plugin_list):  # Import all plugins from config. Error checking soon(tm)
+    def __init__(self, plugin_list, bot_info):  # Import all plugins from config. Error checking soon(tm)
         self.plugins = {}
         self.msg = None
-        self.sendMessage = TelegramResponse("sendMessage")
+        self.me = bot_info
         for k in plugin_list:
             sys.path.append("./plugins")  # Need to replace this with a better solution
             self.plugins[k] = __import__(k)  # "plugins." + k seems to not work
@@ -23,17 +23,14 @@ class PluginInit:
                         for index, v in enumerate(match[0]):
                             self.msg['matches{}'.format(index)] = v
                             response = self.plugins[x].main(self.msg)
-                            self.sendMessage.send_message(response, self.msg)
-                            return
+                            return response
         else:
             return None  # For now only text works.
 
     def process_message(self):  # Removes @bot_username from commands
-        import main
-        username = "@" + main.getMe['result']['username']
+        username = "@" + self.me['result']['username']
         text = self.msg['text']
         name_match = re.search("^[!#@/]([^ ]*)({})".format(username), text)
         if name_match:
             self.msg['text'] = text.replace(text[:name_match.end(0)], text[:name_match.end(0) - len(username)])
-            print(self.msg['text'])
         return
