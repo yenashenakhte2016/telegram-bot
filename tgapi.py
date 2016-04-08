@@ -17,8 +17,24 @@ class TelegramAPI:
         response = util.fetch(self.session, url)
         for i in response['result']:
             self.current_msg = i['message']
-            self.send_message(self.plugin_handle.process_regex(self.current_msg))
+            self.route_return(self.plugin_handle.process_regex(self.current_msg))
             self.update_id = i['update_id'] + 1  # Updates update_id's value
+
+    def route_return(self, returned_value):  # Figures out where plugin return values belong
+        content = {}
+        if isinstance(returned_value, str):  # If string sendMessage
+            content['text'] = returned_value
+            self.send_message(content)
+        elif isinstance(returned_value, dict):
+            if 'text' in returned_value:
+                self.send_message(returned_value)
+            elif 'forward_message' in returned_value:
+                del returned_value['forward_message']
+                self.forward_message(returned_value)
+
+    def get_me(self):  # getMe
+        url = "{}getMe".format(self.url)
+        return util.fetch(self.session, url)
 
     def send_message(self, content):  # sendMessage
         url = "{}sendMessage".format(self.url)  # Creates URL
@@ -28,13 +44,20 @@ class TelegramAPI:
             'parse_mode': "HTML",
             'reply_to_message_id': self.current_msg['message_id']
         }
-        if isinstance(content, str):  # If only a string is given sends with default option
-            default['text'] = content
-        elif isinstance(content, dict):  # If a dictionary is returned, overwrites default values
+        try:
             for k, v in content:
                 default[k] = v
+        except ValueError:
+            default['text'] = content['text']
         return util.make_request(self.session, url, default)  # Sends it to off to be sent
 
-    def get_me(self):  # getMe
-        url = "{}getMe".format(self.url)
-        return util.fetch(self.session, url)
+    def forward_message(self, content):  # Forwards a message, note2self. add error handling
+        url = "{}forwardMessage".format(self.url)  # Creates URL
+        default = {  # Default return
+            'chat_id': self.current_msg['chat']['id'],
+            'from_chat_id': self.current_msg['chat']['id'],
+            'message_id': self.current_msg['message_id']
+        }
+        for k, v in content:
+            default[k] = v
+        return util.make_request(self.session, url, default)
