@@ -28,9 +28,17 @@ class TelegramAPI:
         elif isinstance(returned_value, dict):
             if 'text' in returned_value:
                 self.send_message(returned_value)
-            elif 'forward_message' in returned_value:
+            elif returned_value['method'] == 'forwardMessage':
                 del returned_value['forward_message']
                 self.forward_message(returned_value)
+            elif 'send' in returned_value['method']:
+                method = returned_value['method'].replace('send', '')
+                file = returned_value['file']
+                if 'data' in returned_value:
+                    data = returned_value['data']
+                else:
+                    data = {}
+                self.send_stuff(method, file, data)
 
     def get_me(self):  # getMe
         url = "{}getMe".format(self.url)
@@ -61,3 +69,12 @@ class TelegramAPI:
         for k, v in content:
             default[k] = v
         return util.make_request(self.session, url, default)
+
+    def send_stuff(self, method, file, data):
+        url = "{}send{}".format(self.url, method)
+        default = {
+            'chat_id': self.current_msg['chat']['id'],
+        }
+        for k, v in data:
+            default[k] = v
+        util.throw(self.session, url, file, default)
