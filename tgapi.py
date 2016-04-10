@@ -31,14 +31,16 @@ class TelegramAPI:
             elif returned_value['method'] == 'forwardMessage':
                 del returned_value['forward_message']
                 self.forward_message(returned_value)
-            elif 'send' in returned_value['method']:
+            elif 'send' in returned_value['method']:  # sendXXXX processed here
+                data = {}
                 method = returned_value['method'].replace('send', '')
-                file = returned_value['file']
                 if 'data' in returned_value:
                     data = returned_value['data']
+                if 'file' in returned_value['method']:
+                    file = returned_value['file']
+                    self.send_file(method, file, data)
                 else:
-                    data = {}
-                self.send_stuff(method, file, data)
+                    self.send_stuff(method, data)
 
     def get_me(self):  # getMe
         url = "{}getMe".format(self.url)
@@ -57,7 +59,7 @@ class TelegramAPI:
                 default[k] = v
         except ValueError:
             default['text'] = content['text']
-        return util.make_request(self.session, url, default)  # Sends it to off to be sent
+        return util.make_post(self.session, url, default)  # Sends it to off to be sent
 
     def forward_message(self, content):  # Forwards a message, note2self. add error handling
         url = "{}forwardMessage".format(self.url)  # Creates URL
@@ -68,9 +70,9 @@ class TelegramAPI:
         }
         for k, v in content:
             default[k] = v
-        return util.make_request(self.session, url, default)
+        return util.throw(self.session, url, default)
 
-    def send_stuff(self, method, file, data):
+    def send_file(self, method, file, data):  # sendXXXX
         url = "{}send{}".format(self.url, method)
         default = {
             'chat_id': self.current_msg['chat']['id'],
@@ -78,3 +80,12 @@ class TelegramAPI:
         for k, v in data.items():
             default[k] = v
         util.throw(self.session, url, file, default)
+
+    def send_stuff(self, method, data):  # Combine with send_message, send_file
+        url = "{}send{}".format(self.url, method)
+        default = {
+            'chat_id': self.current_msg['chat']['id'],
+        }
+        for k, v in data.items():
+            default[k] = v
+        util.make_post(self.session, url, default)

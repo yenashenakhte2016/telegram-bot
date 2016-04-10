@@ -48,8 +48,8 @@ main will always be the function where you recieve the [msg](https://core.telegr
 | sendSticker          | ✔      |
 | sendVideo            | ✔      |
 | sendVoice            | ✔      |
-| sendLocation         | ✖      |
-| sendChatActions      | ✖      |
+| sendLocation         | ✔      |
+| sendChatActions      | ✔      |
 | getUpdates           | ✔      |
 | getUserProfilePhotos | ✖      |
 | getFile              | ✖      |

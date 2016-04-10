@@ -1,7 +1,7 @@
 import json
 
 
-def make_request(session, url, content):  # Simple post request
+def make_post(session, url, content):  # Simple post request
     response = session.post(
         url=url,
         data=content
@@ -14,6 +14,6 @@ def fetch(session, url): # Grabs from url and parses as json. note2self, don't m
     return json.loads(response.text)
 
 
-def throw(session, url, file, data):
+def throw(session, url, file, data):  # Combine with into 1
     response = session.post(url=url, files=file, data=data)
     return response
