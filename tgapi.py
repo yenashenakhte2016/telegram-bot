@@ -1,4 +1,5 @@
 import requests
+
 import util
 from plugin_handler import PluginInit
 
@@ -26,66 +27,29 @@ class TelegramAPI:
             content['text'] = returned_value
             self.send_message(content)
         elif isinstance(returned_value, dict):
-            if 'text' in returned_value:
-                self.send_message(returned_value)
-            elif returned_value['method'] == 'forwardMessage':
-                del returned_value['forward_message']
-                self.forward_message(returned_value)
-            elif 'send' in returned_value['method']:  # sendXXXX processed here
-                data = {}
-                method = returned_value['method'].replace('send', '')
-                if 'data' in returned_value:
-                    data = returned_value['data']
-                if 'file' in returned_value['method']:
-                    file = returned_value['file']
-                    self.send_file(method, file, data)
-                else:
-                    self.send_stuff(method, data)
+            self.send_method(returned_value)
 
     def get_me(self):  # getMe
         url = "{}getMe".format(self.url)
         return util.fetch(self.session, url)
 
-    def send_message(self, content):  # sendMessage
-        url = "{}sendMessage".format(self.url)  # Creates URL
-        default = {  # Default return
+    def send_message(self, content):  # If String is returned
+        package = {'url': "{}sendMessage".format(self.url)}
+        package['data'] = {  # Default return
             'chat_id': self.current_msg['chat']['id'],
             'text': "",
             'parse_mode': "HTML",
             'reply_to_message_id': self.current_msg['message_id']
         }
-        try:
-            for k, v in content:
-                default[k] = v
-        except ValueError:
-            default['text'] = content['text']
-        return util.make_post(self.session, url, default)  # Sends it to off to be sent
+        package['data']['text'] = content['text']
+        util.post_post(self.session, package)
 
-    def forward_message(self, content):  # Forwards a message, note2self. add error handling
-        url = "{}forwardMessage".format(self.url)  # Creates URL
-        default = {  # Default return
-            'chat_id': self.current_msg['chat']['id'],
-            'from_chat_id': self.current_msg['chat']['id'],
-            'message_id': self.current_msg['message_id']
-        }
-        for k, v in content:
-            default[k] = v
-        return util.throw(self.session, url, default)
-
-    def send_file(self, method, file, data):  # sendXXXX
-        url = "{}send{}".format(self.url, method)
-        default = {
-            'chat_id': self.current_msg['chat']['id'],
-        }
-        for k, v in data.items():
-            default[k] = v
-        util.throw(self.session, url, file, default)
-
-    def send_stuff(self, method, data):  # Combine with send_message, send_file
-        url = "{}send{}".format(self.url, method)
-        default = {
-            'chat_id': self.current_msg['chat']['id'],
-        }
-        for k, v in data.items():
-            default[k] = v
-        util.make_post(self.session, url, default)
+    def send_method(self, returned_value):  # If dict is returned
+        method = returned_value['method']
+        del returned_value['method']
+        package = {'url': "{}{}".format(self.url, method)}
+        for k, v in returned_value.items():
+            package[k] = v
+        if 'chat_id' not in package['data']:  # Makes sure a chat_id is provided
+            package['data']['chat_id'] = self.current_msg['chat']['id']
+        util.post_post(self.session, package)
