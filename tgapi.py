@@ -75,6 +75,6 @@ class TelegramAPI:
         default = {
             'chat_id': self.current_msg['chat']['id'],
         }
-        for k, v in data:
+        for k, v in data.items():
             default[k] = v
         util.throw(self.session, url, file, default)
