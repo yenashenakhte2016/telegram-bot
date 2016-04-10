@@ -1,6 +1,6 @@
 # Hitagibot
 
-Hitagibot is a plugin based Telegram bot written in python 3 and licensed under the GNU Affero General Public License V3. Currently functionality is very barebones (ie. inline support is non-existant).
+Hitagibot is a plugin based Telegram bot written in python 3 and licensed under the GNU Affero General Public License V3. Currently functionality is very barebones. The bot focuses on providing a lightweight modular environment for bot creation.
 
 ###Setup
 ```bash
@@ -22,9 +22,9 @@ python3 main.py
 ###Plugins
 Plugins are simple to make. Every plugin will need: 
 
-**`pluginname`**
+**`plugin_info`**
 
-pluginname should be a string which contains exactly whats implied. Note that it is only temporary and will be replaced with something more comprehensive with the release of a help plugin.
+Here is where you should place plugin information. This includes a pretty name, short description, and list of commands.
 
 **`regex`**
 
@@ -32,13 +32,32 @@ regex should be a list containing all "triggers" for your plugin. Use [regex101]
 
 **`main`** 
 
-main should always be the function where you recieve the [msg](https://core.telegram.org/bots/api#message) object and return your bots reply. Returning just a string replies to the command using markup formatting. Returning a dictionary with the parameters located [here](https://core.telegram.org/bots/api#sendmessage) allows for finer control.
+main will always be the function where you recieve the [msg](https://core.telegram.org/bots/api#message) object and return your bots reply. Returning just a string replies to the command using markup formatting. Returning a dictionary with the parameters located [here](https://core.telegram.org/bots/api#sendmessage) allows for finer control.
 
 ####[Example plugin](https://github.com/TopBakuhatsu/hitagibot/blob/master/plugins/example.py)
 
+###What can it do?
+| Method               | Status |
+| -------------------- | ------ |
+| getMe                | ✔      |
+| sendMessage          | ✔      |
+| forwardMessage       | ✔      |
+| sendPhoto            | ✖      |
+| sendAudio            | ✖      |
+| sendDocument         | ✖      |
+| sendSticker          | ✖      |
+| sendVideo            | ✖      |
+| sendVoice            | ✖      |
+| sendLocation         | ✖      |
+| sendChatActions      | ✖      |
+| getUpdates           | ✔      |
+| getUserProfilePhotos | ✖      |
+| getFile              | ✖      |
+| setWebhook           | ✖      |
+| answerInlineQuery    | ✖      |
 
 ###To Do
-- Fully support telegram bot api
-- Implement some kind of database
-- Clean up the logging if chains
-- Help plugin
+- Support full telegram API
+- Better config
+- Async
+- Database
