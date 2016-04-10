@@ -1,5 +1,4 @@
 import re
-import sys
 
 
 class PluginInit:
@@ -9,13 +8,12 @@ class PluginInit:
         self.msg = None
         self.me = bot_info
         for k in plugin_list:
-            sys.path.append("./plugins")  # Need to replace this with a better solution
-            self.plugins[k] = __import__(k)  # "plugins." + k seems to not work
+            plugin = __import__('plugins', fromlist=[k])
+            self.plugins[k] = getattr(plugin, k)
 
     def process_regex(self, msg):  # Loops through plugins checking their regex for a match
         if 'text' in msg:
-            self.msg = msg
-            self.process_message()
+            self.process_message(msg)
             for x in self.plugins:
                 for regex in self.plugins[x].regex:
                     match = re.findall(regex, msg['text'])
@@ -24,13 +22,11 @@ class PluginInit:
                             self.msg['matches{}'.format(index)] = v
                             response = self.plugins[x].main(self.msg)
                             return response
-        else:
-            return None  # For now only text works.
 
-    def process_message(self):  # Removes @bot_username from commands
+    def process_message(self, msg):  # Removes @bot_username from commands
+        self.msg = msg
         username = "@" + self.me['result']['username']
         text = self.msg['text']
         name_match = re.search("^[!#@/]([^ ]*)({})".format(username), text)
         if name_match:
             self.msg['text'] = text.replace(text[:name_match.end(0)], text[:name_match.end(0) - len(username)])
-        return
