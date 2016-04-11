@@ -1,5 +1,4 @@
 import requests
-
 import util
 from plugin_handler import PluginInit
 

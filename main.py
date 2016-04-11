@@ -1,8 +1,10 @@
 from tgapi import TelegramAPI
-import config
+import util
 import time
 
-bot = TelegramAPI(config.API, config.plugins)
+
+config = util.ConfigUtils()  # Create config object
+bot = TelegramAPI(config.token, config.plugins)  # Create bot object
 
 while True:  # Main loop
     bot.get_update()  # It's possible to run multiple bots here, be sure to provide separate API keys
