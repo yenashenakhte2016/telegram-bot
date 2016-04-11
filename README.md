@@ -32,9 +32,23 @@ regex should be a list containing all "triggers" for your plugin. Use [regex101]
 
 **`main`** 
 
-main will always be the function where you recieve the [msg](https://core.telegram.org/bots/api#message) object and return your bots reply. Returning just a string replies to the command using markup formatting. Returning a dictionary with the parameters located [here](https://core.telegram.org/bots/api#sendmessage) allows for finer control.
+main will always be the function where you recieve the [msg](https://core.telegram.org/bots/api#message) object and
+return your bots reply. Returning only a string is the equivalent of a sendMessage object which replies with HTML
+parsing. While dictionaries allow you to modify api methods and parameters. Example:
 
-####[Example plugin](https://github.com/TopBakuhatsu/hitagibot/blob/master/plugins/example.py)
+```python
+def main(msg):
+    photo = {'photo':open('example.png', 'rb')}
+    example_dict = {
+        'method': 'sendPhoto',
+        'data': {
+            'caption': 'Example of sendPhoto',
+            'reply_to_message_id': msg['message_id']
+        },
+        'file': photo  #
+    }
+    return example_dict
+```
 
 ###What can it do?
 | Method               | Status |
