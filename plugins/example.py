@@ -1,10 +1,13 @@
 def main(msg):  # This is where plugin_handler will send msg
     if 'reply_to_message' in msg:
+        print(msg)
         return msg['reply_to_message']['text']
-    elif type(msg['match']) is str:  # Need better way to handle this
-        return "What to echo?"
-    elif msg['match'][1]:
-        return msg['match'][1]
+    try:
+        if msg['match'][1]:  # Need better way to handle this
+            return msg['match'][1]
+    except IndexError:
+        if msg['match'][0]:
+            return "What do I echo?"
 
 
 plugin_info = {
@@ -16,7 +19,10 @@ plugin_info = {
         # "/etc"
     ]
 }
-regex = [
-    "^[/]echo$",
-    "^[/](echo) (.*)"
-]
+arguments = {
+    'type': ['text'],
+    'global_regex': [
+        "^[/]echo$",
+        "^[/](echo) (.*)"
+    ]
+}

@@ -4,18 +4,24 @@ from plugin_handler import PluginInit
 
 
 class TelegramAPI:
-    def __init__(self, bot_token, plugin_list):
-        self.url = "https://api.telegram.org/bot{0}/".format(bot_token)
+    def __init__(self, config):
+        self.url = "https://api.telegram.org/bot{0}/".format(config.token)
         self.session = requests.session()
         self.update_id = 0
         self.getMe = self.get_me()
-        self.plugin_handle = PluginInit(plugin_list, self.getMe)
+        self.plugin_handle = PluginInit(config, self.getMe)
         self.current_msg = None
 
     def get_update(self):  # Gets new messages and sends them to plugin_handler
         url = "{}getUpdates?offset={}".format(self.url, self.update_id)
         response = util.fetch(self.session, url)
-        for i in response['result']:
+        try:
+            parsed_response = response.json()
+        except AttributeError:
+            print('There seems to be a problem with your connection :(')
+            util.timeout('Telegram')
+            return None
+        for i in parsed_response['result']:
             self.current_msg = i['message']
             self.route_return(self.plugin_handle.process_regex(self.current_msg))
             self.update_id = i['update_id'] + 1  # Updates update_id's value
@@ -30,10 +36,13 @@ class TelegramAPI:
 
     def get_me(self):  # getMe
         url = "{}getMe".format(self.url)
-        return util.fetch(self.session, url)
+        response = util.fetch(self.session, url)
+        parsed_response = response.json()
+        return parsed_response
 
     def send_message(self, content):  # If String is returned
-        package = {'url': "{}sendMessage".format(self.url)}
+        package = dict()
+        package['url'] = "{}sendMessage".format(self.url)
         package['data'] = {  # Default return
             'chat_id': self.current_msg['chat']['id'],
             'text': "",
