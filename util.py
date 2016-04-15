@@ -69,5 +69,8 @@ def clean_message(message_text, bot_name):
 
 
 def name_file(file_id, file_name):
-    match = re.findall('(\.[0-9a-z]+$)', file_name)
-    return file_id + match[0]
+    if file_name:
+        match = re.findall('(\.[0-9a-z]+$)', file_name)
+        return file_id + match[0]
+    else:
+        return str(file_id)

@@ -79,10 +79,17 @@ class TelegramAPI:
         package['url'] = "{}{}getFile".format(self.url['base'], self.url['token'])
         package['data'] = {'file_id': file_id}
         response = util.post_post(self.session, package).json()
-        url = "{}/file/{}{}".format(self.url['base'], self.url['token'], response['result']['file_path'])
-        file_name = util.name_file(file_id, self.msg['document']['file_name'])
-        response = util.fetch_file(self.session, url, 'data/files/{}'.format(file_name))
-        return response
+        if response['ok']:
+            url = "{}/file/{}{}".format(self.url['base'], self.url['token'], response['result']['file_path'])
+            try:
+                name = self.msg['document']['file_name']
+            except KeyError:
+                name = None
+            file_name = util.name_file(file_id, name)
+            response = util.fetch_file(self.session, url, 'data/files/{}'.format(file_name))
+            return response
+        else:
+            return response['error_code']
 
     def route_plugins(self):  # Checks if a plugin wants this message then sends to relevant class
         for k in self.loop:
@@ -107,9 +114,7 @@ class TelegramAPI:
                     self.loop[v].append(p)
 
     def process_text(self):
-        print(self.msg['text'])
         self.msg['text'] = util.clean_message(self.msg['text'], self.me)
-        print(self.msg['text'])
         for x in self.loop['text']:
             for regex in self.plugins[x].arguments['global_regex']:
                 match = re.findall(regex, self.msg['text'])
@@ -122,6 +127,8 @@ class TelegramAPI:
                     return self.plugins[x].main(self.msg)
 
     def process_document(self):
+
         for x in self.loop['document']:
             self.msg['local_file_path'] = self.download_file(self.msg['document']['file_id'])
-            return self.plugins[x].main(self.msg)
+            if self.msg['local_file_path'] is not 400:
+                return self.plugins[x].main(self.msg)
