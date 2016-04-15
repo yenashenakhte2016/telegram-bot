@@ -60,7 +60,6 @@ def timeout(site):
 def clean_message(message_text, bot_name):
     username = "@{}".format(bot_name['result']['username'])
     text = message_text
-    print(text)
     name_match = re.search('^[!#@/]([^ ]*)({})'.format(username), text)
     if name_match:
         return text.replace(text[:name_match.end(0)], text[:name_match.end(0) - len(username)])
@@ -70,7 +69,7 @@ def clean_message(message_text, bot_name):
 
 def name_file(file_id, file_name):
     if file_name:
-        match = re.findall('(\.[0-9a-z]+$)', file_name)
+        match = re.findall('(\.[0-9a-zA-Z]+$)', file_name)
         return file_id + match[0]
     else:
         return str(file_id)
