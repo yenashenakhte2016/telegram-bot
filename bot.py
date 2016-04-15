@@ -22,7 +22,7 @@ class TelegramAPI:
 
     def get_update(self):  # Gets new messages and sends them to plugin_handler
         url = "{}{}getUpdates?offset={}".format(self.misc['base_url'], self.misc['token'], self.update_id)
-        response = util.fetch(self.misc['session'], url)
+        response = util.fetch(url, self.misc['session'])
         try:
             parsed_response = response.json()
         except AttributeError:

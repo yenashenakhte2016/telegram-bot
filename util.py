@@ -1,4 +1,3 @@
-import sqlite3
 import requests
 import time
 import shutil
@@ -19,18 +18,13 @@ class ConfigUtils:
         with open(self.filename, 'w') as configfile:
             self.config.write(configfile)
 
-'''
-class Databases:  # Soon
-    def __init__(self):
-'''
 
-
-def post_post(session, content):
+def post_post(content, session=requests):
     response = session.post(**content)
     return response
 
 
-def fetch(session, url):  # Grabs from url and parses as json. note2self, don't make it parse json by default
+def fetch(url, session=requests):  # Grabs from url and parses as json. note2self, don't make it parse json by default
     try:
         response = session.get(url, timeout=3)
         return response
@@ -40,7 +34,7 @@ def fetch(session, url):  # Grabs from url and parses as json. note2self, don't 
         return 'Unable to connect :('
 
 
-def fetch_file(session, url, file_path):
+def fetch_file(url, file_path, session=requests):
     response = session.get(url, stream=True)
     with open(file_path, 'wb') as out_file:
         shutil.copyfileobj(response.raw, out_file)
@@ -49,7 +43,7 @@ def fetch_file(session, url, file_path):
 
 def timeout(site):
     print('Trying to connect to google.com...')
-    response = fetch(requests, 'https://www.google.com')
+    response = fetch('www.google.com')
     if response == 200:
         print("{} seems to be down :(\nTrying again in 5 seconds...".format(site))
     else:
