@@ -1,6 +1,8 @@
 import sqlite3
 import requests
 import time
+import shutil
+import re
 
 
 class ConfigUtils:
@@ -38,6 +40,13 @@ def fetch(session, url):  # Grabs from url and parses as json. note2self, don't 
         return 'Unable to connect :('
 
 
+def fetch_file(session, url, file_path):
+    response = session.get(url, stream=True)
+    with open(file_path, 'wb') as out_file:
+        shutil.copyfileobj(response.raw, out_file)
+    return file_path
+
+
 def timeout(site):
     print('Trying to connect to google.com...')
     response = fetch(requests, 'https://www.google.com')
@@ -46,3 +55,19 @@ def timeout(site):
     else:
         print('{} - trying again in 5 seconds...'.format(response))
     time.sleep(5)
+
+
+def clean_message(message_text, bot_name):
+    username = "@{}".format(bot_name['result']['username'])
+    text = message_text
+    print(text)
+    name_match = re.search('^[!#@/]([^ ]*)({})'.format(username), text)
+    if name_match:
+        return text.replace(text[:name_match.end(0)], text[:name_match.end(0) - len(username)])
+    else:
+        return text
+
+
+def name_file(file_id, file_name):
+    match = re.findall('(\.[0-9a-z]+$)', file_name)
+    return file_id + match[0]

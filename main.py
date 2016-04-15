@@ -1,4 +1,4 @@
-from tgapi import TelegramAPI
+from bot import TelegramAPI
 import util
 import time
 
