@@ -2,6 +2,7 @@ import requests
 import util
 import re
 import tgapi
+import threading
 
 
 class TelegramAPI:
@@ -12,7 +13,6 @@ class TelegramAPI:
         self.misc['session'] = requests.session()
         self.update_id = 0
         self.me = tgapi.get_me(self.misc)
-        self.msg = None
         self.plugins = dict()
         self.loop = dict()
         for k in config.plugins:
@@ -30,23 +30,24 @@ class TelegramAPI:
             util.timeout('Telegram')
             return None
         for i in parsed_response['result']:
-            self.msg = i['message']
-            self.route_return(self.route_plugins())
+            run = threading.Thread(target=self.route_plugins, args=(i['message'],))
+            run.start()
             self.update_id = i['update_id'] + 1  # Updates update_id's value
 
-    def route_return(self, returned_value):  # Figures out where plugin return values belong
+    def route_return(self, msg, returned_value):  # Figures out where plugin return values belong
         content = {}
         if isinstance(returned_value, str):  # If string sendMessage
             content['text'] = returned_value
-            tgapi.send_message(self.misc, self.msg, content)
+            tgapi.send_message(self.misc, msg, content)
         elif isinstance(returned_value, dict):
-            tgapi.send_method(self.misc, self.msg, returned_value)
+            tgapi.send_method(self.misc, msg, returned_value)
 
-    def route_plugins(self):  # Checks if a plugin wants this message then sends to relevant class
+    def route_plugins(self, msg):  # Checks if a plugin wants this message then sends to relevant class
         for k in self.loop:
-            if k in self.msg:
+            if k in msg:
                 run = getattr(self, 'process_{}'.format(k))
-                return run()
+                plugin_return = run(msg)
+                self.route_return(msg, plugin_return)
 
     def process_plugins(self):
         for p in self.plugins:
@@ -57,22 +58,21 @@ class TelegramAPI:
                     self.loop[v] = list()
                     self.loop[v].append(p)
 
-    def process_text(self):
-        self.msg['text'] = util.clean_message(self.msg['text'], self.me)
+    def process_text(self, msg):
+        msg['text'] = util.clean_message(msg['text'], self.me)
         for x in self.loop['text']:
             for regex in self.plugins[x].arguments['global_regex']:
-                match = re.findall(regex, self.msg['text'])
+                match = re.findall(regex, msg['text'])
                 if match:
                     if type(match[0]) is str:
-                        self.msg['match'] = list()
-                        self.msg['match'].append(match[0])
+                        msg['match'] = list()
+                        msg['match'].append(match[0])
                     else:
-                        self.msg['match'] = match[0]
-                    return self.plugins[x].main(self.msg)
+                        msg['match'] = match[0]
+                    return self.plugins[x].main(msg)
 
-    def process_document(self):
-
+    def process_document(self, msg):
         for x in self.loop['document']:
-            self.msg['local_file_path'] = tgapi.download_file(self.misc, self.msg)
-            if self.msg['local_file_path'] is not 400:
-                return self.plugins[x].main(self.msg)
+            msg['local_file_path'] = tgapi.download_file(self.misc, msg)
+            if msg['local_file_path'] is not 400:
+                return self.plugins[x].main(msg)
