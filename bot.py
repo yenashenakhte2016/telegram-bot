@@ -41,7 +41,7 @@ class TelegramAPI:
         time.sleep(self.config.sleep)
 
     def route_plugins(self, msg):  # Checks if a plugin wants this message type then sends to relevant class
-        if self.time - int(msg['date']) >= 180000:
+        if self.time - int(msg['date']) <= 180000:
             for k in self.loop:
                 if k in msg:
                     getattr(self, 'process_{}'.format(k))(msg)
