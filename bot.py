@@ -3,7 +3,7 @@ import util
 import re
 import tgapi
 import time
-from multiprocessing import Pool as ThreadPool
+from multiprocessing.dummy import Pool
 
 
 class TelegramAPI:
@@ -33,7 +33,7 @@ class TelegramAPI:
             print('There seems to be a problem with your connection :(')
             util.timeout('Telegram')
             return None
-        pool = ThreadPool(4)
+        pool = Pool()
         pool.map(self.route_plugins, parsed_response['result'])
         pool.close()
         pool.join()
