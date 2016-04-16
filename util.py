@@ -13,6 +13,7 @@ class ConfigUtils:
         self.token = self.config[bot_name]['token']
         self.plugins = self.config[bot_name]['plugins'].split(',')
         self.plugin_path = self.config[bot_name]['plugin_path']
+        self.sleep = float(self.config[bot_name]['sleep'])
 
     def write_config(self):
         with open(self.filename, 'w') as configfile:

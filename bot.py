@@ -3,16 +3,19 @@ import util
 import re
 import tgapi
 import threading
+import time
 
 
 class TelegramAPI:
     def __init__(self, config):
-        self.misc = dict()
-        self.misc['base_url'] = 'https://api.telegram.org/'.format(config.token)
-        self.misc['token'] = 'bot{}/'.format(config.token)
-        self.misc['session'] = requests.session()
-        self.update_id = 0
+        self.config = config
+        self.misc = {
+            'base_url': 'https://api.telegram.org/',
+            'token': 'bot{}/'.format(self.config.token),
+            'session': requests.session()
+        }
         self.me = tgapi.get_me(self.misc)
+        self.update_id = int
         self.plugins = dict()
         self.loop = dict()
         for k in config.plugins:
@@ -33,6 +36,7 @@ class TelegramAPI:
             run = threading.Thread(target=self.route_plugins, args=(i['message'],))
             run.start()
             self.update_id = i['update_id'] + 1  # Updates update_id's value
+        time.sleep(self.config.sleep)
 
     def route_return(self, msg, returned_value):  # Figures out where plugin return values belong
         content = {}
