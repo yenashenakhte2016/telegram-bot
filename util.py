@@ -44,8 +44,8 @@ def fetch_file(url, file_path, session=requests):
 
 def timeout(site):
     print('Trying to connect to google.com...')
-    response = fetch('www.google.com')
-    if response == 200:
+    response = fetch('http://www.google.com')
+    if response is 200:
         print("{} seems to be down :(\nTrying again in 5 seconds...".format(site))
     else:
         print('{} - trying again in 5 seconds...'.format(response))

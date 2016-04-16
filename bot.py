@@ -2,8 +2,8 @@ import requests
 import util
 import re
 import tgapi
-import threading
 import time
+from multiprocessing import Pool as ThreadPool
 
 
 class TelegramAPI:
@@ -33,14 +33,16 @@ class TelegramAPI:
             print('There seems to be a problem with your connection :(')
             util.timeout('Telegram')
             return None
-        for i in parsed_response['result']:
-            run = threading.Thread(target=self.route_plugins, args=(i['message'],))
-            run.start()
-            if i['update_id'] >= self.update_id:
-                self.update_id = i['update_id'] + 1  # Updates update_id's value
+        pool = ThreadPool(4)
+        pool.map(self.route_plugins, parsed_response['result'])
+        pool.close()
+        pool.join()
         time.sleep(self.config.sleep)
 
     def route_plugins(self, msg):  # Checks if a plugin wants this message type then sends to relevant class
+        if msg['update_id'] >= self.update_id:
+            self.update_id = msg['update_id'] + 1  # Updates update_id's value
+        msg = msg['message']
         if self.time - int(msg['date']) <= 180000:
             for k in self.loop:
                 if k in msg:
