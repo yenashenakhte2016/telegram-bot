@@ -15,9 +15,10 @@ class TelegramAPI:
             'session': requests.session()
         }
         self.me = tgapi.get_me(self.misc)
-        self.update_id = int
+        self.update_id = 0
         self.plugins = dict()
         self.loop = dict()
+        self.time = int(time.time())
         for k in config.plugins:
             plugin = __import__('plugins', fromlist=[k])
             self.plugins[k] = getattr(plugin, k)
@@ -35,8 +36,15 @@ class TelegramAPI:
         for i in parsed_response['result']:
             run = threading.Thread(target=self.route_plugins, args=(i['message'],))
             run.start()
-            self.update_id = i['update_id'] + 1  # Updates update_id's value
+            if i['update_id'] >= self.update_id:
+                self.update_id = i['update_id'] + 1  # Updates update_id's value
         time.sleep(self.config.sleep)
+
+    def route_plugins(self, msg):  # Checks if a plugin wants this message type then sends to relevant class
+        if self.time - int(msg['date']) >= 180000:
+            for k in self.loop:
+                if k in msg:
+                    getattr(self, 'process_{}'.format(k))(msg)
 
     def route_return(self, msg, returned_value):  # Figures out where plugin return values belong
         content = {}
@@ -45,13 +53,6 @@ class TelegramAPI:
             tgapi.send_message(self.misc, msg, content)
         elif isinstance(returned_value, dict):
             tgapi.send_method(self.misc, msg, returned_value)
-
-    def route_plugins(self, msg):  # Checks if a plugin wants this message then sends to relevant class
-        for k in self.loop:
-            if k in msg:
-                run = getattr(self, 'process_{}'.format(k))
-                plugin_return = run(msg)
-                self.route_return(msg, plugin_return)
 
     def process_plugins(self):
         for p in self.plugins:
@@ -73,10 +74,10 @@ class TelegramAPI:
                         msg['match'].append(match[0])
                     else:
                         msg['match'] = match[0]
-                    return self.plugins[x].main(msg)
+                    self.route_return(msg, self.plugins[x].main(msg))
 
     def process_document(self, msg):
         for x in self.loop['document']:
             msg['local_file_path'] = tgapi.download_file(self.misc, msg)
             if msg['local_file_path'] is not 400:
-                return self.plugins[x].main(msg)
+                self.route_return(msg, self.plugins[x].main(msg))
