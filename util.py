@@ -2,6 +2,7 @@ import requests
 import time
 import shutil
 import re
+import os
 
 
 class ConfigUtils:
@@ -37,19 +38,23 @@ def fetch(url, session=requests):  # Grabs from url and parses as json. note2sel
 
 def fetch_file(url, file_path, session=requests):
     response = session.get(url, stream=True)
+    if not os.path.exists('data/files'):
+        os.makedirs('data/files')
     with open(file_path, 'wb') as out_file:
         shutil.copyfileobj(response.raw, out_file)
     return file_path
 
 
 def timeout(site):
-    print('Trying to connect to google.com...')
+    print('Testing your internet with google')
     response = fetch('http://www.google.com')
     if response is 200:
-        print("{} seems to be down :(\nTrying again in 5 seconds...".format(site))
+        print("{} seems to be down :(\nTrying again in 5 seconds.".format(site))
+        time.sleep(5)
     else:
-        print('{} - trying again in 5 seconds...'.format(response))
-    time.sleep(5)
+        print("There seems to be a problem with your internet :(\nTrying again in 30 seconds.")
+        time.sleep(30)
+    print("Resuming...")
 
 
 def clean_message(message_text, bot_name):

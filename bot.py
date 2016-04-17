@@ -3,6 +3,7 @@ import util
 import re
 import tgapi
 import time
+import sys
 from multiprocessing.dummy import Pool
 
 
@@ -14,7 +15,10 @@ class Bot:
             'token': 'bot{}/'.format(self.config.token),
             'session': requests.session()
         }
-        self.me = tgapi.get_me(self.misc)
+        try:
+            self.me = tgapi.get_me(self.misc)
+        except AttributeError:
+            util.timeout('Telegram')
         self.update_id = 0
         self.plugins = dict()
         self.loop = dict()
@@ -28,16 +32,21 @@ class Bot:
         url = "{}{}getUpdates?offset={}".format(self.misc['base_url'], self.misc['token'], self.update_id)
         response = util.fetch(url, self.misc['session'])
         try:
-            parsed_response = response.json()
+            response = response.json()
         except AttributeError:
-            print('There seems to be a problem with your connection :(')
+            print("Can't connect to Telegram servers :(")
             util.timeout('Telegram')
             return None
-        pool = Pool()
-        pool.map(self.route_plugins, parsed_response['result'])
-        pool.close()
-        pool.join()
-        time.sleep(self.config.sleep)
+        if response['ok']:
+            pool = Pool()
+            pool.map(self.route_plugins, response['result'])
+            pool.close()
+            pool.join()
+            time.sleep(self.config.sleep)
+        else:
+            print("There seems to be something wrong with your token")
+            print("Shutting down....")
+            sys.exit()
 
     def route_plugins(self, msg):  # Checks if a plugin wants this message type then sends to relevant class
         if msg['update_id'] >= self.update_id:
@@ -72,8 +81,23 @@ class Bot:
                     self.plugins[x].main(api_obj)
 
     def process_document(self, msg):
+        all_plugin = None
         for x in self.loop['document']:
-            msg['local_file_path'] = tgapi.download_file(self.misc, msg)
+            try:
+                for mime_type in self.plugins[x].arguments['mime_type']:
+                    if 'all' in mime_type:
+                        all_plugin = x
+                    elif mime_type in msg['document']['mime_type']:
+                        msg['local_file_path'] = tgapi.download_file(self.misc, msg['document'])
+                        if msg['local_file_path']:
+                            api_obj = tgapi.PluginHelper(msg, self.misc)
+                            self.plugins[x].main(api_obj)
+                            break
+            except KeyError:
+                print('Plugin "{}" is missing mime_type argument. Will be disabled.'.format(x))
+                self.loop['document'].remove(x)
+        if all_plugin:
+            msg['local_file_path'] = tgapi.download_file(self.misc, msg['document'])
             if msg['local_file_path'] is not 400:
                 api_obj = tgapi.PluginHelper(msg, self.misc)
-                self.plugins[x].main(api_obj)
+                self.plugins[all_plugin].main(api_obj)

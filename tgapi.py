@@ -66,7 +66,7 @@ def download_file(misc, document_object):
         except KeyError:
             name = None
         file_name = util.name_file(document_object['file_id'], name)
-        response = util.fetch_file(url, 'data/files/{}'.format(file_name),misc['session'])
+        response = util.fetch_file(url, 'data/files/{}'.format(file_name), misc['session'])
         return response
     else:
-        return response['error_code']
+        return False
