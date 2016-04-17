@@ -41,6 +41,7 @@ def fetch_file(url, file_path, session=requests):
     if not os.path.exists('data/files'):
         os.makedirs('data/files')
     with open(file_path, 'wb') as out_file:
+        response.raw.decode_content = True
         shutil.copyfileobj(response.raw, out_file)
     return file_path
 
@@ -58,7 +59,7 @@ def timeout(site):
 
 
 def clean_message(message_text, bot_name):
-    username = "@{}".format(bot_name['result']['username'])
+    username = "@{}".format(bot_name['username'])
     text = message_text
     name_match = re.search('^[!#@/]([^ ]*)({})'.format(username), text)
     if name_match:
