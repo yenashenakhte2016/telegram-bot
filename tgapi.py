@@ -1,16 +1,49 @@
 import util
 
 
-def send_message(misc, msg, content):  # Send a message with default parameters
-    package = dict()
-    package['url'] = "{}{}sendMessage".format(misc['base_url'], misc['token'])
-    package['data'] = {  # Default return
-        'chat_id': msg['chat']['id'],
-        'text': None,
-        'parse_mode': "HTML",
-        'reply_to_message_id': msg['message_id']
-    }
-    package['data']['text'] = content['text']
+class PluginHelper:
+    def __init__(self, message, misc):
+        self.msg = message
+        self.misc = misc
+
+    def send_chat_action(self, action, chat_id=0):
+        if type(chat_id) != int or chat_id is 0:
+            chat_id = self.msg['chat']['id']
+        package = dict()
+        package['data'] = {
+            'chat_id': chat_id,
+            'action': action
+        }
+        send_method(self.misc, package, 'sendChatAction')
+
+    def send_message(self, text, **kwargs):
+        package = dict()
+        package['data'] = {
+            'chat_id': self.msg['chat']['id'],
+            'text': text,
+            'parse_mode': "HTML",
+            'reply_to_message_id': self.msg['message_id']
+        }
+        for k, v in kwargs.items():
+            package['data'][k] = v
+        send_method(self.misc, package, 'sendMessage')
+
+    def send_photo(self, photo, **kwargs):
+        package = dict()
+        package['data'] = {
+            'chat_id': self.msg['chat']['id'],
+            'reply_to_message_id': self.msg['message_id']
+        }
+        package['files'] = photo
+        for k, v in kwargs.items():
+            package['data'][k] = v
+        send_method(self.misc, package, 'sendPhoto')
+
+
+def send_method(misc, returned_value, method, base_url='{0}{1}{2}'):  # If dict is returned
+    package = {'url': base_url.format(misc['base_url'], misc['token'], method)}
+    for k, v in returned_value.items():
+        package[k] = v
     util.post_post(package, misc['session'])
 
 
@@ -21,33 +54,18 @@ def get_me(misc):  # getMe
     return parsed_response
 
 
-def send_method(misc, msg, returned_value):  # If dict is returned
-    method = returned_value['method']
-    del returned_value['method']
-    package = {'url': "{}{}{}".format(misc['base_url'], misc['token'], method)}
-    for k, v in returned_value.items():
-        package[k] = v
-    try:
-        if 'chat_id' not in package['data']:  # Makes sure a chat_id is provided
-            package['data'] = {'chat_id': msg['chat']['id']}
-    except KeyError:
-        package['data'] = dict()
-        package['data'] = {'chat_id': msg['chat']['id']}
-    util.post_post(package, misc['session'])
-
-
-def download_file(misc, msg):
+def download_file(misc, document_object):
     package = dict()
     package['url'] = "{}{}getFile".format(misc['base_url'], misc['token'])
-    package['data'] = {'file_id': msg['document']['file_id']}
+    package['data'] = {'file_id': document_object['file_id']}
     response = util.post_post(package, misc['session']).json()
     if response['ok']:
         url = "{}/file/{}{}".format(misc['base_url'], misc['token'], response['result']['file_path'])
         try:
-            name = msg['document']['file_name']
+            name = document_object['file_name']
         except KeyError:
             name = None
-        file_name = util.name_file(msg['document']['file_id'], name)
+        file_name = util.name_file(document_object['file_id'], name)
         response = util.fetch_file(url, 'data/files/{}'.format(file_name),misc['session'])
         return response
     else:

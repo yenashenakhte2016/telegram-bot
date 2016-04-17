@@ -6,7 +6,7 @@ import time
 from multiprocessing.dummy import Pool
 
 
-class TelegramAPI:
+class Bot:
     def __init__(self, config):
         self.config = config
         self.misc = {
@@ -48,14 +48,6 @@ class TelegramAPI:
                 if k in msg:
                     getattr(self, 'process_{}'.format(k))(msg)
 
-    def route_return(self, msg, returned_value):  # Figures out where plugin return values belong
-        content = {}
-        if isinstance(returned_value, str):  # If string sendMessage
-            content['text'] = returned_value
-            tgapi.send_message(self.misc, msg, content)
-        elif isinstance(returned_value, dict):
-            tgapi.send_method(self.misc, msg, returned_value)
-
     def process_plugins(self):
         for p in self.plugins:
             for v in self.plugins[p].arguments['type']:
@@ -76,10 +68,12 @@ class TelegramAPI:
                         msg['match'].append(match[0])
                     else:
                         msg['match'] = match[0]
-                    self.route_return(msg, self.plugins[x].main(msg))
+                    api_obj = tgapi.PluginHelper(msg, self.misc)
+                    self.plugins[x].main(api_obj)
 
     def process_document(self, msg):
         for x in self.loop['document']:
             msg['local_file_path'] = tgapi.download_file(self.misc, msg)
             if msg['local_file_path'] is not 400:
-                self.route_return(msg, self.plugins[x].main(msg))
+                api_obj = tgapi.PluginHelper(msg, self.misc)
+                self.plugins[x].main(api_obj)
