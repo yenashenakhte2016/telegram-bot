@@ -107,7 +107,7 @@ class TelegramApi:
         package['data'] = {
             'file_id': file_id
         }
-        response = send_method(self.misc, package, 'getFile').json()
+        response = send_method(self.misc, package, 'getFile')
         if download:
             return self.download_file(response)
         else:
