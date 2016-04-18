@@ -1,5 +1,4 @@
 import requests
-import time
 import shutil
 import re
 import os
@@ -44,18 +43,6 @@ def fetch_file(url, file_path, session=requests):
         response.raw.decode_content = True
         shutil.copyfileobj(response.raw, out_file)
     return file_path
-
-
-def timeout(site):
-    print('Testing your internet with google')
-    response = fetch('http://www.google.com')
-    if response is 200:
-        print("{} seems to be down :(\nTrying again in 5 seconds.".format(site))
-        time.sleep(5)
-    else:
-        print("There seems to be a problem with your internet :(\nTrying again in 30 seconds.")
-        time.sleep(30)
-    print("Resuming...")
 
 
 def clean_message(message_text, bot_name):

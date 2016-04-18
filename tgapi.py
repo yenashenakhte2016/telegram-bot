@@ -1,5 +1,6 @@
 import util
 from functools import partial
+import sys
 
 
 class TelegramApi:
@@ -150,4 +151,9 @@ def get_me(misc):  # getMe
     url = "{}{}getMe".format(misc['base_url'], misc['token'])
     response = util.fetch(url, misc['session'])
     parsed_response = response.json()
-    return parsed_response['result']
+    if parsed_response['ok']:
+        return parsed_response['result']
+    else:
+        print(parsed_response)
+        print("There seems to be an error :(\nCheck your API key and connection to the internet")
+        sys.exit()
