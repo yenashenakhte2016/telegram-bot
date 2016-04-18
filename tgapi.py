@@ -16,6 +16,9 @@ class TelegramApi:
         self.get_user_profile_photos = partial(self.simple_send_something, 'getUserProfilePhotos')
         self.kick_chat_member = partial(self.simple_send_something, 'kickChatMember', chat_id=self.msg['chat']['id'])
         self.unban_chat_member = partial(self.simple_send_something, 'unbanChatMember', chat_id=self.msg['chat']['id'])
+        self.get_user_profile_photos = partial(self.simple_send_something,
+                                               'getUserProfilePhotos',
+                                               chat_id=self.msg['chat']['id'])
 
     def send_chat_action(self, action, chat_id=0):
         if type(chat_id) != int or chat_id is 0:
@@ -93,15 +96,6 @@ class TelegramApi:
         for k, v in kwargs.items():
             package['data'][k] = v
         send_method(self.misc, package, 'sendContact')
-
-    def get_user_profile_photos(self, user_id, **kwargs):
-        package = dict()
-        package['data'] = {
-            'user_id': user_id
-        }
-        for k, v in kwargs.items():
-            package['data'][k] = v
-        return send_method(self.misc, package, 'sendContact')
 
     def get_file(self, file_id, download=False):
         package = dict()
