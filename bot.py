@@ -50,10 +50,10 @@ class Bot:
             sys.exit()
 
     def route_message(self, msg):  # Checks if a plugin wants this message type then sends to relevant class
-        api_obj = TelegramApi(msg, self.misc)
-        if api_obj.msg['update_id'] >= self.update_id:
+        api_obj = TelegramApi(msg['message'], self.misc)
+        if msg['update_id'] >= self.update_id:
             self.update_id = api_obj.msg['update_id'] + 1  # Updates update_id's value
-        api_obj.msg = api_obj.msg['message']
+        msg = None
         if self.time - int(api_obj.msg['date']) <= 180000:
             for k in self.loop:
                 if k in api_obj.msg:
