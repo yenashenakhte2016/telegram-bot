@@ -48,21 +48,10 @@ class Bot:
     def route_message(self, api_obj):
         for p in self.plugins:
             for args, nested_arg in self.plugins[p].plugin_info['arguments'].items():
-                if args is 'text':
-                    for regex in nested_arg:
-                        match = re.findall(regex, api_obj.msg[args])
-                        if match:
-                            if type(match[0]) is str:
-                                api_obj.msg['match'] = list()
-                                api_obj.msg['match'].append(match[0])
-                            else:
-                                api_obj.msg['match'] = match[0]
-                            self.plugins[p].main(api_obj)
-                            break
-                else:
-                    for args2, nested_arg2 in nested_arg.items():
-                        for regex in nested_arg2:
-                            match = re.findall(str(regex), str(api_obj.msg[args][args2]))
+                if args in api_obj.msg:
+                    if args is 'text':
+                        for regex in nested_arg:
+                            match = re.findall(regex, api_obj.msg[args])
                             if match:
                                 if type(match[0]) is str:
                                     api_obj.msg['match'] = list()
@@ -71,3 +60,16 @@ class Bot:
                                     api_obj.msg['match'] = match[0]
                                 self.plugins[p].main(api_obj)
                                 break
+                    else:
+                        for args2, nested_arg2 in nested_arg.items():
+                            if args2 in api_obj.msg:
+                                for regex in nested_arg2:
+                                    match = re.findall(str(regex), str(api_obj.msg[args][args2]))
+                                    if match:
+                                        if type(match[0]) is str:
+                                            api_obj.msg['match'] = list()
+                                            api_obj.msg['match'].append(match[0])
+                                        else:
+                                            api_obj.msg['match'] = match[0]
+                                        self.plugins[p].main(api_obj)
+                                        break
