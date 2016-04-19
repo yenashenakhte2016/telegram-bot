@@ -13,12 +13,11 @@ plugin_info = {
     'Info': "Echo plugin demonstrates how plugins work!",
     'Usage': [
         "/echo"
-    ]
-}
-arguments = {
-    'type': ['text'],
-    'global_regex': [
-        "^[/]echo$",
-        "^[/](echo) (.*)"
-    ]
+    ],
+    'arguments': {
+        'text': [
+            "^[/]echo$",
+            "^[/](echo) (.*)"
+        ]
+    }
 }
