@@ -7,18 +7,29 @@ class TelegramApi:
     def __init__(self, message, misc):
         self.msg = message
         self.misc = misc
-        self.send_photo = partial(self.send_something, 'sendPhoto')
-        self.send_audio = partial(self.send_something, 'sendAudio')
-        self.send_document = partial(self.send_something, 'sendDocument')
-        self.send_sticker = partial(self.send_something, 'sendSticker')
-        self.send_video = partial(self.send_something, 'sendVideo')
-        self.send_voice = partial(self.send_something, 'sendVoice')
-        self.get_user_profile_photos = partial(self.simple_send_something, 'getUserProfilePhotos')
-        self.kick_chat_member = partial(self.simple_send_something, 'kickChatMember', chat_id=self.msg['chat']['id'])
-        self.unban_chat_member = partial(self.simple_send_something, 'unbanChatMember', chat_id=self.msg['chat']['id'])
-        self.get_user_profile_photos = partial(self.simple_send_something,
+        self.send_photo = partial(self.send_file, 'sendPhoto')
+        self.send_audio = partial(self.send_file, 'sendAudio')
+        self.send_document = partial(self.send_file, 'sendDocument')
+        self.send_sticker = partial(self.send_file, 'sendSticker')
+        self.send_video = partial(self.send_file, 'sendVideo')
+        self.send_voice = partial(self.send_file, 'sendVoice')
+        self.get_user_profile_photos = partial(self.send_text, 'getUserProfilePhotos')
+        self.kick_chat_member = partial(self.send_text, 'kickChatMember', chat_id=self.msg['chat']['id'])
+        self.unban_chat_member = partial(self.send_text, 'unbanChatMember', chat_id=self.msg['chat']['id'])
+        self.get_user_profile_photos = partial(self.send_text,
                                                'getUserProfilePhotos',
                                                chat_id=self.msg['chat']['id'])
+        self.edit_message_text = partial(self.send_text, 'editMessageText')
+        self.edit_message_caption = partial(self.send_text, 'editMessageCaption')
+        self.edit_message_reply_markup = partial(self.send_text, 'editMessageReplyMarkup')
+        self.send_location = partial(self.send_text, 'sendLocation')
+        self.send_venue = partial(self.send_text, 'sendVenue')
+        self.send_contact = partial(self.send_text, 'sendContact')
+        self.forward_message = partial(self.send_text, 'forwardMessage')
+        self.answer_callback_query = partial(self.send_text, 'answerCallbackQuery')
+
+    def get_me(self):
+        return get_me(self.misc)
 
     def send_chat_action(self, action, chat_id=0):
         if type(chat_id) != int or chat_id is 0:
@@ -30,7 +41,7 @@ class TelegramApi:
         }
         send_method(self.misc, package, 'sendChatAction')
 
-    def send_something(self, method, file, **kwargs):
+    def send_file(self, method, file, **kwargs):
         package = dict()
         package['data'] = {
             'chat_id': self.msg['chat']['id'],
@@ -41,7 +52,7 @@ class TelegramApi:
             package['data'][k] = v
         send_method(self.misc, package, method)
 
-    def simple_send_something(self, method, user_id, **kwargs):
+    def send_text(self, method, user_id, **kwargs):
         package = dict()
         package['data'] = {
             'user_id': user_id
@@ -61,41 +72,6 @@ class TelegramApi:
         for k, v in kwargs.items():
             package['data'][k] = v
         send_method(self.misc, package, 'sendMessage')
-
-    def send_location(self, latitude, longitude, **kwargs):
-        package = dict()
-        package['data'] = {
-            'chat_id': self.msg['chat']['id'],
-            'latitude': latitude,
-            'longitude': longitude
-        }
-        for k, v in kwargs.items():
-            package['data'][k] = v
-        send_method(self.misc, package, 'sendLocation')
-
-    def send_venue(self, latitude, longitude, title, address, **kwargs):
-        package = dict()
-        package['data'] = {
-            'chat_id': self.msg['chat']['id'],
-            'latitude': latitude,
-            'longitude': longitude,
-            'title': title,
-            'address': address
-        }
-        for k, v in kwargs.items():
-            package['data'][k] = v
-        send_method(self.misc, package, 'sendVenue')
-
-    def send_contact(self, phone_number, first_name, **kwargs):
-        package = dict()
-        package['data'] = {
-            'chat_id': self.msg['chat']['id'],
-            'phone_number': phone_number,
-            'first_name': first_name
-        }
-        for k, v in kwargs.items():
-            package['data'][k] = v
-        send_method(self.misc, package, 'sendContact')
 
     def get_file(self, file_id, download=False):
         package = dict()
@@ -118,36 +94,26 @@ class TelegramApi:
         file_path = util.fetch_file(url, 'data/files/{}'.format(file_name), self.misc['session'])
         return file_path
 
-    def forward_message(self, message_id, from_chat_id, **kwargs):
-        package = dict()
-        package['data'] = {
-            'chat_id': self.msg['chat']['id'],
-            'message_id': message_id,
-            'from_chat_id': from_chat_id
-        }
-        for k, v in kwargs.items():
-            package['data'][k] = v
-        return send_method(self.misc, package, 'forwardMessage')
-
-    def get_me(self):
-        return get_me(self.misc)
-
 
 def send_method(misc, returned_value, method, base_url='{0}{1}{2}'):  # If dict is returned
     package = {'url': base_url.format(misc['base_url'], misc['token'], method)}
     for k, v in returned_value.items():
         package[k] = v
     response = util.post_post(package, misc['session']).json()
-    return response['result']
+    if response['ok']:
+        return response['result']
+    else:
+        print("There seems to be an error in the response :(")
+        print(response)
+        sys.exit()
 
 
 def get_me(misc):  # getMe
     url = "{}{}getMe".format(misc['base_url'], misc['token'])
-    response = util.fetch(url, misc['session'])
-    parsed_response = response.json()
-    if parsed_response['ok']:
-        return parsed_response['result']
+    response = util.fetch(url, misc['session']).json()
+    if response['ok']:
+        return response['result']
     else:
-        print(parsed_response)
         print("There seems to be an error :(\nCheck your API key and connection to the internet")
+        print(response)
         sys.exit()

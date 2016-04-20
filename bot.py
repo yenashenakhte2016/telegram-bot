@@ -44,6 +44,7 @@ class Bot:
             time.sleep(self.config.sleep)
         else:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))
+            time.sleep(self.config.sleep)
 
     def route_message(self, api_obj):
         for p in self.plugins:
@@ -62,7 +63,7 @@ class Bot:
                                 break
                     else:
                         for args2, nested_arg2 in nested_arg.items():
-                            if args2 in api_obj.msg:
+                            if args2 in api_obj.msg[args]:
                                 for regex in nested_arg2:
                                     match = re.findall(str(regex), str(api_obj.msg[args][args2]))
                                     if match:
