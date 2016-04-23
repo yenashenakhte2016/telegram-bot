@@ -1,22 +1,23 @@
 # Hitagibot
 
-Hitagibot is a plugin based Telegram bot written in python 3 and
-licensed under the GNU Affero General Public License V3.
+Hitagibot is a plugin based Telegram bot written in Python 3 and
+licensed under the GNU Affero General Public License v3.
+
+
 The bot focuses on providing a lightweight and high performance modular environment for bot creation.
 
-###Setup
-- ```bash git clone https://github.com/TopBakuhatsu/nanobotpython.git```
-- Then add your api key to config.ini
+## Installation
+I'll assume you already have Python 3 installed, because I won't cover it for you
+- Clone this repository `https://github.com/TopBakuhatsu/hitagibot.git`
+- Go to the git directory `cd hitagibot`
+- Add your Telegram Bot API Key to the `config.ini`
+- Run the bot `./hitagi.py`
 
-After this you can run the bot!
-- ```bash cd hitagibot```
-- ```bash python3 main.py```
-
-###Plugins
+## Plugins
 Hitagibot relies on plugins to add functionality. Read the wiki
 to learn more.
 
-###What can it do?
+## What can it do?
 | Method               | Status |
 | -------------------- | ------ |
 | getMe                | ✔      |
