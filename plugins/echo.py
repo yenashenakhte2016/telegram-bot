@@ -5,7 +5,7 @@ def main(tg_api):  # This is where plugin_handler will send msg
     elif len(tg_api.msg['match']) > 1:
         message = tg_api.msg['match'][1]
 
-        if message.startswith('#') # Ignore message, because may conflict with TeleSeeds commands
+        if message.startswith('#'):  # Ignore message, because may conflict with TeleSeeds commands
             return
 
         tg_api.send_message(message)

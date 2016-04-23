@@ -23,7 +23,7 @@ class Bot:
             plugin = __import__('plugins', fromlist=[k])
             self.plugins[k] = getattr(plugin, k)
 
-    def get_update(self):  # Gets new messages and sends them to plugin_handler
+    def get_update(self):  # Gets new messages and sends them to route_messages
         url = "{}{}getUpdates?offset={}".format(self.misc['base_url'], self.misc['token'], self.update_id)
         response = util.fetch(url, self.misc['session'])
         try:
@@ -46,24 +46,23 @@ class Bot:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))
             time.sleep(self.config.sleep)
 
-    def route_message(self, api_obj):
-        for p in self.plugins:
+    def route_message(self, api_obj):  # Loops through plugin arguments looking for a match in the message
+        for p in self.plugins:  # Need to make this dynamic
             for args, nested_arg in self.plugins[p].plugin_info['arguments'].items():
-                if args in api_obj.msg:
-                    if args is 'text':
-                        for regex in nested_arg:
-                            match = re.findall(regex, api_obj.msg[args])
-                            if match:
-                                if type(match[0]) is str:
-                                    api_obj.msg['match'] = list()
-                                    api_obj.msg['match'].append(match[0])
-                                else:
-                                    api_obj.msg['match'] = match[0]
-                                self.plugins[p].main(api_obj)
-                                break
+                if args in api_obj.msg and type(nested_arg) is list:
+                    for regex in nested_arg:
+                        match = re.findall(regex, api_obj.msg[args])
+                        if match:
+                            if type(match[0]) is str:
+                                api_obj.msg['match'] = list()
+                                api_obj.msg['match'].append(match[0])
+                            else:
+                                api_obj.msg['match'] = match[0]
+                            self.plugins[p].main(api_obj)
+                            break
                     else:
                         for args2, nested_arg2 in nested_arg.items():
-                            if args2 in api_obj.msg[args]:
+                            if args2 in api_obj.msg[args] and type(nested_arg) is list:
                                 for regex in nested_arg2:
                                     match = re.findall(str(regex), str(api_obj.msg[args][args2]))
                                     if match:
