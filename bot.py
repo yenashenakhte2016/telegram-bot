@@ -46,30 +46,50 @@ class Bot:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))
             time.sleep(self.config.sleep)
 
-    def route_message(self, api_obj):  # Loops through plugin arguments looking for a match in the message
-        for p in self.plugins:  # Need to make this dynamic
-            for args, nested_arg in self.plugins[p].plugin_info['arguments'].items():
-                if args in api_obj.msg and type(nested_arg) is list:
-                    for regex in nested_arg:
-                        match = re.findall(regex, api_obj.msg[args])
-                        if match:
-                            if type(match[0]) is str:
-                                api_obj.msg['match'] = list()
-                                api_obj.msg['match'].append(match[0])
-                            else:
-                                api_obj.msg['match'] = match[0]
-                            self.plugins[p].main(api_obj)
-                            break
-                    else:
-                        for args2, nested_arg2 in nested_arg.items():
-                            if args2 in api_obj.msg[args] and type(nested_arg) is list:
-                                for regex in nested_arg2:
-                                    match = re.findall(str(regex), str(api_obj.msg[args][args2]))
+    def route_message(self, api_obj):  # Routes where plugins go
+        loop = True
+        for plugin in self.plugins:
+            if loop:
+
+                def argument_loop(arg, values, msg):  # Recursively goes through argument
+                    try:
+                        built_msg = msg[arg]
+                    except KeyError:
+                        return
+                    if type(values) is dict:
+                        for k, v in values.items():
+                            if type(v) is dict:
+                                try:
+                                    built_msg = msg[k]
+                                    argument_loop(k, v, built_msg)
+                                except KeyError:
+                                    return
+                            elif type(v) is list:
+                                for regex in v:
+                                    match = re.findall(str(regex), str(built_msg))
                                     if match:
                                         if type(match[0]) is str:
                                             api_obj.msg['match'] = list()
                                             api_obj.msg['match'].append(match[0])
                                         else:
                                             api_obj.msg['match'] = match[0]
-                                        self.plugins[p].main(api_obj)
-                                        break
+                                        self.plugins[plugin].main(api_obj)
+                                        return True
+                    if type(values) is list:
+                        for regex in values:
+                            match = re.findall(str(regex), str(built_msg))
+                            if match:
+                                if type(match[0]) is str:
+                                    api_obj.msg['match'] = list()
+                                    api_obj.msg['match'].append(match[0])
+                                else:
+                                    api_obj.msg['match'] = match[0]
+                                self.plugins[plugin].main(api_obj)
+                                return True
+                    return
+
+                for args, nested_arg in self.plugins[plugin].plugin_info['arguments'].items():
+                    x = argument_loop(args, nested_arg, api_obj.msg)
+                    if x:
+                        loop = False
+                        break
