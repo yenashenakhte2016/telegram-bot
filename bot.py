@@ -58,12 +58,12 @@ class Bot:
                         return
                     if type(values) is dict:
                         for k, v in values.items():
+                            try:
+                                built_msg = built_msg[k]
+                            except KeyError:
+                                return
                             if type(v) is dict:
-                                try:
-                                    built_msg = msg[k]
                                     argument_loop(k, v, built_msg)
-                                except KeyError:
-                                    return
                             elif type(v) is list:
                                 for regex in v:
                                     match = re.findall(str(regex), str(built_msg))
