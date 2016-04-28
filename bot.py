@@ -48,6 +48,9 @@ class Bot:
 
     def route_message(self, api_obj):  # Routes where plugins go
         loop = True
+
+        if 'text' in api_obj.msg:
+            api_obj.msg['text'] = util.clean_message(api_obj.msg['text'], self.me['username'])
         for plugin in self.plugins:
             if loop:
 

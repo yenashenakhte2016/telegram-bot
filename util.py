@@ -45,9 +45,8 @@ def fetch_file(url, file_path, session=requests):
     return file_path
 
 
-def clean_message(message_text, bot_name):
-    username = "@{}".format(bot_name['username'])
-    text = message_text
+def clean_message(text, bot_name):
+    username = "@{}".format(bot_name)
     name_match = re.search('^[!#@/]([^ ]*)({})'.format(username), text)
     if name_match:
         return text.replace(text[:name_match.end(0)], text[:name_match.end(0) - len(username)])
