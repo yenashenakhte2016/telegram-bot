@@ -69,26 +69,34 @@ class Bot:
                                     argument_loop(k, v, built_msg)
                             elif type(v) is list:
                                 for regex in v:
-                                    match = re.findall(str(regex), str(built_msg))
-                                    if match:
-                                        if type(match[0]) is str:
-                                            api_obj.msg['match'] = list()
-                                            api_obj.msg['match'].append(match[0])
-                                        else:
-                                            api_obj.msg['match'] = match[0]
+                                    if regex is '*':
                                         self.plugins[plugin].main(api_obj)
                                         return True
+                                    else:
+                                        match = re.findall(str(regex), str(built_msg))
+                                        if match:
+                                            if type(match[0]) is str:
+                                                api_obj.msg['match'] = list()
+                                                api_obj.msg['match'].append(match[0])
+                                            else:
+                                                api_obj.msg['match'] = match[0]
+                                            self.plugins[plugin].main(api_obj)
+                                            return True
                     if type(values) is list:
                         for regex in values:
-                            match = re.findall(str(regex), str(built_msg))
-                            if match:
-                                if type(match[0]) is str:
-                                    api_obj.msg['match'] = list()
-                                    api_obj.msg['match'].append(match[0])
-                                else:
-                                    api_obj.msg['match'] = match[0]
+                            if regex is '*':
                                 self.plugins[plugin].main(api_obj)
                                 return True
+                            else:
+                                match = re.findall(str(regex), str(built_msg))
+                                if match:
+                                    if type(match[0]) is str:
+                                        api_obj.msg['match'] = list()
+                                        api_obj.msg['match'].append(match[0])
+                                    else:
+                                        api_obj.msg['match'] = match[0]
+                                    self.plugins[plugin].main(api_obj)
+                                    return True
                     return
 
                 for args, nested_arg in self.plugins[plugin].plugin_info['arguments'].items():
