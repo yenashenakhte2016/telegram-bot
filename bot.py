@@ -45,13 +45,13 @@ class Bot:
             try:
                 pretty_name = self.plugins[plugin_name].plugin_info['name']
             except KeyError:
-                print('Plugin {} is missing a name.\nPlease add it to "plugin_info"')
+                print('Plugin {} is missing a name.\nPlease add it to "plugin_info"'.format(plugin))
                 self.plugins[plugin_name].plugin_info['name'] = plugin_name
                 pretty_name = self.plugins[plugin_name].plugin_info['name']
             try:
                 description = self.plugins[plugin_name].plugin_info['desc']
             except KeyError:
-                print('Plugin {} is missing a description.\nPlease add it to "plugin_info"')
+                print('Plugin {} is missing a description.\nPlease add it to "plugin_info"'.format(plugin))
                 description = None
             try:
                 usage = self.plugins[plugin_name].plugin_info['usage']
@@ -74,7 +74,7 @@ class Bot:
             except IndexError:
                 time.sleep(self.config.sleep)
                 return
-            with concurrent.futures.ThreadPoolExecutor() as e:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
                 for i in response['result']:
                     if int(time.time()) - int(i['message']['date']) <= 180:
                         e.submit(self.route_message, i['message'])
