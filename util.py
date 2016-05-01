@@ -1,7 +1,7 @@
-import requests
-import shutil
 import re
-import os
+import shutil
+
+import requests
 
 
 class ConfigUtils:
@@ -36,8 +36,6 @@ def fetch(url, session=requests):  # Grabs from url and parses as json. note2sel
 
 def fetch_file(url, file_path, session=requests):
     response = session.get(url, stream=True)
-    if not os.path.exists('data/files'):
-        os.makedirs('data/files')
     with open(file_path, 'wb') as out_file:
         response.raw.decode_content = True
         shutil.copyfileobj(response.raw, out_file)

@@ -1,12 +1,15 @@
-import util
-from functools import partial
 import sys
+from functools import partial
+
+import util
 
 
 class TelegramApi:
-    def __init__(self, message, misc):
+    def __init__(self, message, misc, db, plugin):
         self.msg = message
         self.misc = misc
+        self.db = db
+        self.plugin = plugin
         self.send_photo = partial(self.send_file, 'sendPhoto')
         self.send_audio = partial(self.send_file, 'sendAudio')
         self.send_document = partial(self.send_file, 'sendDocument')
@@ -39,7 +42,7 @@ class TelegramApi:
             'chat_id': chat_id,
             'action': action
         }
-        send_method(self.misc, package, 'sendChatAction')
+        return send_method(self.misc, package, 'sendChatAction')
 
     def send_file(self, method, file=None, **kwargs):
         package = dict()
@@ -51,7 +54,7 @@ class TelegramApi:
             package['files'] = file
         for k, v in kwargs.items():
             package['data'][k] = v
-        send_method(self.misc, package, method)
+        return send_method(self.misc, package, method)
 
     def send_text(self, method, user_id, **kwargs):
         package = dict()
@@ -72,7 +75,7 @@ class TelegramApi:
         }
         for k, v in kwargs.items():
             package['data'][k] = v
-        send_method(self.misc, package, 'sendMessage')
+        return send_method(self.misc, package, 'sendMessage')
 
     def get_file(self, file_id, download=False):
         package = dict()
@@ -94,6 +97,17 @@ class TelegramApi:
         file_name = util.name_file(file_object['file_id'], name)
         file_path = util.fetch_file(url, 'data/files/{}'.format(file_name), self.misc['session'])
         return file_path
+
+    def temp_argument(self, plugin=None, message_id=None, chat_id=None):
+        plugin_id = None
+        if not plugin:
+            plugin = self.plugin
+        self.db.execute('SELECT plugin_id FROM plugins WHERE plugin_name="{}"'.format(plugin))
+        for v in self.db.db:
+            plugin_id = v[0]
+        if message_id and chat_id:
+            self.db.execute('INSERT INTO temp_arguments VALUES({},{},{})'.format
+                            (plugin_id, message_id, chat_id))
 
 
 def send_method(misc, returned_value, method, base_url='{0}{1}{2}'):  # If dict is returned
