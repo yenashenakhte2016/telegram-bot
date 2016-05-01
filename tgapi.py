@@ -41,13 +41,14 @@ class TelegramApi:
         }
         send_method(self.misc, package, 'sendChatAction')
 
-    def send_file(self, method, file, **kwargs):
+    def send_file(self, method, file=None, **kwargs):
         package = dict()
         package['data'] = {
             'chat_id': self.msg['chat']['id'],
             'reply_to_message_id': self.msg['message_id']
         }
-        package['files'] = file
+        if file:
+            package['files'] = file
         for k, v in kwargs.items():
             package['data'][k] = v
         send_method(self.misc, package, method)
@@ -99,7 +100,7 @@ def send_method(misc, returned_value, method, base_url='{0}{1}{2}'):  # If dict 
     package = {'url': base_url.format(misc['base_url'], misc['token'], method)}
     for k, v in returned_value.items():
         package[k] = v
-    response = util.post_post(package, misc['session']).json()
+    response = util.post(package, misc['session']).json()
     if response['ok']:
         return response['result']
     else:

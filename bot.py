@@ -5,6 +5,7 @@ from tgapi import TelegramApi
 from tgapi import get_me
 import time
 import concurrent.futures
+import db
 
 
 class Bot:
@@ -19,9 +20,37 @@ class Bot:
         self.update_id = 0
         self.plugins = dict()
         self.time = int(time.time())
-        for k in config.plugins:
+        self.bot_db = None
+
+    def init(self):
+        self.bot_db = db.Database('bot')
+        self.bot_db.execute("""drop table if exists plugins""")
+        self.bot_db.execute("""create table plugins (
+        plugin_id int primary key not NULL,
+        plugin_name text,
+        pretty_name text,
+        description text,
+        usage text)""")
+        for i, k in enumerate(self.config.plugins):
             plugin = __import__('plugins', fromlist=[k])
             self.plugins[k] = getattr(plugin, k)
+            try:
+                pretty_name = self.plugins[k].plugin_info['name']
+            except KeyError:
+                print('Plugin {} is missing a name.\nPlease add it to "plugin_info"')
+                self.plugins[k].plugin_info['name'] = k
+                pretty_name = self.plugins[k].plugin_info['name']
+            try:
+                desc = self.plugins[k].plugin_info['desc']
+            except KeyError:
+                print('Plugin {} is missing a description.\nPlease add it to "plugin_info"')
+                desc = None
+            try:
+                usage = self.plugins[k].plugin_info['usage']
+            except KeyError:
+                usage = None
+            self.bot_db.execute('insert into plugins values({},"{}","{}","{}","{}")'.format
+                                (i, k, pretty_name, desc, usage))
 
     def get_update(self):  # Gets new messages and sends them to route_messages
         url = "{}{}getUpdates?offset={}".format(self.misc['base_url'], self.misc['token'], self.update_id)
@@ -37,9 +66,9 @@ class Bot:
             except IndexError:
                 time.sleep(self.config.sleep)
                 return
-            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as e:
+            with concurrent.futures.ThreadPoolExecutor() as e:
                 for i in response['result']:
-                    if self.time - int(i['message']['date']) <= 180000:
+                    if self.time - int(i['message']['date']) <= 180:
                         e.submit(self.route_message, TelegramApi(i['message'], self.misc))
             time.sleep(self.config.sleep)
         else:
@@ -66,38 +95,29 @@ class Bot:
                             except KeyError:
                                 return
                             if type(v) is dict:
-                                    argument_loop(k, v, built_msg)
+                                argument_loop(k, v, built_msg)
                             elif type(v) is list:
                                 for regex in v:
-                                    if regex is '*':
-                                        self.plugins[plugin].main(api_obj)
-                                        return True
-                                    else:
-                                        match = re.findall(str(regex), str(built_msg))
-                                        if match:
-                                            if type(match[0]) is str:
-                                                api_obj.msg['match'] = list()
-                                                api_obj.msg['match'].append(match[0])
-                                            else:
-                                                api_obj.msg['match'] = match[0]
-                                            self.plugins[plugin].main(api_obj)
-                                            return True
+                                    return check_match(regex, built_msg)
                     if type(values) is list:
                         for regex in values:
-                            if regex is '*':
-                                self.plugins[plugin].main(api_obj)
-                                return True
-                            else:
-                                match = re.findall(str(regex), str(built_msg))
-                                if match:
-                                    if type(match[0]) is str:
-                                        api_obj.msg['match'] = list()
-                                        api_obj.msg['match'].append(match[0])
-                                    else:
-                                        api_obj.msg['match'] = match[0]
-                                    self.plugins[plugin].main(api_obj)
-                                    return True
+                            return check_match(regex, built_msg)
                     return
+
+                def check_match(regex, built_msg):
+                    if regex is '*':
+                        self.plugins[plugin].main(api_obj)
+                        return True
+                    else:
+                        match = re.findall(str(regex), str(built_msg))
+                        if match:
+                            if type(match[0]) is str:
+                                api_obj.msg['match'] = list()
+                                api_obj.msg['match'].append(match[0])
+                            else:
+                                api_obj.msg['match'] = match[0]
+                            self.plugins[plugin].main(api_obj)
+                            return True
 
                 for args, nested_arg in self.plugins[plugin].plugin_info['arguments'].items():
                     x = argument_loop(args, nested_arg, api_obj.msg)

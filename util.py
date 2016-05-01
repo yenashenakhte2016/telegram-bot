@@ -19,7 +19,7 @@ class ConfigUtils:
             self.config.write(configfile)
 
 
-def post_post(content, session=requests):
+def post(content, session=requests):
     response = session.post(**content)
     return response
 

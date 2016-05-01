@@ -8,6 +8,7 @@ bot = Bot(config)  # Create bot object
 
 
 def main():
+    bot.init()
     while True:  # Main loop
         bot.get_update()
 
