@@ -45,13 +45,13 @@ class Bot:
             try:
                 pretty_name = self.plugins[plugin_name].plugin_info['name']
             except KeyError:
-                print('Plugin {} is missing a name.\nPlease add it to "plugin_info"'.format(plugin))
+                print('Plugin {} is missing a name.\nPlease add it to "plugin_info"'.format(plugin_name))
                 self.plugins[plugin_name].plugin_info['name'] = plugin_name
                 pretty_name = self.plugins[plugin_name].plugin_info['name']
             try:
                 description = self.plugins[plugin_name].plugin_info['desc']
             except KeyError:
-                print('Plugin {} is missing a description.\nPlease add it to "plugin_info"'.format(plugin))
+                print('Plugin {} is missing a description.\nPlease add it to "plugin_info"'.format(plugin_name))
                 description = None
             try:
                 usage = self.plugins[plugin_name].plugin_info['usage']
@@ -99,6 +99,7 @@ class Bot:
                         self.plugins[k[0]].main(TelegramApi(message, self.misc, self.bot_db, k[0]))
                         self.bot_db.execute("""DELETE FROM temp_arguments
 WHERE message_id={} AND chat_id={} AND plugin_id={};""".format(msg_id, chat_id, i[0]))
+                        return
         return True
 
     def route_message(self, message):  # Routes where plugins go
