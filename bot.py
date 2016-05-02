@@ -6,9 +6,8 @@ import time
 import requests
 
 import db
+import tgapi
 import util
-from tgapi import TelegramApi
-from tgapi import get_me
 
 
 class Bot:
@@ -19,7 +18,7 @@ class Bot:
             'token': 'bot{}/'.format(self.config.token),
             'session': requests.session()
         }
-        self.me = get_me(self.misc)
+        self.me = tgapi.get_me(self.misc)
         self.update_id = 0
         self.plugins = dict()
         self.bot_db = None
@@ -27,18 +26,18 @@ class Bot:
     def init(self):
         if not os.path.exists('data/files'):
             os.makedirs('data/files')
-        self.bot_db = db.Database('bot')
-        self.bot_db.create_table('plugins', [('plugin_id', 'INT PRIMARY KEY NOT NULL'),
+        self.bot_db = db.Database('bot')  # create db named bot
+        self.bot_db.create_table('plugins', [('plugin_id', 'INT PRIMARY KEY NOT NULL'),  # Creates plugin table
                                              ('plugin_name', 'TEXT'),
                                              ('pretty_name', 'TEXT'),
                                              ('description', 'TEXT'),
                                              ('usage', 'TEXT')], overwrite=True)
-        self.bot_db.create_table('temp_arguments', [('plugin_id', 'INT'),
+        self.bot_db.create_table('temp_arguments', [('plugin_id', 'INT'),  # Creates table for temp arguments
                                                     ('message_id', 'INT'),
                                                     ('chat_id', 'INT')])
         for plugin_id, plugin_name in enumerate(self.config.plugins):
             plugin = __import__('plugins', fromlist=[plugin_name])
-            self.plugins[plugin_name] = getattr(plugin, plugin_name)
+            self.plugins[plugin_name] = getattr(plugin, plugin_name)  # Stores plugin objects in a dictionary
             try:
                 pretty_name = self.plugins[plugin_name].plugin_info['name']
             except KeyError:
@@ -60,6 +59,7 @@ class Bot:
         if shutdown:
             print('Closing database connection')
             self.bot_db.db.close()
+            self.bot_db.connection.close()
             print('Shutting down....')
         else:
             print('Reloading bot')
@@ -81,41 +81,47 @@ class Bot:
                 return
             with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
                 for i in response['result']:
-                    if int(time.time()) - int(i['message']['date']) <= 180:
+                    if int(time.time()) - int(i['message']['date']) <= 180:  # Messages > 3 minutes old are ignored
                         e.submit(self.route_message, i['message'])
+                    else:  # Get sent to db instead
+                        e.submit(self.check_db, i['message'])
             time.sleep(self.config.sleep)
         else:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))
             time.sleep(self.config.sleep)
 
-    def check_db(self, message):
+    def check_db(self, message):  # Checks if the msg is being looked for in the DB
         if 'reply_to_message' in message:
             msg_id = message['reply_to_message']['message_id']
             chat_id = message['chat']['id']
-            self.bot_db.execute('SELECT plugin_id FROM temp_arguments where message_id={} AND chat_id={}'.format
-                                (msg_id, chat_id))
-            for i in self.bot_db.db:
-                if i[0]:
-                    self.bot_db.execute('SELECT plugin_name FROM plugins where plugin_id={}'.format
-                                        (i[0]))
-                    for k in self.bot_db.db:
-                        message['from_prev_command'] = True
-                        self.plugins[k[0]].main(TelegramApi(message, self.misc, self.bot_db, k[0]))
-                        self.bot_db.delete('temp_arguments', [('message_id', msg_id),
-                                                              ('chat_id', chat_id),
-                                                              ('plugin_id', i[0])])
-                        return
+            i = self.bot_db.select('plugin_id',
+                                   'temp_arguments',
+                                   conditions=[('message_id', msg_id),
+                                               ('chat_id', chat_id)],
+                                   return_value=True, single_return=True)
+            if i:
+                k = self.bot_db.select('plugin_name', 'plugins',
+                                       conditions=[('plugin_id', i[0])],
+                                       return_value=True,
+                                       single_return=True)
+                if k:
+                    message['from_prev_command'] = True
+                    self.plugins[k[0]].main(tgapi.TelegramApi(message, self.misc, self.bot_db, k[0]))
+                    self.bot_db.delete('temp_arguments', [('message_id', msg_id),
+                                                          ('chat_id', chat_id),
+                                                          ('plugin_id', i[0])])
+                    return
         return True
 
     def route_message(self, message):  # Routes where plugins go
-        loop = self.check_db(message)
+        loop = self.check_db(message)  # If the message was not previously flagged by a plugin go on as normal
         if 'text' in message:
             message['text'] = util.clean_message(message['text'], self.me['username'])
             for plugin in self.plugins:
                 if loop:
                     def argument_loop(arg, values, msg):  # Recursively goes through argument
                         try:
-                            built_msg = msg[arg]
+                            built_msg = msg[arg]  # "increments" through message with each loop
                         except KeyError:
                             return
                         if type(values) is dict:
@@ -138,8 +144,8 @@ class Bot:
 
                     def check_match(regex, built_msg):
                         if regex is '*':
-                            self.plugins[plugin].main(TelegramApi(message, self.misc, self.bot_db, plugin))
-                            return True
+                            self.plugins[plugin].main(tgapi.TelegramApi(message, self.misc, self.bot_db, plugin))
+                            return True  # Return true so it flags that the msg was sent to a plugin
                         else:
                             match = re.findall(str(regex), str(built_msg))
                             if match:
@@ -148,10 +154,10 @@ class Bot:
                                     message['match'].append(match[0])
                                 else:
                                     message['match'] = match[0]
-                                self.plugins[plugin].main(TelegramApi(message, self.misc, self.bot_db, plugin))
-                                return True
+                                self.plugins[plugin].main(tgapi.TelegramApi(message, self.misc, self.bot_db, plugin))
+                                return True  # Return true so it flags that the msg was sent to a plugin
 
                     for args, nested_arg in self.plugins[plugin].plugin_info['arguments'].items():
-                        if argument_loop(args, nested_arg, message):
+                        if argument_loop(args, nested_arg, message):  # If a plugins wants the msg stop checking
                             loop = False
                             break

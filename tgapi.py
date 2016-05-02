@@ -99,12 +99,13 @@ class TelegramApi:
         return file_path
 
     def temp_argument(self, plugin=None, message_id=None, chat_id=None):
-        plugin_id = None
         if not plugin:
             plugin = self.plugin
-        self.db.execute('SELECT plugin_id FROM plugins WHERE plugin_name="{}"'.format(plugin))
-        for v in self.db.db:
-            plugin_id = v[0]
+        v = self.db.select('plugin_id', 'plugins',
+                           conditions=[('plugin_name', plugin)],
+                           return_value=True,
+                           single_return=True)
+        plugin_id = v[0]
         if message_id and chat_id:
             self.db.insert('temp_arguments', [plugin_id, message_id, chat_id])
 
