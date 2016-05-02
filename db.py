@@ -33,3 +33,11 @@ class Database:
                     values[i] = '"{}"'.format(v)
             values = ','.join(values)
         return self.db.execute('INSERT INTO {} VALUES({});'.format(table_name, values))
+
+    def delete(self, table_name, conditions):
+        where = list()
+        command = 'DELETE FROM {} WHERE '.format(table_name)
+        for k in conditions:
+            where.append('{}={}'.format(k[0], k[1]))
+        command += ' AND '.join(where) + ';'
+        return self.execute(command)

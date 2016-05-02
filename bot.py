@@ -56,6 +56,15 @@ class Bot:
                 usage = None
             self.bot_db.insert('plugins', [plugin_id, plugin_name, pretty_name, description, usage])
 
+    def session(self, shutdown=False):
+        if shutdown:
+            print('Closing database connection')
+            self.bot_db.db.close()
+            print('Shutting down....')
+        else:
+            print('Reloading bot')
+            self.init()
+
     def get_update(self):  # Gets new messages and sends them to route_messages
         url = "{}{}getUpdates?offset={}".format(self.misc['base_url'], self.misc['token'], self.update_id)
         response = util.fetch(url, self.misc['session'])
@@ -92,58 +101,57 @@ class Bot:
                     for k in self.bot_db.db:
                         message['from_prev_command'] = True
                         self.plugins[k[0]].main(TelegramApi(message, self.misc, self.bot_db, k[0]))
-                        self.bot_db.execute("""DELETE FROM temp_arguments
-WHERE message_id={} AND chat_id={} AND plugin_id={};""".format(msg_id, chat_id, i[0]))
+                        self.bot_db.delete('temp_arguments', [('message_id', msg_id),
+                                                              ('chat_id', chat_id),
+                                                              ('plugin_id', i[0])])
                         return
         return True
 
     def route_message(self, message):  # Routes where plugins go
         loop = self.check_db(message)
-        if loop:
-            if 'text' in message:
-                message['text'] = util.clean_message(message['text'], self.me['username'])
+        if 'text' in message:
+            message['text'] = util.clean_message(message['text'], self.me['username'])
             for plugin in self.plugins:
-
-                def argument_loop(arg, values, msg):  # Recursively goes through argument
-                    try:
-                        built_msg = msg[arg]
-                    except KeyError:
+                if loop:
+                    def argument_loop(arg, values, msg):  # Recursively goes through argument
+                        try:
+                            built_msg = msg[arg]
+                        except KeyError:
+                            return
+                        if type(values) is dict:
+                            for k, v in values.items():
+                                try:
+                                    built_msg = built_msg[k]
+                                except KeyError:
+                                    return
+                                if type(v) is dict:
+                                    argument_loop(k, v, built_msg)
+                                elif type(v) is list:
+                                    for regex in v:
+                                        if check_match(regex, built_msg):
+                                            return True
+                        if type(values) is list:
+                            for regex in values:
+                                if check_match(regex, built_msg):
+                                    return True
                         return
-                    if type(values) is dict:
-                        for k, v in values.items():
-                            try:
-                                built_msg = built_msg[k]
-                            except KeyError:
-                                return
-                            if type(v) is dict:
-                                argument_loop(k, v, built_msg)
-                            elif type(v) is list:
-                                for regex in v:
-                                    if check_match(regex, built_msg):
-                                        return True
-                    if type(values) is list:
-                        for regex in values:
-                            if check_match(regex, built_msg):
-                                return True
-                    return
 
-                def check_match(regex, built_msg):
-                    if regex is '*':
-                        self.plugins[plugin].main(TelegramApi(message, self.misc, self.bot_db, plugin))
-                        return True
-                    else:
-                        match = re.findall(str(regex), str(built_msg))
-                        if match:
-                            if type(match[0]) is str:
-                                message['match'] = list()
-                                message['match'].append(match[0])
-                            else:
-                                message['match'] = match[0]
+                    def check_match(regex, built_msg):
+                        if regex is '*':
                             self.plugins[plugin].main(TelegramApi(message, self.misc, self.bot_db, plugin))
                             return True
+                        else:
+                            match = re.findall(str(regex), str(built_msg))
+                            if match:
+                                if type(match[0]) is str:
+                                    message['match'] = list()
+                                    message['match'].append(match[0])
+                                else:
+                                    message['match'] = match[0]
+                                self.plugins[plugin].main(TelegramApi(message, self.misc, self.bot_db, plugin))
+                                return True
 
-                for args, nested_arg in self.plugins[plugin].plugin_info['arguments'].items():
-                    x = argument_loop(args, nested_arg, message)
-                    if x:
-                        loop = False
-                        break
+                    for args, nested_arg in self.plugins[plugin].plugin_info['arguments'].items():
+                        if argument_loop(args, nested_arg, message):
+                            loop = False
+                            break
