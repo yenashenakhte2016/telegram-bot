@@ -106,8 +106,7 @@ class TelegramApi:
         for v in self.db.db:
             plugin_id = v[0]
         if message_id and chat_id:
-            self.db.execute('INSERT INTO temp_arguments VALUES({},{},{})'.format
-                            (plugin_id, message_id, chat_id))
+            self.db.insert('temp_arguments', [plugin_id, message_id, chat_id])
 
 
 def send_method(misc, returned_value, method, base_url='{0}{1}{2}'):  # If dict is returned

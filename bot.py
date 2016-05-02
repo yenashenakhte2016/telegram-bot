@@ -28,37 +28,33 @@ class Bot:
         if not os.path.exists('data/files'):
             os.makedirs('data/files')
         self.bot_db = db.Database('bot')
-        self.bot_db.execute('DROP TABLE IF EXISTS plugins')
-        self.bot_db.execute("""CREATE TABLE plugins (
-        plugin_id INT PRIMARY KEY NOT NULL,
-        plugin_name TEXT,
-        pretty_name TEXT,
-        description TEXT,
-        usage TEXT)""")
-        self.bot_db.execute("""CREATE TABLE temp_arguments (
-            plugin_id INT,
-            message_id INT,
-            chat_id INT)""")
+        self.bot_db.create_table('plugins', [('plugin_id', 'INT PRIMARY KEY NOT NULL'),
+                                             ('plugin_name', 'TEXT'),
+                                             ('pretty_name', 'TEXT'),
+                                             ('description', 'TEXT'),
+                                             ('usage', 'TEXT')], overwrite=True)
+        self.bot_db.create_table('temp_arguments', [('plugin_id', 'INT'),
+                                                    ('message_id', 'INT'),
+                                                    ('chat_id', 'INT')])
         for plugin_id, plugin_name in enumerate(self.config.plugins):
             plugin = __import__('plugins', fromlist=[plugin_name])
             self.plugins[plugin_name] = getattr(plugin, plugin_name)
             try:
                 pretty_name = self.plugins[plugin_name].plugin_info['name']
             except KeyError:
-                print('Plugin {} is missing a name.\nPlease add it to "plugin_info"'.format(plugin))
+                print('Plugin {} is missing a name.\nPlease add it to "plugin_info"'.format(plugin_name))
                 self.plugins[plugin_name].plugin_info['name'] = plugin_name
                 pretty_name = self.plugins[plugin_name].plugin_info['name']
             try:
                 description = self.plugins[plugin_name].plugin_info['desc']
             except KeyError:
-                print('Plugin {} is missing a description.\nPlease add it to "plugin_info"'.format(plugin))
+                print('Plugin {} is missing a description.\nPlease add it to "plugin_info"'.format(plugin_name))
                 description = None
             try:
                 usage = self.plugins[plugin_name].plugin_info['usage']
             except KeyError:
                 usage = None
-            self.bot_db.execute('insert into plugins values({},"{}","{}","{}","{}")'.format
-                                (plugin_id, plugin_name, pretty_name, description, usage))
+            self.bot_db.insert('plugins', [plugin_id, plugin_name, pretty_name, description, usage])
 
     def get_update(self):  # Gets new messages and sends them to route_messages
         url = "{}{}getUpdates?offset={}".format(self.misc['base_url'], self.misc['token'], self.update_id)
@@ -78,7 +74,6 @@ class Bot:
                 for i in response['result']:
                     if int(time.time()) - int(i['message']['date']) <= 180:
                         e.submit(self.route_message, i['message'])
-
             time.sleep(self.config.sleep)
         else:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))
