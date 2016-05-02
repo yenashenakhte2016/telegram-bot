@@ -94,6 +94,7 @@ class Bot:
                         self.plugins[k[0]].main(TelegramApi(message, self.misc, self.bot_db, k[0]))
                         self.bot_db.execute("""DELETE FROM temp_arguments
 WHERE message_id={} AND chat_id={} AND plugin_id={};""".format(msg_id, chat_id, i[0]))
+                        return
         return True
 
     def route_message(self, message):  # Routes where plugins go
