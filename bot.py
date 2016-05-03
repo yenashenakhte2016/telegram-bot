@@ -59,6 +59,7 @@ class Bot:
         if shutdown:
             print('Closing database connection')
             self.bot_db.db.close()
+            self.bot_db.connection.commit()
             self.bot_db.connection.close()
             print('Shutting down....')
         else:
@@ -83,6 +84,8 @@ class Bot:
                 for i in response['result']:
                     if int(time.time()) - int(i['message']['date']) <= 180:  # Messages > 3 minutes old are ignored
                         e.submit(self.route_message, i['message'])
+                    else:
+                        e.submit(self.check_db, i['message'])
             time.sleep(self.config.sleep)
         else:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))

@@ -7,9 +7,11 @@ class Database:
         self.connection = sqlite3.connect(path, check_same_thread=False)
         self.db = self.connection.cursor()
 
-    def execute(self, command):
+    def execute(self, command, commit=False):
         try:
             self.db.execute(command)
+            if commit:
+                self.connection.commit()
             return True
         except sqlite3.OperationalError as e:
             print('SQL Error: {}'.format(e))
@@ -19,12 +21,12 @@ class Database:
     def create_table(self, table_name, table_entries, overwrite=False):
         header_type_list = list()
         if overwrite:
-            self.db.execute('DROP TABLE IF EXISTS {}'.format(table_name))
+            self.execute('DROP TABLE IF EXISTS {}'.format(table_name))
         command = """CREATE TABLE IF NOT EXISTS {} (""".format(table_name)
         for k in table_entries:
             header_type_list.append('{} {}'.format(k[0], k[1]))
         command += ', '.join(header_type_list) + ');'
-        return self.db.execute(command)
+        return self.execute(command, commit=True)
 
     def insert(self, table_name, values):
         if type(values) is list:
@@ -34,7 +36,7 @@ class Database:
                 else:
                     values[i] = '"{}"'.format(v)
             values = ','.join(values)
-        return self.db.execute('INSERT INTO {} VALUES({});'.format(table_name, values))
+        return self.execute('INSERT INTO {} VALUES({});'.format(table_name, values), commit=True)
 
     def delete(self, table_name, conditions):
         where = list()
@@ -42,7 +44,7 @@ class Database:
         for k in conditions:
             where.append('{}={}'.format(k[0], k[1]))
         command += ' AND '.join(where) + ';'
-        return self.execute(command)
+        return self.execute(command, commit=True)
 
     def select(self, headers, table_name, conditions=None, return_value=False, single_return=False):
         where = list()
