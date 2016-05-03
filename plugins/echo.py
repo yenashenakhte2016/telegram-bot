@@ -7,8 +7,7 @@ def main(tg_api):  # This is where plugin_handler will send msg
     elif 'reply_to_message' in tg_api.msg:
         tg_api.send_message(tg_api.msg['reply_to_message']['text'])
     else:
-        x = tg_api.send_message("What do I echo?")
-        tg_api.temp_argument(message_id=x['message_id'], chat_id=x['chat']['id'])
+        tg_api.send_message("What do I echo?", flag_message=True, flag_user_id=True)
 
 
 plugin_info = {

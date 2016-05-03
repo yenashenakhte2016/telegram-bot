@@ -65,7 +65,7 @@ class TelegramApi:
             package['data'][k] = v
         return send_method(self.misc, package, method)
 
-    def send_message(self, text, **kwargs):
+    def send_message(self, text, flag_message=False, flag_user_id=False, **kwargs):
         package = dict()
         package['data'] = {
             'chat_id': self.msg['chat']['id'],
@@ -75,7 +75,12 @@ class TelegramApi:
         }
         for k, v in kwargs.items():
             package['data'][k] = v
-        return send_method(self.misc, package, 'sendMessage')
+        if flag_message:
+            msg = send_method(self.misc, package, 'sendMessage')
+            self.flag_message(message_id=msg['message_id'], chat_id=msg['chat']['id'], user_id=flag_user_id)
+            return msg
+        else:
+            return send_method(self.misc, package, 'sendMessage')
 
     def get_file(self, file_id, download=False):
         package = dict()
@@ -98,16 +103,18 @@ class TelegramApi:
         file_path = util.fetch_file(url, 'data/files/{}'.format(file_name), self.misc['session'])
         return file_path
 
-    def temp_argument(self, plugin=None, message_id=None, chat_id=None):
+    def flag_message(self, plugin=None, message_id=None, chat_id=None, user_id=None):
         if not plugin:
             plugin = self.plugin
+        if user_id is True:
+            user_id = self.msg['from']['id']
         v = self.db.select('plugin_id', 'plugins',
                            conditions=[('plugin_name', plugin)],
                            return_value=True,
                            single_return=True)
         plugin_id = v[0]
         if message_id and chat_id:
-            self.db.insert('temp_arguments', [plugin_id, message_id, chat_id])
+            self.db.insert('temp_arguments', [plugin_id, message_id, chat_id, user_id])
 
 
 def send_method(misc, returned_value, method, base_url='{0}{1}{2}'):  # If dict is returned

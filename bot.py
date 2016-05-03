@@ -34,7 +34,8 @@ class Bot:
                                              ('usage', 'TEXT')], overwrite=True)
         self.bot_db.create_table('temp_arguments', [('plugin_id', 'INT'),  # Creates table for temp arguments
                                                     ('message_id', 'INT'),
-                                                    ('chat_id', 'INT')])
+                                                    ('chat_id', 'INT'),
+                                                    ('user_id', 'INT')], overwrite=True)
         for plugin_id, plugin_name in enumerate(self.config.plugins):
             plugin = __import__('plugins', fromlist=[plugin_name])
             self.plugins[plugin_name] = getattr(plugin, plugin_name)  # Stores plugin objects in a dictionary
@@ -95,14 +96,18 @@ class Bot:
         if 'reply_to_message' in message:
             msg_id = message['reply_to_message']['message_id']
             chat_id = message['chat']['id']
-            i = self.bot_db.select('plugin_id',
+            i = self.bot_db.select(['plugin_id', 'user_id'],
                                    'temp_arguments',
                                    conditions=[('message_id', msg_id),
                                                ('chat_id', chat_id)],
                                    return_value=True, single_return=True)
             if i:
+                conditions = [('plugin_id', i[0])]
+                if i[1] != 'None':
+                    if message['from']['id'] != i[1]:
+                        return
                 k = self.bot_db.select('plugin_name', 'plugins',
-                                       conditions=[('plugin_id', i[0])],
+                                       conditions=conditions,
                                        return_value=True,
                                        single_return=True)
                 if k:
