@@ -83,8 +83,6 @@ class Bot:
                 for i in response['result']:
                     if int(time.time()) - int(i['message']['date']) <= 180:  # Messages > 3 minutes old are ignored
                         e.submit(self.route_message, i['message'])
-                    else:  # Get sent to db instead
-                        e.submit(self.check_db, i['message'])
             time.sleep(self.config.sleep)
         else:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))
@@ -117,47 +115,47 @@ class Bot:
         loop = self.check_db(message)  # If the message was not previously flagged by a plugin go on as normal
         if 'text' in message:
             message['text'] = util.clean_message(message['text'], self.me['username'])
-            for plugin in self.plugins:
-                if loop:
-                    def argument_loop(arg, values, msg):  # Recursively goes through argument
-                        try:
-                            built_msg = msg[arg]  # "increments" through message with each loop
-                        except KeyError:
-                            return
-                        if type(values) is dict:
-                            for k, v in values.items():
-                                try:
-                                    built_msg = built_msg[k]
-                                except KeyError:
-                                    return
-                                if type(v) is dict:
-                                    argument_loop(k, v, built_msg)
-                                elif type(v) is list:
-                                    for regex in v:
-                                        if check_match(regex, built_msg):
-                                            return True
-                        if type(values) is list:
-                            for regex in values:
-                                if check_match(regex, built_msg):
-                                    return True
+        for plugin in self.plugins:
+            if loop:
+                def argument_loop(arg, values, msg):  # Recursively goes through argument
+                    try:
+                        built_msg = msg[arg]  # "increments" through message with each loop
+                    except KeyError:
                         return
+                    if type(values) is dict:
+                        for k, v in values.items():
+                            try:
+                                built_msg = built_msg[k]
+                            except KeyError:
+                                return
+                            if type(v) is dict:
+                                argument_loop(k, v, built_msg)
+                            elif type(v) is list:
+                                for regex in v:
+                                    if check_match(regex, built_msg):
+                                        return True
+                    if type(values) is list:
+                        for regex in values:
+                            if check_match(regex, built_msg):
+                                return True
+                    return
 
-                    def check_match(regex, built_msg):
-                        if regex is '*':
+                def check_match(regex, built_msg):
+                    if regex is '*':
+                        self.plugins[plugin].main(tgapi.TelegramApi(message, self.misc, self.bot_db, plugin))
+                        return True  # Return true so it flags that the msg was sent to a plugin
+                    else:
+                        match = re.findall(str(regex), str(built_msg))
+                        if match:
+                            if type(match[0]) is str:
+                                message['match'] = list()
+                                message['match'].append(match[0])
+                            else:
+                                message['match'] = match[0]
                             self.plugins[plugin].main(tgapi.TelegramApi(message, self.misc, self.bot_db, plugin))
                             return True  # Return true so it flags that the msg was sent to a plugin
-                        else:
-                            match = re.findall(str(regex), str(built_msg))
-                            if match:
-                                if type(match[0]) is str:
-                                    message['match'] = list()
-                                    message['match'].append(match[0])
-                                else:
-                                    message['match'] = match[0]
-                                self.plugins[plugin].main(tgapi.TelegramApi(message, self.misc, self.bot_db, plugin))
-                                return True  # Return true so it flags that the msg was sent to a plugin
 
-                    for args, nested_arg in self.plugins[plugin].plugin_info['arguments'].items():
-                        if argument_loop(args, nested_arg, message):  # If a plugins wants the msg stop checking
-                            loop = False
-                            break
+                for args, nested_arg in self.plugins[plugin].plugin_info['arguments'].items():
+                    if argument_loop(args, nested_arg, message):  # If a plugins wants the msg stop checking
+                        loop = False
+                        break

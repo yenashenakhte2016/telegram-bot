@@ -9,7 +9,6 @@ class Database:
 
     def execute(self, command):
         try:
-            self.connection.commit()
             self.db.execute(command)
             return True
         except sqlite3.OperationalError as e:
@@ -74,6 +73,6 @@ class Database:
             if len(return_list) == 1:
                 return return_list[0]
             else:
-                raise Exception('More than one return!')
+                return None
         else:
             return return_list
