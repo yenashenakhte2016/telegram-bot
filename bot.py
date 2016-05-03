@@ -86,7 +86,7 @@ class Bot:
                     if int(time.time()) - int(i['message']['date']) <= 180:  # Messages > 3 minutes old are ignored
                         e.submit(self.route_message, i['message'])
                     else:
-                        e.submit(self.check_db, i['message'])
+                        self.check_db(i['message'])
             time.sleep(self.config.sleep)
         else:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))
