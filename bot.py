@@ -8,6 +8,7 @@ import requests
 import db
 import tgapi
 import util
+import json
 
 
 class Bot:
@@ -35,7 +36,7 @@ class Bot:
         self.bot_db.create_table('temp_arguments', [('plugin_id', 'INT'),  # Creates table for temp arguments
                                                     ('message_id', 'INT'),
                                                     ('chat_id', 'INT'),
-                                                    ('user_id', 'INT')], overwrite=True)
+                                                    ('user_id', 'INT')])
         for plugin_id, plugin_name in enumerate(self.config.plugins):
             plugin = __import__('plugins', fromlist=[plugin_name])
             self.plugins[plugin_name] = getattr(plugin, plugin_name)  # Stores plugin objects in a dictionary
@@ -51,7 +52,7 @@ class Bot:
                 print('Plugin {} is missing a description.\nPlease add it to "plugin_info"'.format(plugin_name))
                 description = None
             try:
-                usage = self.plugins[plugin_name].plugin_info['usage']
+                usage = json.dumps(self.plugins[plugin_name].plugin_info['usage'])
             except KeyError:
                 usage = None
             self.bot_db.insert('plugins', [plugin_id, plugin_name, pretty_name, description, usage])

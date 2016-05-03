@@ -65,7 +65,7 @@ class TelegramApi:
             package['data'][k] = v
         return send_method(self.misc, package, method)
 
-    def send_message(self, text, flag_message=False, flag_user_id=False, **kwargs):
+    def send_message(self, text, flag_message=False, flag_user_id=None, **kwargs):
         package = dict()
         package['data'] = {
             'chat_id': self.msg['chat']['id'],

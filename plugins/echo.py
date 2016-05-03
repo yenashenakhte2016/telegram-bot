@@ -11,8 +11,8 @@ def main(tg_api):  # This is where plugin_handler will send msg
 
 
 plugin_info = {
-    'name': "Echo Plugin",
-    'desc': "Echo plugin demonstrates how plugins work!",
+    'name': "Echo",
+    'desc': "The echo plugin repeats your message text",
     'usage': [
         "/echo"
     ],

@@ -34,7 +34,7 @@ class Database:
                 if type(v) is int:
                     values[i] = str(v)
                 else:
-                    values[i] = '"{}"'.format(v)
+                    values[i] = "'{}'".format(v)
             values = ','.join(values)
         return self.execute('INSERT INTO {} VALUES({});'.format(table_name, values), commit=True)
 
