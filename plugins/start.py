@@ -9,9 +9,10 @@ def main(tg_api):
 plugin_info = {
     'name': "Start",
     'desc': "Introduces the bot!",
-    'arguments': {
-        'text': [
-            "^[/]start$"
-        ]
-    }
+}
+
+arguments = {
+    'text': [
+        "^[/]start$"
+    ]
 }

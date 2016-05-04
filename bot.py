@@ -1,4 +1,5 @@
 import concurrent.futures
+import json
 import os
 import re
 import time
@@ -8,7 +9,6 @@ import requests
 import db
 import tgapi
 import util
-import json
 
 
 class Bot:
@@ -33,10 +33,10 @@ class Bot:
                                              ('pretty_name', 'TEXT'),
                                              ('description', 'TEXT'),
                                              ('usage', 'TEXT')], overwrite=True)
-        self.bot_db.create_table('temp_arguments', [('plugin_id', 'INT'),  # Creates table for temp arguments
-                                                    ('message_id', 'INT'),
-                                                    ('chat_id', 'INT'),
-                                                    ('user_id', 'INT')])
+        self.bot_db.create_table('flagged_messages', [('plugin_id', 'INT'),  # Creates table for temp arguments
+                                                      ('message_id', 'INT'),
+                                                      ('chat_id', 'INT'),
+                                                      ('user_id', 'INT')])
         for plugin_id, plugin_name in enumerate(self.config.plugins):
             plugin = __import__('plugins', fromlist=[plugin_name])
             self.plugins[plugin_name] = getattr(plugin, plugin_name)  # Stores plugin objects in a dictionary
@@ -82,12 +82,11 @@ class Bot:
             except IndexError:
                 time.sleep(self.config.sleep)
                 return
-            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
-                for i in response['result']:
-                    if int(time.time()) - int(i['message']['date']) <= 180:  # Messages > 3 minutes old are ignored
-                        e.submit(self.route_message, i['message'])
-                    else:
-                        self.check_db(i['message'])
+            for i in response['result']:
+                if int(time.time()) - int(i['message']['date']) <= 180:  # Messages > 3 minutes old are ignored
+                    concurrent.futures.ThreadPoolExecutor(max_workers=6).submit(self.route_message, i['message'])
+                else:
+                    self.check_db(i['message'])
             time.sleep(self.config.sleep)
         else:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))
@@ -98,26 +97,34 @@ class Bot:
             msg_id = message['reply_to_message']['message_id']
             chat_id = message['chat']['id']
             i = self.bot_db.select(['plugin_id', 'user_id'],
-                                   'temp_arguments',
+                                   'flagged_messages',
                                    conditions=[('message_id', msg_id),
                                                ('chat_id', chat_id)],
                                    return_value=True, single_return=True)
-            if i:
-                conditions = [('plugin_id', i[0])]
-                if i[1] != 'None':
-                    if message['from']['id'] != i[1]:
-                        return
-                k = self.bot_db.select('plugin_name', 'plugins',
-                                       conditions=conditions,
-                                       return_value=True,
-                                       single_return=True)
-                if k:
-                    message['from_prev_command'] = True
-                    self.plugins[k[0]].main(tgapi.TelegramApi(message, self.misc, self.bot_db, k[0]))
-                    self.bot_db.delete('temp_arguments', [('message_id', msg_id),
-                                                          ('chat_id', chat_id),
-                                                          ('plugin_id', i[0])])
+            delete_conditions = [('message_id', msg_id), ('chat_id', chat_id), ('plugin_id', i[0])]
+        elif message['chat']['type'] == 'private':
+            chat_id = message['chat']['id']
+            i = self.bot_db.select(['plugin_id', 'user_id'],
+                                   'flagged_messages',
+                                   conditions=[('chat_id', chat_id)],
+                                   return_value=True, single_return=True)
+            delete_conditions = [('chat_id', chat_id)]
+        else:
+            return True
+        if i:
+            conditions = [('plugin_id', i[0])]
+            if i[1] != 'None':
+                if message['from']['id'] != i[1]:
                     return
+            k = self.bot_db.select('plugin_name', 'plugins',
+                                   conditions=conditions,
+                                   return_value=True,
+                                   single_return=True)
+            if k:
+                message['from_prev_command'] = True
+                self.plugins[k[0]].main(tgapi.TelegramApi(message, self.misc, self.bot_db, k[0]))
+                self.bot_db.delete('flagged_messages', delete_conditions)
+                return
         return True
 
     def route_message(self, message):  # Routes where plugins go
@@ -161,10 +168,11 @@ class Bot:
                                 message['match'].append(match[0])
                             else:
                                 message['match'] = match[0]
+                            message['matched_regex'] = regex
                             self.plugins[plugin].main(tgapi.TelegramApi(message, self.misc, self.bot_db, plugin))
                             return True  # Return true so it flags that the msg was sent to a plugin
 
-                for args, nested_arg in self.plugins[plugin].plugin_info['arguments'].items():
+                for args, nested_arg in self.plugins[plugin].arguments.items():
                     if argument_loop(args, nested_arg, message):  # If a plugins wants the msg stop checking
                         loop = False
                         break

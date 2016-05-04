@@ -47,9 +47,10 @@ class TelegramApi:
     def send_file(self, method, file=None, **kwargs):
         package = dict()
         package['data'] = {
-            'chat_id': self.msg['chat']['id'],
-            'reply_to_message_id': self.msg['message_id']
+            'chat_id': self.msg['chat']['id']
         }
+        if self.msg['chat']['type'] != 'private':
+            package['data'].update({'reply_to_message_id': self.msg['message_id']})
         if file:
             package['files'] = file
         for k, v in kwargs.items():
@@ -70,9 +71,10 @@ class TelegramApi:
         package['data'] = {
             'chat_id': self.msg['chat']['id'],
             'text': text,
-            'parse_mode': "HTML",
-            'reply_to_message_id': self.msg['message_id']
+            'parse_mode': "HTML"
         }
+        if self.msg['chat']['type'] != 'private':
+            package['data'].update({'reply_to_message_id': self.msg['message_id']})
         for k, v in kwargs.items():
             package['data'][k] = v
         if flag_message:
@@ -113,8 +115,10 @@ class TelegramApi:
                            return_value=True,
                            single_return=True)
         plugin_id = v[0]
+        if self.msg['chat']['type'] == 'private':
+            self.db.delete('flagged_messages', [('chat_id', chat_id)])
         if message_id and chat_id:
-            self.db.insert('temp_arguments', [plugin_id, message_id, chat_id, user_id])
+            self.db.insert('flagged_messages', [plugin_id, message_id, chat_id, user_id])
 
 
 def send_method(misc, returned_value, method, base_url='{0}{1}{2}'):  # If dict is returned

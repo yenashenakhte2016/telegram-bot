@@ -1,5 +1,5 @@
-import random
 import json
+import random
 
 
 def main(tg_api):  # This is where plugin_handler will send msg
@@ -45,10 +45,11 @@ plugin_info = {
     'usage': [
         "/help"
     ],
-    'arguments': {
-        'text': [
-            "^[/]help$",
-            "^[/](help) (.*)"
-        ]
-    }
+}
+
+arguments = {
+    'text': [
+        "^[/]help$",
+        "^[/](help) (.*)"
+    ]
 }

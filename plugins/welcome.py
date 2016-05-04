@@ -17,9 +17,10 @@ def main(tg_api):
 plugin_info = {
     'name': "Welcome",
     'desc': "Welcomes new members!",
-    'arguments': {
-        'new_chat_participant': [
-            "*"
-        ]
-    }
+}
+
+arguments = {
+    'new_chat_participant': [
+        "*"
+    ]
 }
