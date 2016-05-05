@@ -9,7 +9,7 @@ def main(tg_api):  # This is where plugin_handler will send msg
     elif len(tg_api.msg['match']) > 1:
         tg_api.send_message(grab_plugin(tg_api, match=True))
     else:
-        x = tg_api.db.select('*', 'plugins', return_value=True)
+        x = tg_api.package[4].select('*', 'plugins', return_value=True)
         message = "Here are a list of my plugins:"
         for i in x:
             message += "\n<b>• {}</b>".format(i[2])
@@ -23,13 +23,13 @@ def grab_plugin(tg_api, chance=False, match=False):
     else:
         plugin = tg_api.msg['text']
     conditions = [('lower(pretty_name)', plugin.lower())]
-    x = tg_api.db.select('*', 'plugins', conditions=conditions, return_value=True, single_return=True)
+    x = tg_api.package[4].select('*', 'plugins', conditions=conditions, return_value=True, single_return=True)
     if x:
-        message = '<b>{}</b><pre>{}</pre>'.format(x[2], x[3])
-        if x[4] != 'None':
-            message += '\n<b>Usage</b>'
+        message = '<b>{}:</b>\n<pre>{}</pre>'.format(x[2], x[3])
+        if x[4] != 'null':
+            message += '\n<b>Usage:</b>'
             for i in json.loads(x[4]):
-                message += '<pre>{}</pre>'.format(i)
+                message += '\n<pre>{}</pre>'.format(i)
         if chance:
             chance = (random.randint(1, 5))
             if chance > 3:

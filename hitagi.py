@@ -1,18 +1,10 @@
 #!/bin/env python3
-
-import util
 from bot import Bot
 
 
 def main():
-    config = util.ConfigUtils()  # Create config object
-    bot = Bot(config)  # Create bot object
-    bot.init()
-    try:
-        while True:  # Main loop
-            bot.get_update()
-    except KeyboardInterrupt:
-        bot.session(shutdown=True)
+    bot = Bot()  # Create bot object
+    bot.get_update(0)
 
 
 if __name__ == '__main__':
