@@ -3,8 +3,10 @@ from bot import Bot
 
 
 def main():
+    x = 0
     bot = Bot()  # Create bot object
-    bot.get_update(0)
+    while True:
+        x = bot.get_update(x)
 
 
 if __name__ == '__main__':

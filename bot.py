@@ -29,24 +29,25 @@ class Bot:
             response = response.json()
         except AttributeError:
             time.sleep(5)
-            self.get_update(update_id)
+            return update_id
         if response['ok']:
             try:
                 update_id = response['result'][-1]['update_id'] + 1
             except IndexError:
                 time.sleep(self.config.sleep)
-                self.get_update(update_id)
+                return update_id
             for i in response['result']:
                 if int(time.time()) - int(i['message']['date']) <= 180:  # Messages > 3 minutes old are ignored
                     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
-                        e.submit(route_message, i['message'], self.package)
+                        #e.submit(route_message, i['message'], self.package)
+                        route_message(i['message'], self.package)
                 else:
                     route_message(i['message'], self.package, check_db_only=True)
             time.sleep(self.config.sleep)
         else:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))
             time.sleep(self.config.sleep)
-        self.get_update(update_id)
+        return update_id
 
 
 def init_db():

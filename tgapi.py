@@ -51,7 +51,7 @@ class TelegramApi:
             package['files'] = file
         for k, v in kwargs.items():
             package['data'][k] = v
-        return send_method(self.package[0], self.package[2], package, package, method)
+        return send_method(self.package[0], self.package[2], package, method)
 
     def send_text(self, method, user_id, **kwargs):
         package = dict()
