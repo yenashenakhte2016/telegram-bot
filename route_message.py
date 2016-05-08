@@ -12,6 +12,7 @@ def route_message(message, package, check_db_only=False):
 
 
 def check_db(message, package):  # Checks if the msg is being looked for in the DB
+    delete_conditions = i = None
     if 'reply_to_message' in message:
         msg_id = message['reply_to_message']['message_id']
         chat_id = message['chat']['id']
@@ -29,23 +30,17 @@ def check_db(message, package):  # Checks if the msg is being looked for in the 
                               conditions=[('chat_id', chat_id)],
                               return_value=True, single_return=True)
         delete_conditions = [('chat_id', chat_id)]
-    else:
-        return True
     if i:
         conditions = [('plugin_id', i[0])]
         if i[1]:
             if message['from']['id'] != i[1]:
                 return
-        k = package[4].select('plugin_id', 'plugins',
-                              conditions=conditions,
-                              return_value=True,
-                              single_return=True)
-        if k:
-            message['from_prev_command'] = True
-            package[3][k[0]].main(tgapi.TelegramApi(message, package, k[0]))
-            package[4].delete('flagged_messages', delete_conditions)
-            return
-    return True
+        message['from_prev_command'] = True
+        package[3][i[0]].main(tgapi.TelegramApi(message, package, i[0]))
+        package[4].delete('flagged_messages', delete_conditions)
+        return
+    else:
+        return True
 
 
 def check_plugin(message, package):  # Routes where plugins go
