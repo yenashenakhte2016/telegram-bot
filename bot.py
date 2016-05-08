@@ -56,7 +56,7 @@ def init_db():
                                 ('plugin_name', 'TEXT'),
                                 ('pretty_name', 'TEXT'),
                                 ('description', 'TEXT'),
-                                ('usage', 'TEXT')], overwrite=True)
+                                ('usage', 'TEXT'),], overwrite=True)
     db.create_table('flagged_messages', [('plugin_id', 'INT'),  # Creates table for temp arguments
                                          ('message_id', 'INT'),
                                          ('chat_id', 'INT'),

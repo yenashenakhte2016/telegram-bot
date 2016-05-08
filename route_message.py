@@ -69,27 +69,30 @@ def check_plugin(message, package):  # Routes where plugins go
                             argument_loop(k, v, built_msg)
                         elif type(v) is list:
                             for regex in v:
-                                if check_match(regex, built_msg):
+                                if check_match((k, regex), built_msg):
                                     return True
                 if type(values) is list:
                     for regex in values:
-                        if check_match(regex, built_msg):
+                        if check_match((args, regex), built_msg):
                             return True
                 return
 
             def check_match(regex, built_msg):
-                if regex is '*':
+                if regex[1] is '*':
+                    message['matched_argument'] = regex[0]
+                    message['matched_regex'] = regex[1]
                     plugin_object.main(tgapi.TelegramApi(message, package, plugin_id))
                     return True  # Return true so it flags that the msg was sent to a plugin
                 else:
-                    match = re.findall(str(regex), str(built_msg))
+                    match = re.findall(str(regex[1]), str(built_msg))
                     if match:
                         if type(match[0]) is str:
                             message['match'] = list()
                             message['match'].append(match[0])
                         else:
                             message['match'] = match[0]
-                        message['matched_regex'] = regex
+                        message['matched_argument'] = regex[0]
+                        message['matched_regex'] = regex[1]
                         plugin_object.main(tgapi.TelegramApi(message, package, plugin_id))
                         return True  # Return true so it flags that the msg was sent to a plugin
 
