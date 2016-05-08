@@ -33,7 +33,7 @@ def check_db(message, package):  # Checks if the msg is being looked for in the 
         return True
     if i:
         conditions = [('plugin_id', i[0])]
-        if i[1] != 'None':
+        if i[1]:
             if message['from']['id'] != i[1]:
                 return
         k = package[4].select('plugin_id', 'plugins',

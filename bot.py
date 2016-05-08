@@ -41,7 +41,8 @@ class Bot:
                     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
                         e.submit(route_message, i['message'], self.package)
                 else:
-                    route_message(i['message'], self.package, check_db_only=True)
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
+                        e.submit(route_message, i['message'], self.package, check_db_only=True)
             time.sleep(self.config.sleep)
         else:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))
