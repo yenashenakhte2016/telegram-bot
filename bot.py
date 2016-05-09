@@ -36,13 +36,13 @@ class Bot:
             except IndexError:
                 time.sleep(self.config.sleep)
                 return update_id
+            e = concurrent.futures.ThreadPoolExecutor(max_workers=6)
             for i in response['result']:
                 if int(time.time()) - int(i['message']['date']) <= 180:  # Messages > 3 minutes old are ignored
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
-                        e.submit(route_message, i['message'], self.package)
+                    e.submit(route_message, i['message'], self.package)
                 else:
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
-                        e.submit(route_message, i['message'], self.package, check_db_only=True)
+                    e.submit(route_message, i['message'], self.package, check_db_only=True)
+            e.shutdown()
             time.sleep(self.config.sleep)
         else:
             print('Error fetching new messages:\nCode: {}'.format(response['error_code']))
