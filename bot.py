@@ -45,12 +45,11 @@ class Bot:
                 return
             for i in response['result']:
                 msg = i['message']
-                if int(time.time()) - int(msg['date']) <= 180:  # Messages > 3 minutes old are ignored
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
+                    if int(time.time()) - int(msg['date']) <= 180:  # Messages > 3 minutes old are ignored
                         logging.info('{} message from {}'.format(msg['chat']['type'], msg['from']['id']))
                         e.submit(route_message, msg, self.package)
-                else:
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
+                    else:
                         logging.info('OLD: {} message from {}'.format(msg['chat']['type'], msg['from']['id']))
                         e.submit(route_message, msg, self.package, check_db_only=True)
             time.sleep(self.config.sleep)
