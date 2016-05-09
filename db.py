@@ -1,13 +1,9 @@
 import sqlite3
-import os
 
 
 class Database:
     def __init__(self, db_name):
-        if not os.path.exists('data/files'):
-            os.makedirs('data/files')
-        path = 'data/' + db_name
-        self.connection = sqlite3.connect(path, check_same_thread=False)
+        self.connection = sqlite3.connect('data/' + db_name, check_same_thread=False)
         self.db = self.connection.cursor()
 
     def execute(self, command, bindings=(), commit=False):
