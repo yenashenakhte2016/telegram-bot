@@ -78,9 +78,9 @@ class TelegramApi:
             package['data'][k] = v
         self.log.info('sendMessage to {} and flag_message={}'.format(package['data']['chat_id'], flag_message))
         if flag_message:
-            msg = self.send_method(package, 'sendMessage')
-            self.flag_message(message_id=msg['message_id'], chat_id=msg['chat']['id'], user_id=flag_user_id)
-            return msg
+            message = self.send_method(package, 'sendMessage')
+            self.flag_message(message_id=message['message_id'], chat_id=message['chat']['id'], user_id=flag_user_id)
+            return message
         else:
             return self.send_method(package, 'sendMessage')
 
@@ -89,7 +89,9 @@ class TelegramApi:
         response = util.post(data, self.package[2]).json()
         if not response['ok']:
             self.log.error('Error received in response: {}'.format(response))
-        return response
+            return response
+        else:
+            return response['result']
 
     def get_file(self, file_id, download=False):
         package = dict()

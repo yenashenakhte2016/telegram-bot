@@ -22,7 +22,7 @@ def main(tg_api):
 
 plugin_info = {
     'name': "Welcome",
-    'desc': "Welcomes new members!",
+    'desc': "Welcomes new members!"
 }
 
 arguments = {

@@ -43,8 +43,10 @@ class Database:
         if conditions:
             command += ' WHERE '
             for k in conditions:
-                where.append('{}=?'.format(k[0]))
-                bindings.append(k[1])
+                where.append(k[0])
+                if k[1]:
+                    where[-1] += '=?'
+                    bindings.append(k[1])
             command += ' AND '.join(where) + ';'
         return self.execute(command, bindings=bindings, commit=True)
 
@@ -55,12 +57,14 @@ class Database:
             headers = ','.join(headers)
         if type(table_name) is list:
             table_name = ','.join(table_name)
-        command = 'SELECT {} FROM {} '.format(headers, table_name)
+        command = 'SELECT {} FROM {}'.format(headers, table_name)
         if conditions:
-            command += 'WHERE '
+            command += ' WHERE '
             for k in conditions:
-                where.append('{}=?'.format(k[0]))
-                bindings.append(k[1])
+                where.append(k[0])
+                if k[1]:
+                    where[-1] += '=?'
+                    bindings.append(k[1])
             command += ' AND '.join(where) + ';'
         if return_value:
             self.execute(command, bindings=bindings)

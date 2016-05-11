@@ -7,7 +7,7 @@ import time
 
 import requests
 
-from route_message import route_message
+from route_message import RouteMessage
 import util
 from db import Database
 import logging
@@ -45,10 +45,10 @@ class Bot:
                 with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
                     if int(time.time()) - int(msg['date']) <= 180:  # Messages > 3 minutes old are ignored
                         self.log.info('{} message from {}'.format(msg['chat']['type'], msg['from']['id']))
-                        e.submit(route_message, msg, self.package)
+                        e.submit(RouteMessage, msg, self.package)
                     else:
                         self.log.info('OLD: {} message from {}'.format(msg['chat']['type'], msg['from']['id']))
-                        e.submit(route_message, msg, self.package, check_db_only=True)
+                        e.submit(RouteMessage, msg, self.package, check_db_only=True)
             time.sleep(self.config.sleep)
         else:
             self.log.error('Error fetching Telegram messages.\nResponse: {}'.format(response))

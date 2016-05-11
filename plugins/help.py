@@ -4,17 +4,17 @@ import random
 
 def main(tg_api):  # This is where plugin_handler will send msg
     tg_api.send_chat_action('typing')
-    if 'from_prev_command' in tg_api.msg:
+    if tg_api.msg['flagged_message']:
         tg_api.send_message(grab_plugin(tg_api, chance=True))
-    elif len(tg_api.msg['match']) > 1:
-        tg_api.send_message(grab_plugin(tg_api, match=True))
-    else:
+    elif tg_api.msg['matched_regex'] == arguments['text'][0]:
         x = tg_api.package[4].select('*', 'plugins', return_value=True)
         message = "Here are a list of my plugins:"
         for i in x:
             message += "\n<b>• {}</b>".format(i[2])
         message += "\n\nWhich plugin do you want more info on?"
         tg_api.send_message(message, flag_message=True)
+    elif tg_api.msg['matched_regex'] == arguments['text'][1]:
+        tg_api.send_message(grab_plugin(tg_api, match=True))
 
 
 def grab_plugin(tg_api, chance=False, match=False):
