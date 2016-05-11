@@ -18,7 +18,6 @@ class Bot:
         self.log = logging.getLogger(__name__)
         self.config = util.ConfigUtils()
         self.init_db()
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=6)
         self.package = (('https://api.telegram.org/', 'bot{}/'.format(self.config.token)),  # URL
                         (self.get_me()),  # bot_info
                         (requests.session()),  # session
