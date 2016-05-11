@@ -18,6 +18,7 @@ class Bot:
         self.log = logging.getLogger(__name__)
         self.config = util.ConfigUtils()
         self.init_db()
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=6)
         self.package = (('https://api.telegram.org/', 'bot{}/'.format(self.config.token)),  # URL
                         (self.get_me()),  # bot_info
                         (requests.session()),  # session
@@ -40,15 +41,16 @@ class Bot:
             except IndexError:
                 time.sleep(self.config.sleep)
                 return
+            executor = concurrent.futures.ThreadPoolExecutor(max_workers=6)
             for i in response['result']:
                 msg = i['message']
-                with concurrent.futures.ThreadPoolExecutor(max_workers=6) as e:
-                    if int(time.time()) - int(msg['date']) <= 180:  # Messages > 3 minutes old are ignored
-                        self.log.info('{} message from {}'.format(msg['chat']['type'], msg['from']['id']))
-                        e.submit(RouteMessage, msg, self.package)
-                    else:
-                        self.log.info('OLD: {} message from {}'.format(msg['chat']['type'], msg['from']['id']))
-                        e.submit(RouteMessage, msg, self.package, check_db_only=True)
+                if int(time.time()) - int(msg['date']) <= 180:  # Messages > 3 minutes old are ignored
+                    self.log.info('{} message from {}'.format(msg['chat']['type'], msg['from']['id']))
+                    executor.submit(RouteMessage, msg, self.package)
+                else:
+                    self.log.info('OLD: {} message from {}'.format(msg['chat']['type'], msg['from']['id']))
+                    executor.submit(RouteMessage, msg, self.package, check_db_only=True)
+            executor.shutdown(wait=False)
             time.sleep(self.config.sleep)
         else:
             self.log.error('Error fetching Telegram messages.\nResponse: {}'.format(response))
