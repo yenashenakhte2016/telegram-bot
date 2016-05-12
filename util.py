@@ -1,6 +1,5 @@
 import re
 import shutil
-
 import requests
 
 
@@ -13,6 +12,7 @@ class ConfigUtils:
         self.token = self.config[bot_name]['token']
         self.plugins = self.config[bot_name]['plugins'].split(',')
         self.sleep = float(self.config[bot_name]['sleep'])
+        self.workers = int(self.config[bot_name]['workers'])
 
     def write_config(self):
         with open(self.filename, 'w') as configfile:
@@ -42,7 +42,7 @@ def fetch_file(url, file_path, session=requests):
     return file_path
 
 
-def clean_message(text, bot_name):
+def clean_message(text, bot_name):  # Replace this with something based on MessageEntities
     username = "@{}".format(bot_name)
     name_match = re.search('^[!#@/]([^ ]*)({})'.format(username), text)
     if name_match:

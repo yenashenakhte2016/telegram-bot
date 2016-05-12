@@ -1,5 +1,3 @@
-#!/bin/env python3
-
 import concurrent.futures
 import json
 import sys
@@ -40,7 +38,7 @@ class Bot:
             except IndexError:
                 time.sleep(self.config.sleep)
                 return
-            executor = concurrent.futures.ThreadPoolExecutor(max_workers=6)
+            executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.config.workers)
             for i in response['result']:
                 msg = i['message']
                 if int(time.time()) - int(msg['date']) <= 180:  # Messages > 3 minutes old are ignored
