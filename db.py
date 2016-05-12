@@ -1,16 +1,19 @@
 import sqlite3
+import threading
 
 
 class Database:
     def __init__(self, db_name):
         self.connection = sqlite3.connect('data/' + db_name, check_same_thread=False)
         self.db = self.connection.cursor()
+        self.lock = threading.Lock()
 
     def execute(self, command, bindings=(), commit=False):
         try:
-            self.db.execute(command, bindings)
-            if commit:
-                self.connection.commit()
+            with self.lock:
+                self.db.execute(command, bindings)
+                if commit:
+                    self.connection.commit()
             return True
         except (sqlite3.OperationalError,sqlite3.ProgrammingError) as e:
             print('SQL Error: {}'.format(e))

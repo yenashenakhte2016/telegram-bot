@@ -15,6 +15,8 @@ class RouteMessage:
             self.plugin_check()
 
     def check_db(self):
+        if 'text' in self.message:
+            self.message['text'] = util.clean_message(self.message['text'], self.package[1]['username'])
         reply_to_message = 'reply_to_message' in self.message
         private_chat = self.message['chat']['type'] == 'private'
         if reply_to_message or private_chat:
@@ -35,8 +37,6 @@ class RouteMessage:
     def plugin_check(self):
         for plugin in self.package[3]:
             for key, value in plugin.arguments.items():
-                if key == 'text':
-                    self.message['text'] = util.clean_message(self.message['text'], self.package[1]['username'])
                 if self.check_argument(key, value, self.message):
                     plugin.main(tgapi.TelegramApi(self.message, self.package, self.package[3].index(plugin)))
 
@@ -45,9 +45,9 @@ class RouteMessage:
             if type(value) is list:
                 incremented_message = incremented_message[key]
                 return self.check_match(key, value, incremented_message)
-            elif type(value) is dict():
+            elif type(value) is dict:
                 incremented_message = incremented_message[key]
-                for key1, value1 in value:
+                for key1, value1 in value.items():
                     if self.check_argument(key1, value1, incremented_message):
                         return True
         else:
