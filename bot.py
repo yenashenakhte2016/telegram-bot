@@ -40,13 +40,13 @@ class Bot:
                 return
             executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.config.workers)
             for i in response['result']:
-                msg = i['message']
-                if int(time.time()) - int(msg['date']) <= 180:  # Messages > 3 minutes old are ignored
-                    self.log.info('{} message from {}'.format(msg['chat']['type'], msg['from']['id']))
-                    executor.submit(RouteMessage, msg, self.package)
+                message = i['message']
+                if int(time.time()) - int(message['date']) <= 180:  # Messages > 3 minutes old are ignored
+                    self.log.info('{} message from {}'.format(message['chat']['type'], message['from']['id']))
+                    executor.submit(RouteMessage, message, self.package)
                 else:
-                    self.log.info('OLD: {} message from {}'.format(msg['chat']['type'], msg['from']['id']))
-                    executor.submit(RouteMessage, msg, self.package, check_db_only=True)
+                    self.log.info('OLD: {} message from {}'.format(message['chat']['type'], message['from']['id']))
+                    executor.submit(RouteMessage, message, self.package, check_db_only=True)
             executor.shutdown(wait=False)
             time.sleep(self.config.sleep)
         else:
@@ -55,7 +55,7 @@ class Bot:
         return update_id
 
     def init_plugins(self):
-        self.log.info('Initializing plugins')
+        self.log.info('Initializing plugins...')
         db = Database('bot')
         plugins = list()
         warnings = list()
@@ -82,11 +82,10 @@ class Bot:
             db.insert('plugins', [plugin_id, plugin_name, pretty_name, description, usage])
         for i in warnings:
             self.log.warning(i)
-        self.log.info('Finished loading plugins')
         db.db.close()
         db.connection.commit()
         db.connection.close()
-        self.log.info('Closed database connection')
+        self.log.info('Finished initializing plugins')
         return tuple(plugins)
 
     def get_me(self):  # getMe
@@ -97,20 +96,19 @@ class Bot:
             self.log.info('Success: {}'.format(response['result']))
             return response['result']
         else:
-            self.log.error('Error fetching bot info\nResponse: {}'.format(response))
-            self.log.error('Shutting down')
+            self.log.error('Error fetching bot info\nResponse: {}\nShutting Down'.format(response))
             sys.exit()
 
     def init_db(self):
-        self.log.info('Creating/Opening database')
+        self.log.debug('Creating/Opening database')
         db = Database('bot')
-        self.log.info('Creating plugins table')
+        self.log.debug('Creating plugins table')
         db.create_table('plugins', [('plugin_id', 'INT PRIMARY KEY NOT NULL'),  # Creates plugin table
                                     ('plugin_name', 'TEXT'),
                                     ('pretty_name', 'TEXT'),
                                     ('description', 'TEXT'),
                                     ('usage', 'TEXT'), ], overwrite=True)
-        self.log.info('Created flagged_messages table')
+        self.log.debug('Created flagged_messages table')
         db.create_table('flagged_messages', [('plugin_id', 'INT'),  # Creates table for temp arguments
                                              ('message_id', 'INT'),
                                              ('chat_id', 'INT'),
@@ -118,4 +116,4 @@ class Bot:
         db.db.close()
         db.connection.commit()
         db.connection.close()
-        self.log.info('Successfully initialized the database')
+        self.log.debug('Successfully initialized the database')

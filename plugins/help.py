@@ -2,26 +2,26 @@ import json
 import random
 
 
-def main(tg_api):  # This is where plugin_handler will send msg
-    tg_api.send_chat_action('typing')
-    if tg_api.msg['flagged_message']:
-        tg_api.send_message(grab_plugin(tg_api, chance=True))
-    elif tg_api.msg['matched_regex'] == arguments['text'][0]:
-        x = tg_api.package[4].select('*', 'plugins', return_value=True)
+def main(tg):
+    tg.send_chat_action('typing')
+    if tg.message['flagged_message']:
+        tg.send_message(grab_plugin(tg, chance=True))
+    elif tg.message['matched_regex'] == arguments['text'][0]:
+        x = tg.package[4].select('*', 'plugins', return_value=True)
         message = "Here are a list of my plugins:"
         for i in x:
             message += "\n<b>• {}</b>".format(i[2])
         message += "\n\nWhich plugin do you want more info on?"
-        tg_api.send_message(message, flag_message=True)
-    elif tg_api.msg['matched_regex'] == arguments['text'][1]:
-        tg_api.send_message(grab_plugin(tg_api, match=True))
+        tg.send_message(message, flag_message=True)
+    elif tg.message['matched_regex'] == arguments['text'][1]:
+        tg.send_message(grab_plugin(tg, match=True))
 
 
 def grab_plugin(tg_api, chance=False, match=False):
     if match:
-        plugin = tg_api.msg['match'][1]
+        plugin = tg_api.message['match'][1]
     else:
-        plugin = tg_api.msg['text']
+        plugin = tg_api.message['text']
     conditions = [('lower(pretty_name)', plugin.lower())]
     x = tg_api.package[4].select('*', 'plugins', conditions=conditions, return_value=True, single_return=True)
     if x:
