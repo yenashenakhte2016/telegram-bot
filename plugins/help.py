@@ -7,10 +7,10 @@ def main(tg):
     if tg.message['flagged_message']:
         tg.send_message(grab_plugin(tg, chance=True))
     elif tg.message['matched_regex'] == arguments['text'][0]:
-        x = tg.package[4].select('*', 'plugins', return_value=True)
+        plugin_list = tg.package[4].select('pretty_name', 'plugins', return_value=True)
         message = "Here are a list of my plugins:"
-        for i in x:
-            message += "\n<b>• {}</b>".format(i[2])
+        for plugin_name in plugin_list:
+            message += "\n<b>• {}</b>".format(plugin_name[0])
         message += "\n\nWhich plugin do you want more info on?"
         tg.send_message(message, flag_message=True)
     elif tg.message['matched_regex'] == arguments['text'][1]:
