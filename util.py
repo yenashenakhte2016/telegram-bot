@@ -82,7 +82,7 @@ def init_db():  # Creates the DB object and sets up hierarchy
     if not os.path.exists('data'):  # All data should be placed here
         os.makedirs('data/files')
         os.makedirs('data/logs')
-    log.debug('Creating/Opening database')
+    log.debug('Initializing database')
     db = Database('bot')
     log.debug('Creating plugins table')
     db.create_table('plugins', [('plugin_id', 'INT PRIMARY KEY NOT NULL'),  # Creates plugin table
@@ -90,11 +90,14 @@ def init_db():  # Creates the DB object and sets up hierarchy
                                 ('pretty_name', 'TEXT'),
                                 ('description', 'TEXT'),
                                 ('usage', 'TEXT'), ], overwrite=True)
-    log.debug('Created flagged_messages table')
+    log.debug('Creating flagged_messages table')
     db.create_table('flagged_messages', [('plugin_id', 'INT'),  # Creates flagged messages table
                                          ('message_id', 'INT'),
                                          ('chat_id', 'INT'),
-                                         ('user_id', 'INT')])
+                                         ('user_id', 'INT'),
+                                         ('single_use', 'BOOLEAN'),
+                                         ('currently_active', 'BOOLEAN')])
+    db.create_table('downloads', [('file_id', 'TEXT'), ('file_path', 'TEXT')])
     log.debug('Successfully initialized the database')
     return db
 
@@ -107,15 +110,15 @@ def init_plugins(db, plugin_list):
         plugin = __import__('plugins', fromlist=[plugin_name])  # Import it from the plugins folder
         plugins.append(getattr(plugin, plugin_name))  # Stores plugin objects in a dictionary
         if 'name' not in plugins[plugin_id].plugin_info:  # Check for name in plugin arguments
-            log.warning.append('Warning: {} is missing a pretty name. Falling back to filename.'.format(plugin_name))
+            log.warning('Warning: {} is missing a pretty name. Falling back to filename.'.format(plugin_name))
             plugins[plugin_id].plugin_info['name'] = plugin_name
         pretty_name = plugins[plugin_id].plugin_info['name']
         if 'desc' not in plugins[plugin_id].plugin_info:  # Check for description in plugin arguments
-            log.warning.append('Warning: {} is missing a description.'.format(plugin_name))
+            log.warning('Warning: {} is missing a description.'.format(plugin_name))
             plugins[plugin_id].plugin_info['desc'] = None
         description = plugins[plugin_id].plugin_info['desc']
         if 'usage' not in plugins[plugin_id].plugin_info:  # Check for usage in plugin arguments
-            log.warning.append('Warning: {} is missing usage.'.format(plugin_name))
+            log.warning('Warning: {} is missing usage.'.format(plugin_name))
             plugins[plugin_id].plugin_info['usage'] = None
         usage = json.dumps(plugins[plugin_id].plugin_info['usage'])  # Stores usage as json
         log.info('Loaded Plugin: {} - {}({}) - {} - {}'.format(plugin_id,

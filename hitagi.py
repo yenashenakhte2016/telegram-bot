@@ -20,7 +20,7 @@ def main():
     try:
         response = response.json()
     except AttributeError:
-        log.error("Error parsing Telegram response\nResponse: {}".format(response.text))
+        log.error("Error parsing Telegram response\nResponse: {}".format(response))
         time.sleep(5)
         return
     if response['ok'] and response['result']:  # Response ok and contains results

@@ -69,7 +69,7 @@ class Database:
                     where[-1] += '=?'
                     bindings.append(k[1])
             command += ' AND '.join(where) + ';'
-        if return_value:
+        if return_value or single_return:
             self.execute(command, bindings=bindings)
             return self.return_selection(single_return=single_return)
         else:
