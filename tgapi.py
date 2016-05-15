@@ -1,7 +1,8 @@
-from functools import partial
-import logging
-import util
 import collections
+import logging
+from functools import partial
+
+import util
 
 
 class TelegramApi:
@@ -135,7 +136,6 @@ class TelegramApi:
         self.package[4].insert('flagged_messages', list(merged_parameters.values()))
 
     def download_file(self, file_object):
-        file_object = file_object['result']
         conditions = [('file_id', file_object['file_id'])]
         selection = self.package[4].select('file_path', 'downloads', conditions=conditions, single_return=True)
         if selection:
