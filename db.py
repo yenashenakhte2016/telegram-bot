@@ -18,17 +18,18 @@ class Database:
             if commit:
                 self.connection.commit()
             return True
-        except (sqlite3.OperationalError,sqlite3.ProgrammingError) as e:
-            self.log.ERROR("SQL ERROR: {}\nCOMMAND: {}\nBINDINGS:".format(e, command, bindings))
+        except (sqlite3.OperationalError, sqlite3.ProgrammingError) as e:
+            self.log.error("SQL ERROR: {}\nCOMMAND: {}\nBINDINGS:".format(e, command, bindings))
             return e
 
-    def create_table(self, table_name, parameters, drop_existing=True):
+    def create_table(self, table_name, parameters, drop_existing=False):
         if drop_existing:
             self.execute('DROP TABLE IF EXISTS {}'.format(table_name))
         query = "CREATE TABLE IF NOT EXISTS {}(".format(table_name)
         parameters = collections.OrderedDict(parameters)
-        for column, data_type in parameters.items():
-            query += '\n{} {}'.format(column, data_type)
+        column_names = parameters.keys()
+        column_types = parameters.values()
+        query += ', '.join('\n{} {}'.format(*t) for t in zip(column_names, column_types))
         query += '\n);'
         return self.execute(query, commit=True)
 
@@ -39,24 +40,41 @@ class Database:
             ', '.join(values.keys()),
             ','.join(list('?' * len(values.items())))
         )
-        return self.execute(query, bindings=values.values(), commit=True)
+        return self.execute(query, bindings=list(values.values()), commit=True)
 
     def delete(self, table_name, conditions):
         conditions = collections.OrderedDict(conditions)
+        condition_list = list()
         query = "DELETE FROM {}\nWHERE ".format(table_name)
         for column in conditions.keys():
-            query += " {}".format(column)
             if conditions[column]:
-                query += "=?"
+                condition_list.append("{}=?".format(column))
+            else:
+                condition_list.append(column)
+        query += ' AND '.join(condition_list)
         query += ";"
-        return self.execute(query, conditions.values(), commit=True)
+        bindings = list(conditions.values())
+        return self.execute(query, bindings, commit=True)
 
-    def select(self, table_name, columns, conditions):
-        conditions = collections.OrderedDict(conditions)
-        query = "SELECT {} FROM {} WHERE".format(', '.join(columns), table_name)
-        for column in conditions.keys():
-            query += " {}".format(column)
-            if conditions[column]:
-                query += "=?"
-        query += ";"
-        return self.execute(query, conditions.values())
+    def select(self, table_name, columns, conditions=None):
+        return_obj = list()
+        query = "SELECT {} FROM {}".format(', '.join(columns), table_name)
+        if conditions:
+            conditions = collections.OrderedDict(conditions)
+            condition_list = list()
+            query += ' WHERE '
+            for column in conditions.keys():
+                if conditions[column]:
+                    condition_list.append("{}=?".format(column))
+                else:
+                    condition_list.append(column)
+            query += ' AND '.join(condition_list)
+            bindings = list(conditions.values())
+            self.execute(query, bindings)
+        else:
+            self.execute(query)
+        for index, result in enumerate(self.db):
+            return_obj.append(dict())
+            for i, column_name in enumerate(columns):
+                return_obj[index].update({column_name: result[i]})
+        return return_obj

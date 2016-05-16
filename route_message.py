@@ -1,8 +1,8 @@
+import logging
 import re
 
 import tgapi
 import util
-import logging
 
 
 class RouteMessage:
@@ -26,16 +26,14 @@ class RouteMessage:
             message_id = self.message['reply_to_message']['message_id'] if reply_to_message else None
             chat_id = self.message['chat']['id']
             self.log.debug('Checking message with id {} from chat {} in db'.format(message_id, chat_id))
-            db_selection = self.package[4].select(['plugin_id', 'user_id'],
-                                                  'flagged_messages',
-                                                  conditions=[('message_id', message_id),
-                                                              ('chat_id', chat_id)],
-                                                  return_value=True, single_return=True)
+            db_selection = self.package[4].select("flagged_messages", ["plugin_id", "user_id"],
+                                                  {"message_id": message_id, "chat_id": chat_id})
             if db_selection:
-                self.log.info('Flagged message {} triggered in chat {}'.format(message_id, chat_id))
-                self.message['flagged_message'] = True
-                self.package[4].delete('flagged_messages', [('message_id', message_id), ('chat_id', chat_id)])
-                self.package[3][db_selection[0]].main(tgapi.TelegramApi(self.message, self.package, db_selection[0]))
+                for i in db_selection:
+                    self.log.info('Flagged message {} triggered in chat {}'.format(message_id, chat_id))
+                    self.message['flagged_message'] = True
+                    self.package[4].delete('flagged_messages', {'message_id': message_id, 'chat_id': chat_id})
+                    self.package[3][i['plugin_id']].main(tgapi.TelegramApi(self.message, self.package, i['plugin_id']))
                 return False
         return True
 

@@ -1,11 +1,13 @@
-import re
-import shutil
-import requests
-from db import Database
-import sys
-import os
 import json
 import logging
+import os
+import re
+import shutil
+import sys
+
+import requests
+
+from db import Database
 
 
 class ConfigUtils:
@@ -85,19 +87,12 @@ def init_db():  # Creates the DB object and sets up hierarchy
     log.debug('Initializing database')
     db = Database('bot')
     log.debug('Creating plugins table')
-    db.create_table('plugins', [('plugin_id', 'INT PRIMARY KEY NOT NULL'),  # Creates plugin table
-                                ('plugin_name', 'TEXT'),
-                                ('pretty_name', 'TEXT'),
-                                ('description', 'TEXT'),
-                                ('usage', 'TEXT'), ], overwrite=True)
+    db.create_table("plugins", {"plugin_id": "INT PRIMARY KEY NOT NULL", "plugin_name": "TEXT",
+                                "pretty_name": "TEXT", "description": "TEXT", "usage": "TEXT"}, drop_existing=True)
     log.debug('Creating flagged_messages table')
-    db.create_table('flagged_messages', [('plugin_id', 'INT'),  # Creates flagged messages table
-                                         ('message_id', 'INT'),
-                                         ('chat_id', 'INT'),
-                                         ('user_id', 'INT'),
-                                         ('single_use', 'BOOLEAN'),
-                                         ('currently_active', 'BOOLEAN')])
-    db.create_table('downloads', [('file_id', 'TEXT'), ('file_path', 'TEXT')])
+    db.create_table("flagged_messages", {"plugin_id": "INT", "message_id": "INT", "chat_id": "INT",
+                                         "user_id": "INT", "single_use": "BOOLEAN", "currently_active": "BOOLEAN"})
+    db.create_table("downloads", {"file_id": "TEXT", "file_path": "TEXT"})
     log.debug('Successfully initialized the database')
     return db
 
@@ -121,12 +116,9 @@ def init_plugins(db, plugin_list):
             log.warning('Warning: {} is missing usage.'.format(plugin_name))
             plugins[plugin_id].plugin_info['usage'] = None
         usage = json.dumps(plugins[plugin_id].plugin_info['usage'])  # Stores usage as json
-        log.info('Loaded Plugin: {} - {}({}) - {} - {}'.format(plugin_id,
-                                                               plugin_name,
-                                                               pretty_name,
-                                                               description,
-                                                               usage))
-        db.insert('plugins', [plugin_id, plugin_name, pretty_name, description, usage])  # Insert into DB
+        log.info('Loaded Plugin: {}'.format(pretty_name))
+        db.insert("plugins", {"plugin_id": plugin_id, "plugin_name": plugin_name, "pretty_name": pretty_name,
+                              "description": description, "usage": usage})  # Insert plugin into DB
     log.info('Finished initializing plugins')
     return tuple(plugins)
 

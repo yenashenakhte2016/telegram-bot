@@ -1,4 +1,3 @@
-import collections
 import logging
 from functools import partial
 
@@ -41,8 +40,8 @@ class TelegramApi:
         arguments.update(kwargs)
         response = self.method('sendMessage', **arguments)
         if flag_message and response['ok']:  # Will crash if response attribute error
-            msg = response['result']
-            self.flag_message(flag_message)
+            message = response['result']
+            self.flag_message(message['message_id'])
         return response
 
     def forward_message(self, message_id, **kwargs):
@@ -124,16 +123,13 @@ class TelegramApi:
         return self.edit_content('editMessageText', **kwargs)
 
     def flag_message(self, parameters):
-        default = [('plugin_id', self.plugin_id),
-                   ('message_id', self.message['message_id']),
-                   ('chat_id', self.message['chat']['id']),
-                   ('user_id', self.message['from']['id']),
-                   ('single_use', False),
-                   ('currently_active', True)]
-        merged_parameters = collections.OrderedDict(default)
-        if type(parameters) is dict():
-            merged_parameters.update(parameters)
-        self.package[4].insert('flagged_messages', list(merged_parameters.values()))
+        default = {"plugin_id": self.plugin_id, "chat_id": self.message['chat']['id'],
+                   "user_id": self.message['from']['id'], "single_use": False, "currently_active": True}
+        if type(parameters) is dict:
+            default.update(parameters)
+        elif type(parameters) is int:
+            default.update({"message_id": parameters})
+        self.package[4].insert('flagged_messages', default)
 
     def download_file(self, file_object):
         conditions = [('file_id', file_object['file_id'])]
