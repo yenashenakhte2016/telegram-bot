@@ -20,10 +20,8 @@ class RouteMessage:
     def check_db(self):
         if 'text' in self.message:
             self.message['text'] = util.clean_message(self.message['text'], self.package[1]['username'])
-        reply_to_message = 'reply_to_message' in self.message
-        private_chat = self.message['chat']['type'] == 'private'
-        if reply_to_message or private_chat:
-            message_id = self.message['reply_to_message']['message_id'] if reply_to_message else None
+        if 'reply_to_message' in self.message:
+            message_id = self.message['reply_to_message']['message_id']
             chat_id = self.message['chat']['id']
             self.log.debug('Checking message with id {} from chat {} in db'.format(message_id, chat_id))
             db_selection = self.package[4].select("flagged_messages", ["plugin_id", "user_id"],

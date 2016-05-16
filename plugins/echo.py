@@ -5,7 +5,7 @@ def main(tg):
     elif 'reply_to_message' in tg.message:
         tg.send_message(tg.message['reply_to_message']['text'])
     elif tg.message['matched_regex'] == arguments['text'][0]:
-        tg.send_message("What do I echo?", flag_message=True, flag_user_id=True)
+        tg.send_message("What do I echo?", flag_message=True)
     elif tg.message['matched_regex'] == arguments['text'][1]:
         tg.send_message(tg.message['match'][1])
 

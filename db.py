@@ -29,8 +29,7 @@ class Database:
         parameters = collections.OrderedDict(parameters)
         column_names = parameters.keys()
         column_types = parameters.values()
-        query += ', '.join('\n{} {}'.format(*t) for t in zip(column_names, column_types))
-        query += '\n);'
+        query += ', '.join('\n{} {}'.format(*t) for t in zip(column_names, column_types)) + '\n);'
         return self.execute(query, commit=True)
 
     def insert(self, table_name, values):
@@ -47,12 +46,8 @@ class Database:
         condition_list = list()
         query = "DELETE FROM {}\nWHERE ".format(table_name)
         for column in conditions.keys():
-            if conditions[column]:
-                condition_list.append("{}=?".format(column))
-            else:
-                condition_list.append(column)
-        query += ' AND '.join(condition_list)
-        query += ";"
+            condition_list.append("{}=?".format(column))
+        query += ' AND '.join(condition_list) + ";"
         bindings = list(conditions.values())
         return self.execute(query, bindings, commit=True)
 
@@ -60,14 +55,11 @@ class Database:
         return_obj = list()
         query = "SELECT {} FROM {}".format(', '.join(columns), table_name)
         if conditions:
+            query += ' WHERE '
             conditions = collections.OrderedDict(conditions)
             condition_list = list()
-            query += ' WHERE '
             for column in conditions.keys():
-                if conditions[column]:
-                    condition_list.append("{}=?".format(column))
-                else:
-                    condition_list.append(column)
+                condition_list.append("{}=?".format(column))
             query += ' AND '.join(condition_list)
             bindings = list(conditions.values())
             self.execute(query, bindings)

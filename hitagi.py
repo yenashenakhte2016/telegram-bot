@@ -1,4 +1,4 @@
-#!/bin/env python3
+#!/usr/bin/python3
 
 import concurrent.futures
 import logging
@@ -31,7 +31,7 @@ def main():
             if_old = int(time.time()) - int(result['message']['date']) >= 180  # check if message is older than 3 min
             log.debug("Routing message {} - Old: {}".format(result['message']['message_id'], if_old))
             executor.submit(RouteMessage, result['message'], package, check_db_only=if_old)  # submit to executor
-        executor.shutdown(wait=False)  # returns immediately, subprocesses will close by themselves
+        executor.shutdown(wait=False)  # returns immediately, sub processes will close by themselves
     elif not response['ok']:  # Response not ok
         log.error('Response not OK\nResponse: {}'.format(response))
     time.sleep(config.sleep)  # Sleep for time defined in config
