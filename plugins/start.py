@@ -1,5 +1,4 @@
 def main(tg):
-    print("start")
     tg.send_chat_action('typing')
     first_name = tg.misc['bot_info']['first_name']
     message = "Hi, I'm {}! A multipurpose telegram bot written in python 3. You can see a list of my commands using " \

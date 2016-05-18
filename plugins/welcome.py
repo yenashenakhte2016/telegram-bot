@@ -1,7 +1,7 @@
 def main(tg):
     tg.send_chat_action('typing')
     group = tg.message['chat']['title']
-    me = tg.package[1]['username']
+    me = tg.misc['bot_info']['username']
     name = tg.message[tg.message['matched_argument']]['first_name']
     try:
         username = tg.message[tg.message['matched_argument']]['username']
