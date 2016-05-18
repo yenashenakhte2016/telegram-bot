@@ -11,15 +11,15 @@ from db import Database
 
 
 class ConfigUtils:
-    def __init__(self, filename='config.ini', bot_name='MAIN_BOT'):
+    def __init__(self, filename='config.ini'):
         import configparser
         self.filename = filename
         self.config = configparser.ConfigParser()
         self.config.read(filename)
-        self.token = self.config[bot_name]['token']
-        self.plugins = self.config[bot_name]['plugins'].split(',')
-        self.sleep = float(self.config[bot_name]['sleep'])
-        self.workers = int(self.config[bot_name]['workers'])
+        self.token = self.config['BOT_CONFIG']['token']
+        self.plugins = self.config['BOT_CONFIG']['plugins'].split(',')
+        self.sleep = float(self.config['BOT_CONFIG']['sleep'])
+        self.workers = int(self.config['BOT_CONFIG']['workers'])
 
     def write_config(self):
         with open(self.filename, 'w') as configfile:
@@ -71,12 +71,10 @@ def init_package(config):  # Creates the package that's passed around, replaced 
     bot_info = get_me(config.token, session)  # this stores the getMe object
     database = init_db()  # Stores the database object
     plugins = init_plugins(database, config.plugins)  # Stores all plugins
-    package = (('https://api.telegram.org/', 'bot{}/'.format(config.token)),  # URL [0]
-               bot_info,  # bot_info [1]
-               session,  # session [2]
-               plugins,  # plugins [3]
-               database)  # database [4]
-    return package
+    misc = {
+        "token": config.token, "bot_info": bot_info, "session": session
+    }
+    return [misc, plugins, database]
 
 
 def init_db():  # Creates the DB object and sets up hierarchy

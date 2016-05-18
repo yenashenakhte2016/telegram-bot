@@ -5,9 +5,11 @@ import util
 
 
 class TelegramApi:
-    def __init__(self, message, package, plugin_id):
+    def __init__(self, message, misc, plugins, database, plugin_id):
         self.message = message
-        self.package = package
+        self.misc = misc
+        self.plugins = plugins
+        self.database = database
         self.plugin_id = plugin_id
         self.log = logging.getLogger(__name__)
         self.send_photo = partial(self.send_file, 'sendPhoto')
@@ -21,7 +23,7 @@ class TelegramApi:
     def method(self, method_name, check_content=True, **kwargs):
         content = dict()
         content['data'] = dict()
-        content['url'] = '{0}{1}{2}'.format(self.package[0][0], self.package[0][1], method_name)
+        content['url'] = 'https://api.telegram.org/bot{}/{}'.format(self.misc['token'], method_name)
         if check_content:
             if self.message['chat']['type'] != 'private':
                 content['data'].update({'reply_to_message_id': self.message['message_id']})
@@ -30,7 +32,7 @@ class TelegramApi:
             if 'file' in kwargs:
                 content['files'] = kwargs.pop('file')
         content['data'].update(kwargs)
-        response = util.post(content, self.package[2]).json()
+        response = util.post(content, self.misc['session']).json()
         if not response['ok']:
             self.log.error('Error with response\nResponse: {}'.format(response))
         return response
@@ -123,24 +125,31 @@ class TelegramApi:
         return self.edit_content('editMessageText', **kwargs)
 
     def flag_message(self, parameters):
+        self.database.update("flagged_messages", {"currently_active": False}, {"chat_id": self.message['chat']['id']})
         default = {"plugin_id": self.plugin_id, "chat_id": self.message['chat']['id'],
                    "user_id": self.message['from']['id'], "single_use": False, "currently_active": True}
         if type(parameters) is dict:
             default.update(parameters)
         elif type(parameters) is int:
             default.update({"message_id": parameters})
-        self.package[4].insert('flagged_messages', default)
+        self.database.insert('flagged_messages', default)
 
     def download_file(self, file_object):
-        conditions = [('file_id', file_object['file_id'])]
-        selection = self.package[4].select('file_path', 'downloads', conditions=conditions, single_return=True)
-        if selection:
-            return selection[0]
+        if file_object['ok'] and file_object['result']['file_size'] < 20000000:
+            file_object = file_object['result']
         else:
-            url = "{}/file/{}{}".format(self.package[0][0], self.package[0][1], file_object['file_path'])
+            self.log.error("Unable to download file\nObject received: {}".format(file_object))
+            return
+        db_selection = self.database.select("downloads", ["file_path"], {"file_id": file_object["file_id"]})
+        if db_selection:
+            return db_selection[0]['file_path']
+        else:
+            url = "https://api.telegram.org/file/bot{}/{}".format(self.misc['token'], file_object['file_path'])
             try:
                 name = file_object['file_path']
             except KeyError:
                 name = None
             file_name = util.name_file(file_object['file_id'], name)
-            return util.fetch_file(url, 'data/files/{}'.format(file_name), self.package[2])
+            self.database.insert("downloads", {"file_id": file_object["file_id"],
+                                                 "file_path": "data/files/{}".format(file_name)})
+            return util.fetch_file(url, 'data/files/{}'.format(file_name), self.misc['session'])

@@ -6,7 +6,7 @@ def main(tg):
     try:
         username = tg.message[tg.message['matched_argument']]['username']
     except KeyError:
-        username = ""
+        username = None
     if tg.message['matched_argument'] == 'new_chat_participant':
         if me == username:
             from plugins import start
@@ -14,9 +14,7 @@ def main(tg):
         else:
             tg.send_message("Welcome to {}, {}!".format(group, name))
     elif tg.message['matched_argument'] == 'left_chat_participant':
-        if me == username:
-            pass
-        else:
+        if me != username:
             tg.send_message("Bye {} :(".format(name))
 
 

@@ -1,15 +1,17 @@
 import logging
 import re
 
-import tgapi
 import util
+from tgapi import TelegramApi
 
 
 class RouteMessage:
-    def __init__(self, message, package, check_db_only=False):
+    def __init__(self, message, misc, plugins, database, check_db_only=False):
         self.log = logging.getLogger(__name__)
-        self.package = package
         self.message = message
+        self.misc = misc
+        self.plugins = plugins
+        self.database = database
         self.message['flagged_message'] = None
         self.message['matched_regex'] = None
         self.message['matched_argument'] = None
@@ -19,28 +21,54 @@ class RouteMessage:
 
     def check_db(self):
         if 'text' in self.message:
-            self.message['text'] = util.clean_message(self.message['text'], self.package[1]['username'])
+            self.message['text'] = util.clean_message(self.message['text'], self.misc['bot_info']['username'])
         if 'reply_to_message' in self.message:
             message_id = self.message['reply_to_message']['message_id']
             chat_id = self.message['chat']['id']
-            self.log.debug('Checking message with id {} from chat {} in db'.format(message_id, chat_id))
-            db_selection = self.package[4].select("flagged_messages", ["plugin_id", "user_id"],
-                                                  {"message_id": message_id, "chat_id": chat_id})
+            db_selection = self.database.select("flagged_messages",
+                                                ["plugin_id", "user_id", "single_use", "currently_active"],
+                                                {"message_id": message_id, "chat_id": chat_id})
             if db_selection:
-                for i in db_selection:
-                    self.log.info('Flagged message {} triggered in chat {}'.format(message_id, chat_id))
+                for result in db_selection:
+                    if result['user_id'] and result['user_id'] != self.message['from']['id']:
+                        return True
+                    if result['single_use']:
+                        self.database.delete('flagged_messages', {'message_id': message_id, 'chat_id': chat_id})
                     self.message['flagged_message'] = True
-                    self.package[4].delete('flagged_messages', {'message_id': message_id, 'chat_id': chat_id})
-                    self.package[3][i['plugin_id']].main(tgapi.TelegramApi(self.message, self.package, i['plugin_id']))
+                    self.plugins[result['plugin_id']].main(
+                        TelegramApi(self.message, self.misc, self.plugins, self.database, result['plugin_id']))
+            return False
+        if self.message['chat']['type'] == 'private':
+            if self.plugin_check():
+                return False
+            db_selection = self.database.select("flagged_messages", ["plugin_id", "single_use", "message_id"],
+                                                {"chat_id": self.message['chat']['id'], "currently_active": True})
+            if db_selection:
+                for result in db_selection:
+                    if result['single_use']:
+                        self.database.delete('flagged_messages',
+                                             {'message_id': result["message_id"],
+                                              'chat_id': self.message['chat']['id']})
+                    self.message['flagged_message'] = True
+                    self.plugins[result['plugin_id']].main(
+                        TelegramApi(self.message, self.misc, self.plugins, self.database, result['plugin_id'])
+                    )
+                    self.database.update("flagged_messages", {"currently_active": False},
+                                         {"chat_id": self.message['chat']['id']})
                 return False
         return True
 
     def plugin_check(self):
-        for plugin in self.package[3]:
+        plugin_triggered = False
+        for plugin in self.plugins:
             for key, value in plugin.arguments.items():
                 if self.check_argument(key, value, self.message):
+                    plugin_triggered = True
                     self.log.info('Plugin {} triggered'.format(plugin.__name__))
-                    plugin.main(tgapi.TelegramApi(self.message, self.package, self.package[3].index(plugin)))
+                    plugin.main(
+                        TelegramApi(self.message, self.misc, self.plugins, self.database, self.plugins.index(plugin))
+                    )
+        return plugin_triggered
 
     def check_argument(self, key, value, incremented_message):
         self.log.debug('Checking {} with value {}'.format(key, value))

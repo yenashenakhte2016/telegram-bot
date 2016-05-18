@@ -41,6 +41,25 @@ class Database:
         )
         return self.execute(query, bindings=list(values.values()), commit=True)
 
+    def update(self, table_name, values, conditions=None):
+        values = collections.OrderedDict(values)
+        bindings = list(values.values())
+        condition_list = list()
+        query = "UPDATE {}\nSET ".format(table_name)
+        for column in values.keys():
+            condition_list.append("{}=?".format(column))
+        query += ' AND '.join(condition_list)
+        if conditions:
+            conditions = collections.OrderedDict(conditions)
+            bindings += list(conditions.values())
+            condition_list = list()
+            query += "\nWHERE "
+            for column in conditions.keys():
+                condition_list.append("{}=?".format(column))
+            query += ' AND '.join(condition_list)
+        query += ';'
+        return self.execute(query, bindings)
+
     def delete(self, table_name, conditions):
         conditions = collections.OrderedDict(conditions)
         condition_list = list()
