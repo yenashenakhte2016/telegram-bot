@@ -51,7 +51,7 @@ def fetch_file(url, file_path, session=requests):
 
 def clean_message(text, bot_name):  # Replace this with something based on MessageEntities
     username = "@{}".format(bot_name)
-    name_match = re.search('^[!#@/]([^ ]*)({})'.format(username), text)
+    name_match = re.search('^(/[^ ]*){}'.format(username), text)
     if name_match:
         return text.replace(text[:name_match.end(0)], text[:name_match.end(0) - len(username)])
     else:

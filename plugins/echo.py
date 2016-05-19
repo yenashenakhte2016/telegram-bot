@@ -1,7 +1,10 @@
 def main(tg):
     tg.send_chat_action('typing')
     if tg.message['flagged_message']:
-        tg.send_message(tg.message['text'])
+        if 'text' in tg.message:
+            tg.send_message(tg.message['text'])
+        else:
+            tg.send_message("I only echo text :(")
     elif 'reply_to_message' in tg.message:
         tg.send_message(tg.message['reply_to_message']['text'])
     elif tg.message['matched_regex'] == arguments['text'][0]:

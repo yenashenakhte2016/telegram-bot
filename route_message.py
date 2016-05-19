@@ -37,7 +37,7 @@ class RouteMessage:
                     self.message['flagged_message'] = True
                     self.plugins[result['plugin_id']].main(
                         TelegramApi(self.message, self.misc, self.plugins, self.database, result['plugin_id']))
-            return False
+                return False
         if self.message['chat']['type'] == 'private':
             if self.plugin_check():
                 return False

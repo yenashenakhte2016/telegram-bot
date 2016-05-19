@@ -52,9 +52,8 @@ class TelegramApi:
         return self.method('sendMessage', **locals())
 
     def send_file(self, method, file, **kwargs):
-        arguments = locals()
-        del arguments['self']
-        del arguments['method']
+        arguments = kwargs
+        arguments.update({'file': file})
         return self.method(method, **arguments)
 
     def send_location(self, latitude, longitude, **kwargs):
