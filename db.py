@@ -1,12 +1,10 @@
 import collections
-import logging
 import sqlite3
 import threading
 
 
 class Database:
     def __init__(self, db_name):
-        self.log = logging.getLogger(__name__)
         self.connection = sqlite3.connect('data/' + db_name, check_same_thread=False)
         self.db = self.connection.cursor()
         self.lock = threading.Lock()
@@ -19,7 +17,7 @@ class Database:
                 self.connection.commit()
             return True
         except (sqlite3.OperationalError, sqlite3.ProgrammingError) as e:
-            self.log.error("SQL ERROR: {}\nCOMMAND: {}\nBINDINGS:".format(e, command, bindings))
+            print("SQL ERROR: {}\nCOMMAND: {}\nBINDINGS:".format(e, command, bindings))
             return e
 
     def create_table(self, table_name, parameters, drop_existing=False):

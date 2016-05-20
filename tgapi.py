@@ -1,4 +1,3 @@
-import logging
 from functools import partial
 
 import util
@@ -11,7 +10,6 @@ class TelegramApi:
         self.plugins = plugins
         self.database = database
         self.plugin_id = plugin_id
-        self.log = logging.getLogger(__name__)
         self.send_photo = partial(self.send_file, 'sendPhoto')
         self.send_audio = partial(self.send_file, 'sendAudio')
         self.send_document = partial(self.send_file, 'sendDocument')
@@ -34,7 +32,7 @@ class TelegramApi:
         content['data'].update(kwargs)
         response = util.post(content, self.misc['session']).json()
         if not response['ok']:
-            self.log.error('Error with response\nResponse: {}'.format(response))
+            print('Error with response\nResponse: {}\nSent: {}'.format(response, content))
         return response
 
     def send_message(self, text, flag_message=False, **kwargs):
@@ -137,7 +135,7 @@ class TelegramApi:
         if file_object['ok'] and file_object['result']['file_size'] < 20000000:
             file_object = file_object['result']
         else:
-            self.log.error("Unable to download file\nObject received: {}".format(file_object))
+            print("Unable to download file\nObject received: {}".format(file_object))
             return
         db_selection = self.database.select("downloads", ["file_path"], {"file_id": file_object["file_id"]})
         if db_selection:
@@ -150,5 +148,5 @@ class TelegramApi:
                 name = None
             file_name = util.name_file(file_object['file_id'], name)
             self.database.insert("downloads", {"file_id": file_object["file_id"],
-                                                 "file_path": "data/files/{}".format(file_name)})
+                                               "file_path": "data/files/{}".format(file_name)})
             return util.fetch_file(url, 'data/files/{}'.format(file_name), self.misc['session'])
