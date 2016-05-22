@@ -5,12 +5,13 @@ import json
 
 
 class TelegramApi:
-    def __init__(self, misc, database, plugin_id, message=None, plugin_data=None):
+    def __init__(self, misc, database, plugin_id, message=None, plugin_data=None, callback_query=None):
         self.message = message
         self.misc = misc
         self.database = database
         self.plugin_id = plugin_id
         self.plugin_data = plugin_data
+        self.callback_query = callback_query
         self.send_photo = partial(self.send_file, 'sendPhoto')
         self.send_audio = partial(self.send_file, 'sendAudio')
         self.send_document = partial(self.send_file, 'sendDocument')
@@ -18,20 +19,25 @@ class TelegramApi:
         self.send_video = partial(self.send_file, 'sendVideo')
         self.send_voice = partial(self.send_file, 'sendVoice')
         self.edit_message_reply_markup = partial(self.edit_content, 'editMessageReplyMarkup')
+        self.reply_keyboard_hide = reply_keyboard_hide
+        self.reply_keyboard_markup = reply_keyboard_markup
+        self.force_reply = force_reply
+        if self.message:
+            self.chat_data = self.message
+        elif self.callback_query:
+            self.chat_data = self.callback_query['message']
+        else:
+            self.chat_data = self.plugin_data['prev_message']
 
     def method(self, method_name, check_content=True, **kwargs):
         content = dict()
         content['data'] = dict()
         content['url'] = 'https://api.telegram.org/bot{}/{}'.format(self.misc['token'], method_name)
         if check_content:
-            if self.message:
-                data = self.message
-            else:
-                data = self.plugin_data['prev_message']
-            if data['chat']['type'] != 'private':
-                content['data'].update({'reply_to_message_id': data['message_id']})
+            if self.chat_data['chat']['type'] != 'private':
+                content['data'].update({'reply_to_message_id': self.chat_data['message_id']})
             if 'chat_id' not in kwargs:
-                content['data'].update({'chat_id': data['chat']['id']})
+                content['data'].update({'chat_id': self.chat_data['chat']['id']})
             if 'file' in kwargs:
                 content['files'] = kwargs.pop('file')
         content['data'].update(kwargs)
@@ -57,7 +63,7 @@ class TelegramApi:
         package = kwargs
         package.update({'message_id': message_id})
         if 'chat_id' not in package:
-            chat_id = self.message['chat']['id'] if self.message else self.plugin_data['prev_message']['chat']['id']
+            chat_id = self.chat_data['chat']['id']
             package.update({'chat_id': chat_id})
         return self.method('sendMessage', **package)
 
@@ -112,16 +118,21 @@ class TelegramApi:
             del arguments['chat_id']
         return self.method('unbanChatMember', **arguments)
 
-    def answer_callback_query(self, callback_query_id, text=None, show_alert=False):
+    def answer_callback_query(self, text=None, callback_query_id=None, show_alert=False):
         arguments = locals()
         del arguments['self']
+        if not callback_query_id:
+            try:
+                arguments.update({'callback_query_id': int(self.callback_query['id'])})
+            except KeyError:
+                return "Callback query ID not found!"
         return self.method('answerCallbackQuery', check_content=False, **arguments)
 
     def edit_content(self, method, **kwargs):
         arguments = kwargs
         if 'chat_id' and 'inline_message_id' not in arguments:
             if 'message_id' in arguments:
-                chat_id = self.message['chat']['id'] if self.message else self.plugin_data['prev_message']['chat']['id']
+                chat_id = self.chat_data['chat']['id']
                 arguments.update({'chat_id': chat_id})
             else:
                 return 'ERROR: Need chat_id + message_id or inline_message_id'
@@ -139,13 +150,9 @@ class TelegramApi:
         return self.edit_content('editMessageText', **kwargs)
 
     def flag_message(self, parameters):
-        if self.message:
-            data = self.message
-        else:
-            data = self.plugin_data['prev_message']
-        chat_id = data['chat']['id']
+        chat_id = self.chat_data['chat']['id']
         default = {"plugin_id": self.plugin_id, "single_use": False, "currently_active": True,
-                   "chat_id": chat_id, "user_id": data['from']['id']}
+                   "chat_id": chat_id, "user_id": None}
         if type(parameters) is dict:
             if 'chat_id' in parameters:
                 chat_id = parameters['chat_id']
@@ -160,7 +167,7 @@ class TelegramApi:
     def flag_time(self, time, plugin_data=None, plugin_id=None):
         if not plugin_id:
             plugin_id = self.plugin_id
-        default = {"prev_message": self.message or self.plugin_data['prev_message']}
+        default = {"prev_message": self.chat_data}
         if plugin_data and type(plugin_data) is dict:
             default.update(plugin_data)
         self.database.insert("flagged_time",
@@ -185,3 +192,48 @@ class TelegramApi:
             self.database.insert("downloads", {"file_id": file_object["file_id"],
                                                "file_path": "data/files/{}".format(file_name)})
             return util.fetch_file(url, 'data/files/{}'.format(file_name), self.misc['session'])
+
+    def inline_keyboard_markup(self, list_of_list_of_buttons, plugin_data=None):
+        for button_list in list_of_list_of_buttons:
+            for button in button_list:
+                if 'text' not in button:
+                    return "Error: Text not found in button object"
+                if 'callback_data' in button:
+                    self.database.insert("callback_queries",
+                                         {"plugin_id": self.plugin_id, "data": button['callback_data'],
+                                          "plugin_data": plugin_data})
+        package = {
+            'inline_keyboard': list_of_list_of_buttons
+        }
+        return json.dumps(package)
+
+
+def reply_keyboard_markup(list_of_list_of_buttons, resize_keyboard=False, one_time_keyboard=False,
+                          selective=False):
+    for button_list in list_of_list_of_buttons:
+        for button in button_list:
+            if 'text' not in button:
+                return "Error: Text not found in button object"
+    package = {
+        'keyboard': list_of_list_of_buttons,
+        'resize_keyboard': resize_keyboard,
+        'one_time_keyboard': one_time_keyboard,
+        'selective': selective
+    }
+    return json.dumps(package)
+
+
+def reply_keyboard_hide(hide_keyboard=True, selective=False):
+    package = {
+        'hide_keyboard': hide_keyboard,
+        'selective': selective
+    }
+    return json.dumps(package)
+
+
+def force_reply(forced_reply=True, selective=False):
+    package = {
+        'force_reply': forced_reply,
+        'selective': selective
+    }
+    return json.dumps(package)

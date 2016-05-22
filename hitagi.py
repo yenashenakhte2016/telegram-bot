@@ -28,15 +28,21 @@ def main():
     if response['ok'] and response['result']:  # Response ok and contains results
         update_id = response['result'][-1]['update_id'] + 1
         for result in response['result']:  # Loop through result
-            try:
-                if_old = int(time.time()) - int(result['message']['date']) >= 180  # check if message is older than 3 min
+            if 'message' in result:  # For message updates
+                if_old = int(time.time()) - int(result['message']['date']) >= 180  # check if message is > 3 min old
                 executor.submit(RouteMessage, result['message'], misc, plugins, database, check_db_only=if_old)
-            except KeyError:
-                continue
-    elif not response['ok']:  # Response not ok
+            elif 'callback_query' in result:  # For callback query updates
+                db_selection = database.select("callback_queries", ["DISTINCT plugin_id", "plugin_data", "data"],
+                                               {"data": result['callback_query']['data']})
+                for db_result in db_selection:
+                    plugin_id = db_result['plugin_id']
+                    api_obj = TelegramApi(misc, database, plugin_id, plugin_data=db_result['plugin_data'],
+                                          callback_query=result['callback_query'])
+                    plugins[plugin_id].main(api_obj)
+    elif not response['ok']:
         print('Response not OK\nResponse: {}'.format(response))
-    for argument in time_args:
-        if argument['time'] < time.time():
+    for argument in time_args:  # See if any plugins want to be activated at this time
+        if argument['time'] <= time.time():
             plugin_id = argument['plugin_id']
             plugin_data = json.loads(argument['plugin_data']) if argument['plugin_data'] else None
             tg = TelegramApi(misc, database, plugin_id, plugin_data=plugin_data)

@@ -87,6 +87,7 @@ def init_db():  # Creates the DB object and sets up hierarchy
                                          "plugin_data": "TEXT"})
     db.create_table("flagged_time", {"plugin_id": "INT", "time": "INT", "plugin_data": "TEXT"})
     db.create_table("downloads", {"file_id": "TEXT", "file_path": "TEXT"})
+    db.create_table("callback_queries", {"plugin_id": "INT", "data": "TEXT", "plugin_data": "TEXT"})
     return db
 
 

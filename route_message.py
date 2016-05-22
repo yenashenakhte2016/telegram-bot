@@ -23,7 +23,7 @@ class RouteMessage:
         if 'reply_to_message' in self.message:
             message_id = self.message['reply_to_message']['message_id']
             db_selection = self.database.select("flagged_messages",
-                                                ["plugin_id", "user_id", "single_use", "currently_active",
+                                                ["DISTINCT plugin_id", "user_id", "single_use", "currently_active",
                                                  "plugin_data"],
                                                 {"message_id": message_id, "chat_id": chat_id})
             if db_selection:
@@ -44,7 +44,7 @@ class RouteMessage:
             if self.plugin_check():
                 return False
             db_selection = self.database.select("flagged_messages",
-                                                ["plugin_id", "single_use", "message_id", "plugin_data"],
+                                                ["DISTINCT plugin_id", "single_use", "message_id", "plugin_data"],
                                                 {"chat_id": chat_id, "currently_active": True})
             if db_selection:
                 for result in db_selection:
