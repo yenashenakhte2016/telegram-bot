@@ -28,8 +28,11 @@ def main():
     if response['ok'] and response['result']:  # Response ok and contains results
         update_id = response['result'][-1]['update_id'] + 1
         for result in response['result']:  # Loop through result
-            if_old = int(time.time()) - int(result['message']['date']) >= 180  # check if message is older than 3 min
-            executor.submit(RouteMessage, result['message'], misc, plugins, database, check_db_only=if_old)
+            try:
+                if_old = int(time.time()) - int(result['message']['date']) >= 180  # check if message is older than 3 min
+                executor.submit(RouteMessage, result['message'], misc, plugins, database, check_db_only=if_old)
+            except KeyError:
+                continue
     elif not response['ok']:  # Response not ok
         print('Response not OK\nResponse: {}'.format(response))
     for argument in time_args:
