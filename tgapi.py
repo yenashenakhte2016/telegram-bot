@@ -1,15 +1,16 @@
 from functools import partial
 
 import util
+import json
 
 
 class TelegramApi:
-    def __init__(self, message, misc, plugins, database, plugin_id):
+    def __init__(self, misc, database, plugin_id, message=None, plugin_data=None):
         self.message = message
         self.misc = misc
-        self.plugins = plugins
         self.database = database
         self.plugin_id = plugin_id
+        self.plugin_data = plugin_data
         self.send_photo = partial(self.send_file, 'sendPhoto')
         self.send_audio = partial(self.send_file, 'sendAudio')
         self.send_document = partial(self.send_file, 'sendDocument')
@@ -23,10 +24,14 @@ class TelegramApi:
         content['data'] = dict()
         content['url'] = 'https://api.telegram.org/bot{}/{}'.format(self.misc['token'], method_name)
         if check_content:
-            if self.message['chat']['type'] != 'private':
-                content['data'].update({'reply_to_message_id': self.message['message_id']})
+            if self.message:
+                data = self.message
+            else:
+                data = self.plugin_data['prev_message']
+            if data['chat']['type'] != 'private':
+                content['data'].update({'reply_to_message_id': data['message_id']})
             if 'chat_id' not in kwargs:
-                content['data'].update({'chat_id': self.message['chat']['id']})
+                content['data'].update({'chat_id': data['chat']['id']})
             if 'file' in kwargs:
                 content['files'] = kwargs.pop('file')
         content['data'].update(kwargs)
@@ -35,19 +40,26 @@ class TelegramApi:
             print('Error with response\nResponse: {}\nSent: {}'.format(response, content))
         return response
 
-    def send_message(self, text, flag_message=False, **kwargs):
+    def send_message(self, text, flag_message=None, **kwargs):
         arguments = {'text': text, 'parse_mode': 'HTML'}
         arguments.update(kwargs)
         response = self.method('sendMessage', **arguments)
         if flag_message and response['ok']:  # Will crash if response attribute error
-            message = response['result']
-            self.flag_message(message['message_id'])
+            message_id = response['result']['message_id']
+            if type(flag_message) is dict and 'message_id' not in flag_message:
+                flag_message.update({'message_id': int(message_id)})
+            else:
+                flag_message = message_id
+            self.flag_message(flag_message)
         return response
 
     def forward_message(self, message_id, **kwargs):
-        if 'chat_id' not in kwargs:
-            kwargs['chat_id'] = kwargs['chat_id'] or self.message['chat']['id']
-        return self.method('sendMessage', **locals())
+        package = kwargs
+        package.update({'message_id': message_id})
+        if 'chat_id' not in package:
+            chat_id = self.message['chat']['id'] if self.message else self.plugin_data['prev_message']['chat']['id']
+            package.update({'chat_id': chat_id})
+        return self.method('sendMessage', **package)
 
     def send_file(self, method, file, **kwargs):
         arguments = kwargs
@@ -79,7 +91,9 @@ class TelegramApi:
         return self.method('sendChatAction', **arguments)
 
     def get_user_profile_photos(self, user_id, offset=0, limit=0):
-        return self.method('getUserProfilePhotos', check_content=False, **locals())
+        arguments = locals()
+        del arguments['self']
+        return self.method('getUserProfilePhotos', check_content=False, **arguments)
 
     def get_file(self, file_id):
         return self.method('getFile', check_content=False, file_id=file_id)
@@ -99,13 +113,16 @@ class TelegramApi:
         return self.method('unbanChatMember', **arguments)
 
     def answer_callback_query(self, callback_query_id, text=None, show_alert=False):
-        return self.method('answerCallbackQuery', check_content=False, **locals())
+        arguments = locals()
+        del arguments['self']
+        return self.method('answerCallbackQuery', check_content=False, **arguments)
 
     def edit_content(self, method, **kwargs):
         arguments = kwargs
         if 'chat_id' and 'inline_message_id' not in arguments:
             if 'message_id' in arguments:
-                arguments.update({'chat_id': self.message['chat']['id']})
+                chat_id = self.message['chat']['id'] if self.message else self.plugin_data['prev_message']['chat']['id']
+                arguments.update({'chat_id': chat_id})
             else:
                 return 'ERROR: Need chat_id + message_id or inline_message_id'
         return self.method(method, check_content=False, **arguments)
@@ -122,14 +139,32 @@ class TelegramApi:
         return self.edit_content('editMessageText', **kwargs)
 
     def flag_message(self, parameters):
-        self.database.update("flagged_messages", {"currently_active": False}, {"chat_id": self.message['chat']['id']})
-        default = {"plugin_id": self.plugin_id, "chat_id": self.message['chat']['id'],
-                   "user_id": self.message['from']['id'], "single_use": False, "currently_active": True}
+        if self.message:
+            data = self.message
+        else:
+            data = self.plugin_data['prev_message']
+        chat_id = data['chat']['id']
+        default = {"plugin_id": self.plugin_id, "single_use": False, "currently_active": True,
+                   "chat_id": chat_id, "user_id": data['from']['id']}
         if type(parameters) is dict:
+            if 'chat_id' in parameters:
+                chat_id = parameters['chat_id']
+            if 'plugin_data' in parameters:
+                default['plugin_data'] = json.dumps(parameters.pop('plugin_data'))
             default.update(parameters)
         elif type(parameters) is int:
             default.update({"message_id": parameters})
+        self.database.update("flagged_messages", {"currently_active": False}, {"chat_id": chat_id})
         self.database.insert('flagged_messages', default)
+
+    def flag_time(self, time, plugin_data=None, plugin_id=None):
+        if not plugin_id:
+            plugin_id = self.plugin_id
+        default = {"prev_message": self.message or self.plugin_data['prev_message']}
+        if plugin_data and type(plugin_data) is dict:
+            default.update(plugin_data)
+        self.database.insert("flagged_time",
+                             {"plugin_id": plugin_id, "time": time, "plugin_data": json.dumps(default)})
 
     def download_file(self, file_object):
         if file_object['ok'] and file_object['result']['file_size'] < 20000000:
