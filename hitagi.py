@@ -21,8 +21,8 @@ def main():
     time_args = database.select("flagged_time", ["plugin_id", "time", "plugin_data"])
     try:
         response = response.json()
-    except AttributeError:
-        print("Error parsing Telegram response\nResponse: {}".format(response))
+    except (AttributeError, ValueError) as e:
+        print("Error parsing Telegram response: {}\nResponse: {}".format(e, response))
         time.sleep(config.sleep)
         return
     if response['ok'] and response['result']:  # Response ok and contains results
