@@ -10,7 +10,7 @@ from tgapi import TelegramApi
 
 update_id = 0
 config = util.ConfigUtils()  # Create config file object
-misc, plugins, database = util.init_package(config)
+misc, plugins, database, extensions = util.init_package(config)
 
 
 def main():
@@ -28,6 +28,7 @@ def main():
     if response['ok'] and response['result']:  # Response ok and contains results
         update_id = response['result'][-1]['update_id'] + 1
         for result in response['result']:  # Loop through result
+            executor.submit(run_extension(result))
             if 'message' in result:  # For message updates
                 executor.submit(RouteMessage(result['message'], misc, plugins, database).route_update)
             elif 'callback_query' in result:  # For callback query updates
@@ -39,6 +40,7 @@ def main():
 
 
 def check_time_args():
+    global extensions
     time_args = database.select("flagged_time", ["plugin_id", "time", "plugin_data"])
     for argument in time_args:  # See if any plugins want to be activated at this time
         if argument['time'] <= time.time():
@@ -47,6 +49,11 @@ def check_time_args():
             tg = TelegramApi(misc, database, plugin_id, plugin_data=plugin_data)
             plugins[plugin_id].main(tg)
             database.delete("flagged_time", argument)
+
+
+def run_extension(result):
+    for extension in extensions.values():
+        extension['data'] = extension['module'].main(result, extension['data'])
 
 
 if __name__ == '__main__':

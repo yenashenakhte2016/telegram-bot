@@ -19,6 +19,10 @@ class ConfigUtils:
         self.plugins = self.config['BOT_CONFIG']['plugins'].split(',')
         self.sleep = float(self.config['BOT_CONFIG']['sleep'])
         self.workers = int(self.config['BOT_CONFIG']['workers'])
+        if self.config['BOT_CONFIG']['extensions']:
+            self.extensions = self.config['BOT_CONFIG']['extensions'].split(',')
+        else:
+            self.extensions = list()
 
     def write_config(self):
         with open(self.filename, 'w') as configfile:
@@ -73,7 +77,8 @@ def init_package(config):  # Creates the package that's passed around, replaced 
     misc = {
         "token": config.token, "bot_info": bot_info, "session": session
     }
-    return [misc, plugins, database]
+    extensions = init_extension(config.extensions)
+    return [misc, plugins, database, extensions]
 
 
 def init_db():  # Creates the DB object and sets up hierarchy
@@ -98,7 +103,7 @@ def init_plugins(db, plugin_list):
             plugin = __import__('plugins', fromlist=[plugin_name])  # Import it from the plugins folder
             plugins.append(getattr(plugin, plugin_name))  # Stores plugin objects in a dictionary
         except AttributeError:
-            print("X - {} not found".format(plugin_name))
+            print("X - Unable to load plugin {}".format(plugin_name))
             continue
         if 'name' not in plugins[plugin_id].plugin_info:  # Check for name in plugin arguments
             plugins[plugin_id].plugin_info['name'] = plugin_name
@@ -113,6 +118,24 @@ def init_plugins(db, plugin_list):
                               "description": description, "usage": usage})  # Insert plugin into DB
         print("✓ - Loaded plugin {}".format(plugin_name))
     return tuple(plugins)
+
+
+def init_extension(extensions_list):
+    extensions = dict()
+    for extension_name in extensions_list:
+        try:
+            extension = __import__('extensions', fromlist=[extension_name])
+            extensions.update({
+                extension_name: {
+                    'module': getattr(extension, extension_name),
+                    'data': None
+                }
+            })
+        except AttributeError:
+            print("X - Unable to load extension {}".format(extension_name))
+            continue
+        print("✓ - Loaded extension {}".format(extension_name))
+    return extensions
 
 
 def get_me(token, session):  # getMe
