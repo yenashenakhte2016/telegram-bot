@@ -110,6 +110,8 @@ class RouteMessage:
 
 
 def route_callback_query(callback_query, database, plugins, misc):
+    if int(time.time()) - int(callback_query['message']['date']) >= 30:
+        return
     db_selection = database.select("callback_queries", ["DISTINCT plugin_id", "plugin_data", "data"],
                                    {"data": callback_query['data']})
     for db_result in db_selection:
