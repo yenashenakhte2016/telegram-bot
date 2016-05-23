@@ -119,6 +119,7 @@ def get_me(token, session):  # getMe
     url = "https://api.telegram.org/bot{}/getMe".format(token)  # Set url for getMe
     response = fetch(url, session).json()
     if response['ok']:
+        print("{} - @{}\n".format(response['result']['first_name'], response['result']['username']))
         return response['result']
     else:  # Usually means the token is wrong
         print('Error fetching bot info\nResponse: {}\nShutting Down'.format(response))
