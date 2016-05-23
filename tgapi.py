@@ -18,6 +18,9 @@ class TelegramApi:
         self.send_sticker = partial(self.send_file, 'sendFile')
         self.send_video = partial(self.send_file, 'sendVideo')
         self.send_voice = partial(self.send_file, 'sendVoice')
+        self.get_chat = partial(self.get_something, 'getChat')
+        self.get_chat_administrators = partial(self.get_something, 'getChatAdministrators')
+        self.get_chat_members_count = partial(self.get_something, 'getChatMembersCount')
         self.edit_message_reply_markup = partial(self.edit_content, 'editMessageReplyMarkup')
         self.reply_keyboard_hide = reply_keyboard_hide
         self.reply_keyboard_markup = reply_keyboard_markup
@@ -45,6 +48,10 @@ class TelegramApi:
         if not response['ok']:
             print('Error with response\nResponse: {}\nSent: {}'.format(response, content))
         return response
+
+    def get_something(self, method, chat_id=None):
+        chat_id = chat_id or self.message['chat']['id']
+        return self.method(method, check_content=False, chat_id=chat_id)
 
     def send_message(self, text, flag_message=None, **kwargs):
         arguments = {'text': text, 'parse_mode': 'HTML'}
@@ -206,6 +213,10 @@ class TelegramApi:
             'inline_keyboard': list_of_list_of_buttons
         }
         return json.dumps(package)
+
+    def get_chat_member(self, user_id, chat_id=None):
+        chat_id = chat_id or self.message['chat']['id']
+        return self.method('getChatMember', check_content=False, user_id=user_id, chat_id=chat_id)
 
 
 def reply_keyboard_markup(list_of_list_of_buttons, resize_keyboard=False, one_time_keyboard=False,

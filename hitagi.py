@@ -36,7 +36,8 @@ def main():
                                                {"data": result['callback_query']['data']})
                 for db_result in db_selection:
                     plugin_id = db_result['plugin_id']
-                    api_obj = TelegramApi(misc, database, plugin_id, plugin_data=db_result['plugin_data'],
+                    plugin_data = json.loads(db_result['plugin_data']) if db_result['plugin_data'] else None
+                    api_obj = TelegramApi(misc, database, plugin_id, plugin_data=plugin_data,
                                           callback_query=result['callback_query'])
                     plugins[plugin_id].main(api_obj)
     elif not response['ok']:

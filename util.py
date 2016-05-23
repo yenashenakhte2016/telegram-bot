@@ -94,8 +94,12 @@ def init_db():  # Creates the DB object and sets up hierarchy
 def init_plugins(db, plugin_list):
     plugins = list()
     for plugin_id, plugin_name in enumerate(plugin_list):  # Read plugins from the config file
-        plugin = __import__('plugins', fromlist=[plugin_name])  # Import it from the plugins folder
-        plugins.append(getattr(plugin, plugin_name))  # Stores plugin objects in a dictionary
+        try:
+            plugin = __import__('plugins', fromlist=[plugin_name])  # Import it from the plugins folder
+            plugins.append(getattr(plugin, plugin_name))  # Stores plugin objects in a dictionary
+        except AttributeError:
+            print("X - {} not found".format(plugin_name))
+            continue
         if 'name' not in plugins[plugin_id].plugin_info:  # Check for name in plugin arguments
             plugins[plugin_id].plugin_info['name'] = plugin_name
         pretty_name = plugins[plugin_id].plugin_info['name']
@@ -107,6 +111,7 @@ def init_plugins(db, plugin_list):
         usage = json.dumps(plugins[plugin_id].plugin_info['usage'])  # Stores usage as json
         db.insert("plugins", {"plugin_id": plugin_id, "plugin_name": plugin_name, "pretty_name": pretty_name,
                               "description": description, "usage": usage})  # Insert plugin into DB
+        print("✓ - Loaded plugin {}".format(plugin_name))
     return tuple(plugins)
 
 
