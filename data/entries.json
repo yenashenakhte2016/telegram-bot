@@ -1,0 +1,48 @@
+{
+  "myanimelist": {
+    "pretty_name": "MyAnimeList",
+    "url": "https://www.myanimelist.net/profile/{}",
+    "aliases": [
+      "mal"
+    ]
+  },
+  "hummingbird": {
+    "pretty_name": "Hummingbird",
+    "url": "https://hummingbird.me/users/{}",
+    "aliases": [
+    ]
+  },
+  "lastfm": {
+    "pretty_name": "LastFM",
+    "url": "https://www.lastfm.com/user/{}",
+    "aliases": [
+      "lfm"
+    ]
+  },
+  "anilist": {
+    "pretty_name": "AniList",
+    "url": "https://anilist.co/user/{}",
+    "aliases": [
+    ]
+  },
+  "reddit": {
+    "pretty_name": "Reddit",
+    "url": "https://reddit.com/u/{}",
+    "aliases": [
+      "leddit"
+    ]
+  },
+  "steam": {
+    "pretty_name": "Steam",
+    "url": "https://steamcommunity.com/id/{}",
+    "aliases": [
+    ]
+  },
+  "github": {
+    "pretty_name": "Github",
+    "url": "https://github.com/{}",
+    "aliases": [
+      "git"
+    ]
+  }
+}

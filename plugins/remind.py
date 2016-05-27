@@ -6,13 +6,16 @@ def main(tg):
     if tg.plugin_data:
         tg.send_message("Reminder:\n{}".format(tg.plugin_data['message']))
     elif tg.message['matched_regex']:
-        package, message = add_entry(tg.message['match'][1], tg.message['match'][2], tg.message['match'][3])
+        response_time = tg.message['match'][1]
+        unit = tg.message['match'][2]
+        message = tg.message['match'][3]
+        current_time = tg.message['date']
+        package, message = add_entry(response_time, unit, message, current_time)
         tg.flag_time(**package)
         tg.send_message(message)
 
 
-def add_entry(response_time, unit, message):
-    import time
+def add_entry(response_time, unit, message, time):
     if message[0:3] == 'to ':
         message = message[3:]
     responses = ["Ok, I will remind you in", "I'll be sure to remind you in", "Expect to hear from me in",
@@ -31,7 +34,7 @@ def add_entry(response_time, unit, message):
         response += 'hour'
     if response_time > 1:
         response += 's'
-    time = time.time() + epoch_time
+    time += epoch_time
     package = {
         'time': time,
         'plugin_data': {

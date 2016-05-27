@@ -3,6 +3,8 @@ from functools import partial
 import util
 import json
 
+from sqlite3 import IntegrityError
+
 
 class TelegramApi:
     def __init__(self, misc, database, plugin_id, message=None, plugin_data=None, callback_query=None):
@@ -149,6 +151,8 @@ class TelegramApi:
         arguments = locals()
         del arguments['self']
         arguments.update(arguments.pop('kwargs'))
+        if 'message_id' not in arguments:
+            arguments['message_id'] = self.chat_data['message_id']
         return self.edit_content('editMessageText', **arguments)
 
     def edit_message_caption(self, **kwargs):
@@ -201,14 +205,18 @@ class TelegramApi:
             return util.fetch_file(url, 'data/files/{}'.format(file_name), self.misc['session'])
 
     def inline_keyboard_markup(self, list_of_list_of_buttons, plugin_data=None):
+        plugin_data = json.dumps(plugin_data)
         for button_list in list_of_list_of_buttons:
             for button in button_list:
                 if 'text' not in button:
                     return "Error: Text not found in button object"
                 if 'callback_data' in button:
-                    self.database.insert("callback_queries",
-                                         {"plugin_id": self.plugin_id, "data": button['callback_data'],
-                                          "plugin_data": plugin_data})
+                    try:
+                        self.database.insert("callback_queries",
+                                             {"plugin_id": self.plugin_id, "data": button['callback_data'],
+                                              "plugin_data": plugin_data})
+                    except IntegrityError:
+                        continue
         package = {
             'inline_keyboard': list_of_list_of_buttons
         }

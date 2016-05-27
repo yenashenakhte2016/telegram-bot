@@ -1,6 +1,7 @@
-import re
 import json
+import re
 import time
+
 from tgapi import TelegramApi
 
 
@@ -15,6 +16,13 @@ class RouteMessage:
         self.message['matched_argument'] = None
 
     def route_update(self):
+        if 'text' in self.message and 'entities' in self.message:
+            message = self.message['text']
+            bot_name = '@' + self.misc['bot_info']['username']
+            name_match = re.search('^(/[^ ]*){}'.format(bot_name), message)
+            if name_match:
+                self.message['text'] = message.replace(message[:name_match.end(0)],
+                                                       message[:name_match.end(0) - len(bot_name)])
         if 'reply_to_message' in self.message and not self.check_db_reply():
             self.plugin_check()
         elif self.message['chat']['type'] == 'private':
@@ -110,8 +118,6 @@ class RouteMessage:
 
 
 def route_callback_query(callback_query, database, plugins, misc):
-    if int(time.time()) - int(callback_query['message']['date']) >= 30:
-        return
     db_selection = database.select("callback_queries", ["DISTINCT plugin_id", "plugin_data", "data"],
                                    {"data": callback_query['data']})
     for db_result in db_selection:

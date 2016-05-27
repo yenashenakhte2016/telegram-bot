@@ -52,15 +52,6 @@ def fetch_file(url, file_path, session=requests):
     return file_path
 
 
-def clean_message(message, bot_name):  # Replace this with something based on MessageEntities
-    bot_name = '@' + bot_name
-    name_match = re.search('^(/[^ ]*){}'.format(bot_name), message)
-    if name_match:
-        return message.replace(message[:name_match.end(0)], message[:name_match.end(0) - len(bot_name)])
-    else:
-        return message
-
-
 def name_file(file_id, file_name):
     if file_name:
         match = re.findall('(\.[0-9a-zA-Z]+$)', file_name)
@@ -82,7 +73,7 @@ def init_package(config):  # Creates the package that's passed around, replaced 
 
 
 def init_db():  # Creates the DB object and sets up hierarchy
-    if not os.path.exists('data'):  # All data should be placed here
+    if not os.path.exists('data/files'):  # All data should be placed here
         os.makedirs('data/files')
     db = Database('bot')
     db.create_table("plugins", {"plugin_id": "INT PRIMARY KEY NOT NULL", "plugin_name": "TEXT",
@@ -92,7 +83,7 @@ def init_db():  # Creates the DB object and sets up hierarchy
                                          "plugin_data": "TEXT"})
     db.create_table("flagged_time", {"plugin_id": "INT", "time": "INT", "plugin_data": "TEXT"})
     db.create_table("downloads", {"file_id": "TEXT", "file_path": "TEXT"})
-    db.create_table("callback_queries", {"plugin_id": "INT", "data": "TEXT", "plugin_data": "TEXT"})
+    db.create_table("callback_queries", {"plugin_id": "INT", "data": "TEXT UNIQUE", "plugin_data": "TEXT"})
     return db
 
 
