@@ -1,4 +1,6 @@
 def main(tg):
+    if not tg.message['cleaned_message'] and tg.message['chat']['type'] != "private":
+        return
     tg.send_chat_action('typing')
     first_name = tg.misc['bot_info']['first_name']
     message = "Hi, I'm {}! A multipurpose telegram bot written in python 3. You can see a list of my commands using " \
@@ -10,14 +12,14 @@ def main(tg):
         tg.send_message(message, disable_web_page_preview=True)
 
 
-plugin_info = {
+plugin_parameters = {
     'name': "Start",
     'desc': "Introduces the bot!",
-    'usage': ['/start']
+    'permissions': True
 }
 
 arguments = {
     'text': [
-        "^[/]start$"
+        "^/start$"
     ]
 }

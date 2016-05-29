@@ -1,16 +1,19 @@
-import json
-
-
 def main(tg):
     if tg.message and tg.message['matched_regex'] == arguments['text'][0]:
+        if not tg.message['cleaned_message'] and tg.message['chat']['type'] != "private":
+            return
         tg.send_chat_action('typing')
-        plugin_list = tg.database.select("plugins", ["pretty_name"])
+        chat_id = str(tg.chat_data['chat']['id']).replace('-', '')
+        plugin_list = tg.database.select("plugins", ["pretty_name", "plugin_name"])
+        active_plugins = tg.database.select("chat{}blacklist".format(chat_id), ["plugin_name"], {"plugin_status": 1})
         keyboard = []
         remaining = len(plugin_list)
         for plugin in plugin_list:
-            for plugin_name in plugin.values():
+            plugin_name = plugin['plugin_name']
+            pretty_name = plugin['pretty_name']
+            if any(plugin_name == active['plugin_name'] for active in active_plugins):
                 row_length = 3 if remaining >= 3 or remaining == 1 else 2
-                button = {'text': plugin_name, 'callback_data': '%%help%%{}'.format(plugin_name)}
+                button = {'text': pretty_name, 'callback_data': '%%help%%{}'.format(pretty_name)}
                 if keyboard and len(keyboard[-1]) < row_length:
                     keyboard[-1].append(button)
                 else:
@@ -24,29 +27,33 @@ def main(tg):
 
 def grab_plugin(tg):
     if tg.callback_query:
-        plugin = tg.callback_query['data'].replace('%%help%%', '')
+        plugin = tg.callback_query['data'].replace('%%help%%', '').lower()
     else:
         plugin = tg.message['match'].lower()
-    plugin_data = tg.database.select("plugins", ["pretty_name", "description", "usage"], {'pretty_name': plugin})[0]
-    if tg.callback_query:
-        tg.answer_callback_query(plugin_data['description'])
+    plugin_data = tg.database.select("plugins", ["pretty_name", "desc", "extended_desc"],
+                                     {'lower(pretty_name)': plugin})
+    if plugin_data:
+        plugin_data = plugin_data.pop()
+        if tg.callback_query:
+            tg.answer_callback_query(plugin_data['desc'])
+        else:
+            if plugin_data['extended_desc']:
+                tg.send_message(plugin_data['extended_desc'])
+            else:
+                tg.send_message("Extended description not available :(")
     else:
-        tg.send_chat_action('typing')
-        message = "<b>{}:</b>\n{}".format(plugin_data['pretty_name'], plugin_data['description'])
-        if plugin_data['usage'] and plugin_data['usage'] != 'null':
-            usage = json.loads(plugin_data['usage'])
-            message += "\n<b>Usage:</b>\n"
-            for command in usage:
-                message += "{}\n".format(command)
-        tg.send_message(message)
+        if tg.callback_query:
+            tg.answer_callback_query("Unknown error occurred")
+        else:
+            tg.send_message("I can't seem to find this plugin")
 
 
-plugin_info = {
+plugin_parameters = {
     'name': "Help",
-    'desc': "Provides descriptions and usage for plugins you choose",
-    'usage': [
-        "/help"
-    ],
+    'desc': "Learn about this bots various functions!",
+    'extended_desc': "The help plugin is self-explanatory. You can use /help to receive a list of plugins active in the"
+                     "chat and /help plugin-name for an extended description.",
+    'permissions': True
 }
 
 arguments = {
@@ -55,3 +62,4 @@ arguments = {
         "^/help (.*)"
     ]
 }
+

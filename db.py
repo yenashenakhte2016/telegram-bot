@@ -10,25 +10,24 @@ class Database:
         self.lock = threading.Lock()
 
     def execute(self, command, bindings=list(), commit=False):
-        try:
-            with self.lock:
-                self.db.execute(command, bindings)
-            if commit:
-                self.connection.commit()
-            return True
-        except (sqlite3.OperationalError, sqlite3.ProgrammingError) as e:
-            print("SQL ERROR: {}\nCOMMAND: {}\nBINDINGS:".format(e, command, bindings))
-            return e
+        with self.lock:
+            self.db.execute(command, bindings)
+        if commit:
+            self.connection.commit()
+        return True
 
     def create_table(self, table_name, parameters, drop_existing=False):
         if drop_existing:
-            self.execute('DROP TABLE IF EXISTS {}'.format(table_name))
+            self.drop_table(table_name)
         query = "CREATE TABLE IF NOT EXISTS {}(".format(table_name)
         parameters = collections.OrderedDict(parameters)
         column_names = parameters.keys()
         column_types = parameters.values()
         query += ', '.join('\n{} {}'.format(*t) for t in zip(column_names, column_types)) + '\n);'
         return self.execute(query, commit=True)
+
+    def drop_table(self, table_name):
+        self.execute('DROP TABLE IF EXISTS {}'.format(table_name))
 
     def insert(self, table_name, values):
         values = collections.OrderedDict(values)

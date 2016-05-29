@@ -30,8 +30,8 @@ def main():
         return
     if response['ok'] and response['result']:  # Response ok and contains results
         update_id = response['result'][-1]['update_id'] + 1
+        executor.submit(run_extension(response['result']))
         for result in response['result']:  # Loop through result
-            executor.submit(run_extension(result))
             if 'message' in result:  # For message updates
                 executor.submit(RouteMessage(result['message'], misc, plugins, database).route_update)
             elif 'callback_query' in result:  # For callback query updates
@@ -43,25 +43,24 @@ def main():
 
 
 def check_time_args():
-    global extensions, lock
     with time_lock:
-        time_args = database.select("flagged_time", ["plugin_id", "time", "plugin_data"])
+        time_args = database.select("flagged_time", ["plugin_name", "time", "plugin_data"])
         for argument in time_args:  # See if any plugins want to be activated at this time
             if argument['time'] <= time.time():
-                plugin_id = argument['plugin_id']
+                plugin_name = argument['plugin_name']
                 plugin_data = json.loads(argument['plugin_data']) if argument['plugin_data'] else None
-                tg = TelegramApi(misc, database, plugin_id, plugin_data=plugin_data)
-                plugins[plugin_id].main(tg)
+                tg = TelegramApi(misc, database, plugin_name, plugin_data=plugin_data)
+                plugins[plugin_name].main(tg)
                 database.delete("flagged_time", argument)
 
 
 def run_extension(result):
-    global lock
     with extension_lock:
         for extension in extensions.values():
-            extension['data'] = extension['module'].main(result, extension['data'])
+            extension['data'] = extension['module'].main(result, database, extension['data'])
 
 
 if __name__ == '__main__':
     while True:
         main()
+

@@ -1,4 +1,3 @@
-import json
 import os
 import re
 import shutil
@@ -19,6 +18,7 @@ class ConfigUtils:
         self.plugins = self.config['BOT_CONFIG']['plugins'].split(',')
         self.sleep = float(self.config['BOT_CONFIG']['sleep'])
         self.workers = int(self.config['BOT_CONFIG']['workers'])
+        self.admins = self.config['BOT_CONFIG']['admins'].split(',')
         if self.config['BOT_CONFIG']['extensions']:
             self.extensions = self.config['BOT_CONFIG']['extensions'].split(',')
         else:
@@ -66,7 +66,7 @@ def init_package(config):  # Creates the package that's passed around, replaced 
     database = init_db()  # Stores the database object
     plugins = init_plugins(database, config.plugins)  # Stores all plugins
     misc = {
-        "token": config.token, "bot_info": bot_info, "session": session
+        "token": config.token, "bot_info": bot_info, "session": session, "config": config
     }
     extensions = init_extension(config.extensions)
     return [misc, plugins, database, extensions]
@@ -76,39 +76,56 @@ def init_db():  # Creates the DB object and sets up hierarchy
     if not os.path.exists('data/files'):  # All data should be placed here
         os.makedirs('data/files')
     db = Database('bot')
-    db.create_table("plugins", {"plugin_id": "INT PRIMARY KEY NOT NULL", "plugin_name": "TEXT",
-                                "pretty_name": "TEXT", "description": "TEXT", "usage": "TEXT"}, drop_existing=True)
-    db.create_table("flagged_messages", {"plugin_id": "INT", "message_id": "INT", "chat_id": "INT",
+    db.create_table("plugins", {"plugin_name": "TEXT", "pretty_name": "TEXT", "desc": "TEXT", "permissions": "TEXT",
+                                "extended_desc": "TEXT"},
+                    drop_existing=True)
+    db.create_table("flagged_messages", {"plugin_name": "INT", "message_id": "INT", "chat_id": "INT",
                                          "user_id": "INT", "single_use": "BOOLEAN", "currently_active": "BOOLEAN",
                                          "plugin_data": "TEXT"})
-    db.create_table("flagged_time", {"plugin_id": "INT", "time": "INT", "plugin_data": "TEXT"})
+    db.create_table("flagged_time", {"plugin_name": "TEXT", "time": "INT", "plugin_data": "TEXT"})
     db.create_table("downloads", {"file_id": "TEXT", "file_path": "TEXT"})
-    db.create_table("callback_queries", {"plugin_id": "INT", "data": "TEXT UNIQUE", "plugin_data": "TEXT"})
+    db.create_table("callback_queries", {"plugin_name": "INT", "data": "TEXT UNIQUE", "plugin_data": "TEXT"})
     return db
 
 
 def init_plugins(db, plugin_list):
-    plugins = list()
-    for plugin_id, plugin_name in enumerate(plugin_list):  # Read plugins from the config file
+    plugin_obj_list = dict()
+    plugins = __import__('plugins', fromlist=plugin_list)
+    for plugin_name in plugin_list:
         try:
-            plugin = __import__('plugins', fromlist=[plugin_name])  # Import it from the plugins folder
-            plugins.append(getattr(plugin, plugin_name))  # Stores plugin objects in a dictionary
+            plugin = getattr(plugins, plugin_name)
         except AttributeError:
-            print("X - Unable to load plugin {}".format(plugin_name))
+            print("Failed to load {}".format(plugin_name))
             continue
-        if 'name' not in plugins[plugin_id].plugin_info:  # Check for name in plugin arguments
-            plugins[plugin_id].plugin_info['name'] = plugin_name
-        pretty_name = plugins[plugin_id].plugin_info['name']
-        if 'desc' not in plugins[plugin_id].plugin_info:  # Check for description in plugin arguments
-            plugins[plugin_id].plugin_info['desc'] = None
-        description = plugins[plugin_id].plugin_info['desc']
-        if 'usage' not in plugins[plugin_id].plugin_info:  # Check for usage in plugin arguments
-            plugins[plugin_id].plugin_info['usage'] = None
-        usage = json.dumps(plugins[plugin_id].plugin_info['usage'])  # Stores usage as json
-        db.insert("plugins", {"plugin_id": plugin_id, "plugin_name": plugin_name, "pretty_name": pretty_name,
-                              "description": description, "usage": usage})  # Insert plugin into DB
-        print("✓ - Loaded plugin {}".format(plugin_name))
-    return tuple(plugins)
+        if hasattr(plugin, 'plugin_parameters'):
+            if 'name' and 'desc' and 'permissions' in plugin.plugin_parameters:
+                pretty_name = plugin.plugin_parameters['name']
+                desc = plugin.plugin_parameters['desc']
+                permissions = plugin.plugin_parameters['permissions']
+                if permissions is True:
+                    permissions = "11"
+                elif permissions is False:
+                    permissions = "00"
+                elif len(permissions) > 2:
+                    permissions = "11"
+                else:
+                    for char in permissions:
+                        try:
+                            int(char)
+                        except ValueError:
+                            permissions = '11'
+                if 'extended_desc' in plugin.plugin_parameters:
+                    extended_desc = plugin.plugin_parameters['extended_desc']
+                else:
+                    extended_desc = None
+                db.insert("plugins", {"plugin_name": plugin_name, "pretty_name": pretty_name, "desc": desc,
+                                      "permissions": permissions, "extended_desc": extended_desc})
+                plugin_obj_list.update({plugin_name: plugin})
+                print("Loaded plugin {}".format(plugin_name))
+            else:
+                print("{} is missing something in plugin parameters".format(plugin_name))
+                continue
+    return plugin_obj_list
 
 
 def init_extension(extensions_list):
@@ -133,7 +150,7 @@ def get_me(token, session):  # getMe
     url = "https://api.telegram.org/bot{}/getMe".format(token)  # Set url for getMe
     response = fetch(url, session).json()
     if response['ok']:
-        print("{} - @{}\n".format(response['result']['first_name'], response['result']['username']))
+        print("Bot: {} - @{}\n".format(response['result']['first_name'], response['result']['username']))
         return response['result']
     else:  # Usually means the token is wrong
         print('Error fetching bot info\nResponse: {}\nShutting Down'.format(response))

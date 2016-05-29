@@ -1,17 +1,18 @@
+import json
 from functools import partial
+from sqlite3 import IntegrityError
 
 import util
-import json
 
 from sqlite3 import IntegrityError
 
 
 class TelegramApi:
-    def __init__(self, misc, database, plugin_id, message=None, plugin_data=None, callback_query=None):
+    def __init__(self, misc, database, plugin_name, message=None, plugin_data=None, callback_query=None):
         self.message = message
         self.misc = misc
         self.database = database
-        self.plugin_id = plugin_id
+        self.plugin_name = plugin_name
         self.plugin_data = plugin_data
         self.callback_query = callback_query
         self.send_photo = partial(self.send_file, 'sendPhoto')
@@ -52,7 +53,7 @@ class TelegramApi:
         return response
 
     def get_something(self, method, chat_id=None):
-        chat_id = chat_id or self.message['chat']['id']
+        chat_id = chat_id or self.chat_data['chat']['id']
         return self.method(method, check_content=False, chat_id=chat_id)
 
     def send_message(self, text, flag_message=None, **kwargs):
@@ -162,7 +163,7 @@ class TelegramApi:
 
     def flag_message(self, parameters):
         chat_id = self.chat_data['chat']['id']
-        default = {"plugin_id": self.plugin_id, "single_use": False, "currently_active": True,
+        default = {"plugin_name": self.plugin_name, "single_use": False, "currently_active": True,
                    "chat_id": chat_id, "user_id": None}
         if type(parameters) is dict:
             if 'chat_id' in parameters:
@@ -175,14 +176,14 @@ class TelegramApi:
         self.database.update("flagged_messages", {"currently_active": False}, {"chat_id": chat_id})
         self.database.insert('flagged_messages', default)
 
-    def flag_time(self, time, plugin_data=None, plugin_id=None):
-        if not plugin_id:
-            plugin_id = self.plugin_id
+    def flag_time(self, time, plugin_data=None, plugin_name=None):
+        if not plugin_name:
+            plugin_name = self.plugin_name
         default = {"prev_message": self.chat_data}
         if plugin_data and type(plugin_data) is dict:
             default.update(plugin_data)
         self.database.insert("flagged_time",
-                             {"plugin_id": plugin_id, "time": time, "plugin_data": json.dumps(default)})
+                             {"plugin_name": plugin_name, "time": time, "plugin_data": json.dumps(default)})
 
     def download_file(self, file_object):
         if file_object['ok'] and file_object['result']['file_size'] < 20000000:
@@ -213,7 +214,7 @@ class TelegramApi:
                 if 'callback_data' in button:
                     try:
                         self.database.insert("callback_queries",
-                                             {"plugin_id": self.plugin_id, "data": button['callback_data'],
+                                             {"plugin_name": self.plugin_name, "data": button['callback_data'],
                                               "plugin_data": plugin_data})
                     except IntegrityError:
                         continue
@@ -223,7 +224,7 @@ class TelegramApi:
         return json.dumps(package)
 
     def get_chat_member(self, user_id, chat_id=None):
-        chat_id = chat_id or self.message['chat']['id']
+        chat_id = chat_id or self.chat_data['chat']['id']
         return self.method('getChatMember', check_content=False, user_id=user_id, chat_id=chat_id)
 
 
