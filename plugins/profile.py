@@ -28,7 +28,8 @@ def main(tg):
 
 def return_profile(tg):
     global user_id
-    sent_message = tg.send_message("Loading...")
+    tg.send_message("Loading...")
+    tg.send_chat_action("Typing")
     if 'reply_to_message' in tg.message:
         user_id = tg.message['reply_to_message']['from']['id']
         first_name = tg.message['reply_to_message']['from']['first_name']
@@ -40,7 +41,7 @@ def return_profile(tg):
         with open('data/me/{}.json'.format(user_id)) as json_file:
             profile = json.load(json_file)
     except (JSONDecodeError, FileNotFoundError):
-        tg.edit_message_text(error, message_id=sent_message['result']['message_id'])
+        tg.edit_message_text(error, parse_mode="HTML")
         return
     keyboard = []
     remaining = len(profile)
@@ -62,8 +63,7 @@ def return_profile(tg):
         if last_track and last_track[0]['now_playing']:
             last_track = last_track.pop()
             message += "\n🎶 {} - {} 🎶".format(last_track['song'], last_track['artist'])
-    tg.edit_message_text(message, message_id=sent_message['result']['message_id'], reply_markup=inline_keyboard,
-                         parse_mode="HTML")
+    tg.edit_message_text(message, reply_markup=inline_keyboard, parse_mode="HTML")
 
 
 def add_entry(tg):

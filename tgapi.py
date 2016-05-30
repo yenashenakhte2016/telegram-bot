@@ -28,6 +28,7 @@ class TelegramApi:
         self.reply_keyboard_hide = reply_keyboard_hide
         self.reply_keyboard_markup = reply_keyboard_markup
         self.force_reply = force_reply
+        self.last_sent = None
         if self.message:
             self.chat_data = self.message
         elif self.callback_query:
@@ -60,13 +61,18 @@ class TelegramApi:
         arguments = {'text': text, 'parse_mode': 'HTML'}
         arguments.update(kwargs)
         response = self.method('sendMessage', **arguments)
-        if flag_message and response['ok']:  # Will crash if response attribute error
-            message_id = response['result']['message_id']
-            if type(flag_message) is dict and 'message_id' not in flag_message:
-                flag_message.update({'message_id': int(message_id)})
-            else:
-                flag_message = message_id
-            self.flag_message(flag_message)
+        if response['ok']:
+            self.last_sent = {
+                'message_id': response['result']['message_id'],
+                'chat_id': response['result']['chat']['id']
+            }
+            if flag_message:
+                message_id = response['result']['message_id']
+                if type(flag_message) is dict and 'message_id' not in flag_message:
+                    flag_message.update({'message_id': int(message_id)})
+                else:
+                    flag_message = message_id
+                self.flag_message(flag_message)
         return response
 
     def forward_message(self, message_id, **kwargs):
@@ -152,8 +158,12 @@ class TelegramApi:
         arguments = locals()
         del arguments['self']
         arguments.update(arguments.pop('kwargs'))
-        if 'message_id' not in arguments:
-            arguments['message_id'] = self.chat_data['message_id']
+        if 'chat_id' or 'message_id' or 'inline_message_id' not in arguments:
+            try:
+                arguments['message_id'] = self.last_sent['message_id']
+                arguments['chat_id'] = self.last_sent['chat_id']
+            except TypeError:
+                return
         return self.edit_content('editMessageText', **arguments)
 
     def edit_message_caption(self, **kwargs):
