@@ -30,7 +30,7 @@ def main():
         return
     if response['ok'] and response['result']:  # Response ok and contains results
         update_id = response['result'][-1]['update_id'] + 1
-        executor.submit(run_extension(response['result']))
+        executor.submit(run_extension, response['result'])
         for result in response['result']:  # Loop through result
             if 'message' in result:  # For message updates
                 executor.submit(RouteMessage(result['message'], misc, plugins, database).route_update)
