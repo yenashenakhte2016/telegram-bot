@@ -142,7 +142,7 @@ def init_extension(extensions_list):
         except AttributeError:
             print("X - Unable to load extension {}".format(extension_name))
             continue
-        print("✓ - Loaded extension {}".format(extension_name))
+        print("Loaded extension {}".format(extension_name))
     return extensions
 
 

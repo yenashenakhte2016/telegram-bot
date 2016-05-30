@@ -7,10 +7,11 @@ class Database:
     def __init__(self, db_name):
         self.connection = sqlite3.connect('data/' + db_name, check_same_thread=False)
         self.db = self.connection.cursor()
-        self.lock = threading.Lock()
+        self.execute_lock = threading.Lock()
+        self.select_lock = threading.Lock()
 
     def execute(self, command, bindings=list(), commit=False):
-        with self.lock:
+        with self.execute_lock:
             self.db.execute(command, bindings)
         if commit:
             self.connection.commit()
@@ -68,22 +69,23 @@ class Database:
         return self.execute(query, bindings, commit=True)
 
     def select(self, table_name, columns, conditions=None):
-        return_obj = list()
-        query = "SELECT {} FROM {}".format(', '.join(columns), table_name)
-        if conditions:
-            query += ' WHERE '
-            conditions = collections.OrderedDict(conditions)
-            condition_list = list()
-            for column in conditions.keys():
-                condition_list.append("{}=?".format(column))
-            query += ' AND '.join(condition_list)
-            bindings = list(conditions.values())
-            self.execute(query, bindings)
-        else:
-            self.execute(query)
-        for index, result in enumerate(self.db):
-            return_obj.append(dict())
-            for i, column_name in enumerate(columns):
-                column_name = column_name.replace('DISTINCT ', '')
-                return_obj[index].update({column_name: result[i]})
-        return return_obj
+        with self.select_lock:
+            return_obj = list()
+            query = "SELECT {} FROM {}".format(', '.join(columns), table_name)
+            if conditions:
+                query += ' WHERE '
+                conditions = collections.OrderedDict(conditions)
+                condition_list = list()
+                for column in conditions.keys():
+                    condition_list.append("{}=?".format(column))
+                query += ' AND '.join(condition_list)
+                bindings = list(conditions.values())
+                self.execute(query, bindings)
+            else:
+                self.execute(query)
+            for index, result in enumerate(self.db):
+                return_obj.append(dict())
+                for i, column_name in enumerate(columns):
+                    column_name = column_name.replace('DISTINCT ', '')
+                    return_obj[index].update({column_name: result[i]})
+            return return_obj

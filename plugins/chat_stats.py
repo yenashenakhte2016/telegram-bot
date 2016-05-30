@@ -4,6 +4,10 @@ from sqlite3 import OperationalError
 chat_id = int
 chat_name = str
 
+types = ["audio", "document", "photo", "sticker", "video", "voice", "contact", "location", "venue", "text"]
+pretty_types = ["Audio", "Documents", "Photos", "Stickers", "Videos", "voice", "Contacts", "Locations", "Venues",
+                "Text"]
+
 
 def main(tg):
     global chat_id, chat_name
@@ -39,19 +43,31 @@ def check_status(tg):
         db_selection = tg.database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
     if db_selection:
         try:
-            db_selection = tg.database.select(chat_name, ["AVG(char_length)", "COUNT(*)"])
+            db_selection = tg.database.select(chat_name, ["char_length", "message_type"])
         except OperationalError:
             tg.edit_message_text("Error, try again later")
             return
-        avg_char_length = math.ceil(db_selection[0]['AVG(char_length)'])
-        total_sent = db_selection[0]['COUNT(*)']
-        tg.database.execute("select message_type, count(*) from {} group by message_type;".format(chat_name))
-        message = "<b>Total messages sent:</b> {}\n\n<b>Average word length:</b> {}\n".format(total_sent,
-                                                                                                avg_char_length)
-        for result in tg.database.db:
-            message += "\n<b>{}s:</b> {}".format(result[0].title(), result[1])
-        tg.edit_message_text(message,
-                             parse_mode="HTML")
+        if len(db_selection) < 250:
+            tg.edit_message_text("Still collecting data. Check back in a bit.")
+            return
+        total_messages = 0
+        total_characters = 0
+        message_types = dict()
+        for result in db_selection:
+            total_messages += 1
+            if result['char_length']:
+                total_characters += result['char_length']
+            try:
+                message_types[result['message_type']] += 1
+            except KeyError:
+                message_types[result['message_type']] = 1
+        message = "<b>Total Messages Sent:</b> {}\n<b>Total Characters Sent:</b> {}\n" \
+                  "<b>Average Message Length:</b> {}".format(total_messages, total_characters,
+                                                             math.ceil(total_characters / message_types['text']))
+        message += "\n\n<b>Types of Messages Sent:</b>"
+        for msg_type, total in message_types.items():
+            message += "\n<b>{}:</b> {}".format(pretty_types[types.index(msg_type)], total)
+        tg.edit_message_text(message, parse_mode="HTML")
     else:
         keyboard = [[{'text': 'Enable Stats', 'callback_data': '%%toggle_on%%'}]]
         tg.edit_message_text(
