@@ -4,8 +4,6 @@ from sqlite3 import IntegrityError
 
 import util
 
-from sqlite3 import IntegrityError
-
 
 class TelegramApi:
     def __init__(self, misc, database, plugin_name, message=None, plugin_data=None, callback_query=None):
@@ -158,12 +156,15 @@ class TelegramApi:
         arguments = locals()
         del arguments['self']
         arguments.update(arguments.pop('kwargs'))
-        if 'chat_id' or 'message_id' or 'inline_message_id' not in arguments:
-            try:
-                arguments['message_id'] = self.last_sent['message_id']
-                arguments['chat_id'] = self.last_sent['chat_id']
-            except TypeError:
-                return
+        if 'chat_id' or 'message_id' not in arguments:
+            if 'message_id' in arguments:
+                arguments['chat_id'] = self.chat_data['chat']['id']
+            elif 'inline_message_id' not in arguments:
+                try:
+                    arguments['message_id'] = self.last_sent['message_id']
+                    arguments['chat_id'] = self.last_sent['chat_id']
+                except TypeError:
+                    return
         return self.edit_content('editMessageText', **arguments)
 
     def edit_message_caption(self, **kwargs):
