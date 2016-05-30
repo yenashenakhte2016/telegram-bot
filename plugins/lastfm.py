@@ -52,7 +52,7 @@ def last_played(first_name, lastfm_name):
             else:
                 message = "{} has last listened to:\n".format(first_name)
             message += "{}\t-\t{}".format(track['song'], track['artist'])
-            keyboard = [[{'text': "Profile", 'url': profile}, {'text': "Song", 'url': profile}]]
+            keyboard = [[{'text': "Profile", 'url': profile}, {'text': "Song", 'url': track['url']}]]
             return {'text': message, 'keyboard': keyboard}
 
 
