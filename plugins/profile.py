@@ -28,6 +28,7 @@ def main(tg):
 
 def return_profile(tg):
     global user_id
+    sent_message = tg.send_message("Loading...")
     if 'reply_to_message' in tg.message:
         user_id = tg.message['reply_to_message']['from']['id']
         first_name = tg.message['reply_to_message']['from']['first_name']
@@ -39,10 +40,11 @@ def return_profile(tg):
         with open('data/me/{}.json'.format(user_id)) as json_file:
             profile = json.load(json_file)
     except (JSONDecodeError, FileNotFoundError):
-        tg.send_message(error)
+        tg.edit_message_text(error, message_id=sent_message['result']['message_id'])
         return
     keyboard = []
     remaining = len(profile)
+    message = "{}'s Profile:".format(first_name.title()) if remaining else error
     for name, username in profile.items():
         row_length = 3 if remaining >= 3 or remaining == 1 else 2
         pretty_name = entries[name]['pretty_name']
@@ -53,8 +55,15 @@ def return_profile(tg):
         else:
             keyboard.append([button])
         remaining -= 1
-    tg.send_message("{}'s Profile:".format(first_name.title()),
-                    reply_markup=tg.inline_keyboard_markup(keyboard))
+    inline_keyboard = tg.inline_keyboard_markup(keyboard)
+    if 'lastfm' in profile:
+        from plugins import lastfm
+        last_track = lastfm.get_recently_played(profile['lastfm'], 1)
+        if last_track and last_track[0]['now_playing']:
+            last_track = last_track.pop()
+            message += "\n🎶 {} - {} 🎶".format(last_track['song'], last_track['artist'])
+    tg.edit_message_text(message, message_id=sent_message['result']['message_id'], reply_markup=inline_keyboard,
+                         parse_mode="HTML")
 
 
 def add_entry(tg):
