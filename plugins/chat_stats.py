@@ -52,9 +52,13 @@ def opt_out(tg):
         else:
             tg.answer_callback_query("Only mods can disable stats!")
     elif tg.message:
-        keyboard = [[{'text': 'Disable & Remove Stats', 'callback_data': '%%toggle_off%%'}]]
-        tg.send_message("Are you sure you want to opt-out? All chat data is deleted, this is irreversible.",
-                        reply_markup=tg.inline_keyboard_markup(keyboard))
+        db_selection = tg.database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
+        if db_selection:
+            keyboard = [[{'text': 'Disable & Remove Stats', 'callback_data': '%%toggle_off%%'}]]
+            tg.send_message("Are you sure you want to opt-out? All chat data is deleted, this is irreversible.",
+                            reply_markup=tg.inline_keyboard_markup(keyboard))
+        else:
+            tg.send_message("You aren't currently opted in")
     return
 
 
@@ -114,7 +118,7 @@ plugin_parameters = {
     'name': "Chat Stats",
     'desc': "Chat and user message statistics",
     'extended_desc': "...",
-    'permissions': True
+    'permissions': 10
 }
 
 arguments = {
