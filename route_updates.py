@@ -1,8 +1,9 @@
 import json
 import re
 import time
-from sqlite3 import OperationalError
+from sqlite3 import OperationalError, ProgrammingError
 
+from inline_mode import InlineMode
 from tgapi import TelegramApi
 
 
@@ -93,6 +94,9 @@ class RouteMessage:
                         self.create_default_table()
                         db_selection = self.database.select("chat{}blacklist".format(chat_id), ["plugin_status"],
                                                             {"plugin_name": plugin_name})
+                    except ProgrammingError:
+                        db_selection = self.database.select("chat{}blacklist".format(chat_id), ["plugin_status"],
+                                                            {"plugin_name": plugin_name})
                     if db_selection:
                         enabled = db_selection[0]['plugin_status']
                     else:
@@ -161,3 +165,16 @@ def route_callback_query(callback_query, database, plugins, misc):
         api_obj = TelegramApi(misc, database, plugin_name, plugin_data=plugin_data,
                               callback_query=callback_query)
         plugins[plugin_name].main(api_obj)
+
+
+def route_inline_query(inline_query, database, plugins, misc):
+    if inline_query['query']:
+        for plugin, module in plugins.items():
+            if hasattr(module, 'inline_arguments'):
+                for argument in module.inline_arguments:
+                    match = re.findall(str(argument), str(inline_query['query']))
+                    if match:
+                        inline_query['matched_regex'] = argument
+                        inline_query['match'] = match[0]
+                        module.main(InlineMode(misc, database, plugin, inline_query))
+                        return

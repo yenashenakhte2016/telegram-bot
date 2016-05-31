@@ -1,5 +1,5 @@
 import math
-from sqlite3 import OperationalError
+from sqlite3 import OperationalError, IntegrityError
 
 chat_id = int
 chat_name = str
@@ -32,7 +32,10 @@ def opt_in(tg):
     if db_selection:
         tg.answer_callback_query("Chat stats are already enabled!")
     elif check_if_mod(tg):
-        tg.database.insert("chat_opt_status", {"status": True, "chat_id": chat_id})
+        try:
+            tg.database.insert("chat_opt_status", {"status": True, "chat_id": chat_id})
+        except IntegrityError:
+            tg.database.update("chat_opt_status", {"status": True}, {"chat_id": chat_id})
         tg.answer_callback_query("You have opted in!")
         tg.edit_message_text("You have successfully opted into stat collection."
                              "You'll be able to see statistics shortly. Opt out at anytime using /chatstats opt-out",
@@ -70,30 +73,21 @@ def check_status(tg):
         db_selection = tg.database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
     if db_selection:
         try:
-            db_selection = tg.database.select(chat_name, ["char_length", "message_type"])
+            db_selection = tg.database.select(chat_name, ["char_length", "message_type", "time"])
         except OperationalError:
             tg.edit_message_text("Error, try again later")
             return
-        if len(db_selection) < 250:
+        if len(db_selection) < 0:
             tg.edit_message_text("Still collecting data. Check back in a bit.")
             return
-        total_messages = 0
-        total_characters = 0
-        message_types = dict()
-        for result in db_selection:
-            total_messages += 1
-            if result['char_length']:
-                total_characters += result['char_length']
-            try:
-                message_types[result['message_type']] += 1
-            except KeyError:
-                message_types[result['message_type']] = 1
-        message = "<b>Total Messages Sent:</b> {}\n<b>Total Characters Sent:</b> {}\n" \
-                  "<b>Average Message Length:</b> {}".format(total_messages, total_characters,
-                                                             math.ceil(total_characters / message_types['text']))
+        total_messages, total_characters, message_types, times, average_length = parse_db_result(db_selection)
+        print(times)
+        message = "<b>Total Messages Sent:</b> {:,}\n<b>Total Characters Sent:</b> {:,}\n" \
+                  "<b>Average Message Length:</b> {:,}".format(total_messages, total_characters, average_length)
         message += "\n\n<b>Types of Messages Sent</b>"
         for msg_type, total in message_types.items():
-            message += "\n<b>{}:</b> {}".format(pretty_types[types.index(msg_type)], total)
+            message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
+        message += parse_times(times)
         tg.edit_message_text(message, parse_mode="HTML")
     else:
         keyboard = [[{'text': 'Enable Stats', 'callback_data': '%%toggle_on%%'}]]
@@ -101,6 +95,50 @@ def check_status(tg):
             "You are not opted into stat collection. A moderator can opt-in by clicking this button.",
             parse_mode="HTML",
             reply_markup=tg.inline_keyboard_markup(keyboard))
+
+
+def parse_db_result(db_selection):
+    total_messages = 0
+    total_characters = 0
+    message_types = dict()
+    times = {
+        '0to6': 0,
+        '6to12': 0,
+        '12to18': 0,
+        '18to0': 0
+    }
+    for result in db_selection:
+        total_messages += 1
+        if result['char_length']:
+            total_characters += result['char_length']
+        try:
+            message_types[result['message_type']] += 1
+        except KeyError:
+            message_types[result['message_type']] = 1
+        hour_sent = ((result['time'] % 86400) / 3600)
+        if hour_sent < 6:
+            times['0to6'] += 1
+        elif hour_sent < 12:
+            times['6to12'] += 1
+        elif hour_sent < 18:
+            times['12to18'] += 1
+        else:
+            times['18to0'] += 1
+    average_char_length = math.ceil(total_characters / message_types['text'])
+    for k, v in times.items():
+        percent = v / total_messages
+        times[k] = "{:.1%}".format(percent)
+    return total_messages, total_characters, message_types, times, average_char_length
+
+
+def parse_times(times):
+    message = "<b>\n\nActivity By Time</b> <i>(UTC)</i>"
+    '12 AM - 6 AM: {}\n6 AM - 12 PM\n12 PM - 6 PM\n6 PM - 12 AM'
+    message += "\n<b>00:00 - 06:00:</b> {}".format(times['0to6'])
+    message += "\n<b>06:00 - 12:00:</b> {}".format(times['6to12'])
+    message += "\n<b>12:00 - 18:00:</b> {}".format(times['12to18'])
+    message += "\n<b>18:00 - 00:00:</b> {}".format(times['18to0'])
+    return message
 
 
 def check_if_mod(tg):
@@ -118,7 +156,7 @@ plugin_parameters = {
     'name': "Chat Stats",
     'desc': "Chat and user message statistics",
     'extended_desc': "...",
-    'permissions': 10
+    'permissions': '10'
 }
 
 arguments = {
