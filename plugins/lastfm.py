@@ -12,29 +12,21 @@ except AttributeError:
 
 
 def main(tg):
+    if tg.message:
+        handle_message(tg)
+
+
+def handle_message(tg):
     tg.send_chat_action('typing')
     if tg.message['flagged_message']:
         link_profile(tg)
     else:
-        if tg.message['matched_regex'] == "^/lastfm (.*)":
-            first_name = tg.message['match']
-            lastfm_name = tg.message['match']
-        elif 'reply_to_message' in tg.message:
-            first_name = tg.message['reply_to_message']['from']['first_name']
-            user_id = tg.message['reply_to_message']['from']['id']
-            determiner = "this"
-            lastfm_name = get_lastfm_username(user_id)
-        else:
-            first_name = tg.message['from']['first_name']
-            user_id = tg.message['from']['id']
-            determiner = "your"
-            lastfm_name = get_lastfm_username(user_id)
+        first_name, lastfm_name, determiner = determine_names(tg)
         if lastfm_name:
             response = last_played(first_name, lastfm_name)
             if response:
                 message = response['text']
-                keyboard = tg.inline_keyboard_markup(response['keyboard'])
-                tg.send_message(message, reply_markup=keyboard)
+                tg.send_message(message, reply_markup=tg.inline_keyboard_markup(response['keyboard']))
             else:
                 tg.send_message("No recently played tracks :(")
         else:
@@ -42,18 +34,41 @@ def main(tg):
                             "Reply with your LastFM to link!".format(determiner), flag_message=True)
 
 
+def determine_names(tg):
+    if tg.message['matched_regex'] == "^/lastfm (.*)":
+        determiner = None
+        lastfm_name = first_name = tg.message['match']
+    elif 'reply_to_message' in tg.message:
+        user_id = tg.message['reply_to_message']['from']['id']
+        determiner = "this"
+        lastfm_name = get_lastfm_username(user_id)
+        first_name = tg.message['reply_to_message']['from']['first_name']
+    else:
+        user_id = tg.message['from']['id']
+        determiner = "your"
+        lastfm_name = get_lastfm_username(user_id)
+        first_name = tg.message['from']['first_name']
+    return first_name, lastfm_name, determiner
+
+
 def last_played(first_name, lastfm_name):
     track_list = get_recently_played(lastfm_name, 1)
     if track_list:
         for track in track_list:
-            profile = "http://www.lastfm.com/user/{}".format(lastfm_name)
             if track['now_playing']:
                 message = "{} is currently listening to:\n".format(first_name)
             else:
                 message = "{} has last listened to:\n".format(first_name)
             message += "{}\t-\t{}".format(track['song'], track['artist'])
-            keyboard = [[{'text': "Profile", 'url': profile}, {'text': "Song", 'url': track['url']}]]
+            keyboard = create_keyboard(lastfm_name, track['url'])
             return {'text': message, 'keyboard': keyboard}
+    elif track_list is None:
+        print('invalid message')
+
+
+def create_keyboard(lastfm_name, song_url):
+    profile_url = "http://www.lastfm.com/user/{}".format(lastfm_name)
+    return [[{'text': "Profile", 'url': profile_url}, {'text': "Song", 'url': song_url}]]
 
 
 def get_recently_played(user_name, limit):
@@ -107,12 +122,17 @@ def link_profile(tg):
         else:
             message = "Successfully set your LastFM!"
         profile['lastfm'] = tg.message['text'].replace('\n', '')
-        response = last_played("You", profile['lastfm'])
+        track_list = get_recently_played(profile['lastfm'], 1)
         keyboard = None
-        if response:
-            message += '\n\n' + response['text'].replace(" has", "").replace("is", "are")
-            keyboard = tg.inline_keyboard_markup(response['keyboard'])
-        tg.send_message(message, reply_markup=keyboard)
+        if track_list:
+            track_list = track_list.pop()
+            if track_list['now_playing']:
+                message += "\n\nYou are currently listening to:"
+            else:
+                message += "\n\nYou have last listened to:"
+            message += "\n{} - {}".format(track_list['song'], track_list['artist'])
+            keyboard = create_keyboard(profile['lastfm'], track_list['url'])
+        tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard))
     else:
         tg.send_message("Invalid username")
     with open('data/me/{}.json'.format(user_id), 'w') as file:
@@ -134,4 +154,3 @@ arguments = {
         "^/lastfm (.*)"
     ]
 }
-
