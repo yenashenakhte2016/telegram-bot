@@ -38,16 +38,16 @@ def return_profile(tg):
             profile = json.load(json_file)
     except (JSONDecodeError, FileNotFoundError):
         profile = dict()
-    message = "<b>{}'s Profile:</b>".format(first_name.title())
+    message = "<b>{}'s Profile</b>".format(first_name.title())
     keyboard = make_keyboard(profile)
     stats = get_stats(tg)
     if stats:
-        message += "\nTotal Messages: {:,} ({})".format(stats['user_total'], stats['percentage'])
+        message += "\n<b>Total Messages:<b> {:,} ({})".format(stats['user_total'], stats['percentage'])
     playing = last_fm(profile)
     if playing:
-        message += "\n🎶 Currently listening to:\n{} - {}".format(playing['song'], playing['artist'])
-    if len(message.split('\n')) == 1:
-        message += "\nYour profile seems empty. You can add entries using:\n<code>/profile website username</code>"
+        message += "\n🎶 <b>Currently listening to:</b>\n{} - {}".format(playing['song'], playing['artist'])
+    if len(message.split('\n')) == 1 and not keyboard:
+        message = "\nYour profile seems empty. You can add entries using:\n<code>/profile website username</code>"
     tg.edit_message_text(message, reply_markup=tg.inline_keyboard_markup(keyboard), parse_mode="HTML")
 
 
@@ -86,8 +86,6 @@ def get_stats(tg):
     db_selection = tg.database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
     if db_selection:
         db_selection = tg.database.select(chat_name, ["COUNT(*)"], {'user_id': user_id})
-        if len(db_selection) < 50:
-            return
         user_total = db_selection[0]['COUNT(*)']
         db_selection = tg.database.select(chat_name, ["COUNT(*)"])
         percentage = "{:.2%}".format(user_total/db_selection[0]['COUNT(*)'])
@@ -144,9 +142,9 @@ def delete_entry(tg):
 def list_of_options():
     fields = list()
     with open('data/entries.json', 'r') as json_file:
-        entries = json.load(json_file)
-    for field in entries.values():
-        fields.append(field['pretty_name'])
+        sites = json.load(json_file)
+    for field in sites.values():
+        sites.append(field['pretty_name'])
     return "\n".join(["  -  ".join(fields[i:i + 4]) for i in range(0, len(fields), 4)])
 
 
