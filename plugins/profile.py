@@ -11,10 +11,11 @@ except AttributeError:
 
 def main(tg):
     global user_id, entries
-    if not os.path.exists('data/me'):
-        os.makedirs('data/me')
+    if not os.path.exists('data/profile'):
+        os.makedirs('data/profile')
     tg.send_chat_action('typing')
-    user_id = tg.message['from']['id']
+    user_id = tg.message['reply_to_message']['from']['id'] if 'reply_to_message' in tg.message else \
+        tg.message['from']['id']
     with open('data/entries.json', 'r') as json_file:
         entries = json.load(json_file)
     if tg.message['matched_regex'] == arguments['text'][0]:
@@ -28,24 +29,31 @@ def main(tg):
 
 def return_profile(tg):
     global user_id
-    tg.send_message("Loading...")
     tg.send_chat_action("Typing")
-    if 'reply_to_message' in tg.message:
-        user_id = tg.message['reply_to_message']['from']['id']
-        first_name = tg.message['reply_to_message']['from']['first_name']
-        error = "This profile seems empty. You can add entries using:\n<code>/me field username</code>"
-    else:
-        first_name = tg.message['from']['first_name']
-        error = "Your profile seems empty. Add entries using <code>/me field username</code>"
+    tg.send_message("Loading...")
+    first_name = tg.message['reply_to_message']['from']['first_name'] if 'reply_to_message' in tg.message else \
+        tg.message['from']['first_name']
     try:
-        with open('data/me/{}.json'.format(user_id)) as json_file:
+        with open('data/profile/{}.json'.format(user_id)) as json_file:
             profile = json.load(json_file)
     except (JSONDecodeError, FileNotFoundError):
-        tg.edit_message_text(error, parse_mode="HTML")
-        return
-    keyboard = []
+        profile = dict()
+    message = "<b>{}'s Profile:</b>".format(first_name.title())
+    keyboard = make_keyboard(profile)
+    stats = get_stats(tg)
+    if stats:
+        message += "\nTotal Messages: {:,} ({})".format(stats['user_total'], stats['percentage'])
+    playing = last_fm(profile)
+    if playing:
+        message += "\n🎶 Currently listening to:\n{} - {}".format(playing['song'], playing['artist'])
+    if len(message.split('\n')) == 1:
+        message += "\nYour profile seems empty. You can add entries using:\n<code>/profile website username</code>"
+    tg.edit_message_text(message, reply_markup=tg.inline_keyboard_markup(keyboard), parse_mode="HTML")
+
+
+def make_keyboard(profile):
     remaining = len(profile)
-    message = "{}'s Profile:".format(first_name.title()) if remaining else error
+    keyboard = []
     for name, username in profile.items():
         row_length = 3 if remaining >= 3 or remaining == 1 else 2
         pretty_name = entries[name]['pretty_name']
@@ -56,22 +64,42 @@ def return_profile(tg):
         else:
             keyboard.append([button])
         remaining -= 1
-    inline_keyboard = tg.inline_keyboard_markup(keyboard)
+    return keyboard
+
+
+def last_fm(profile):
     if 'lastfm' in profile:
         from plugins import lastfm
         last_track = lastfm.get_recently_played(profile['lastfm'], 1)
         if last_track and last_track[0]['now_playing']:
             last_track = last_track.pop()
-            message += "\n🎶 {} - {} 🎶".format(last_track['song'], last_track['artist'])
-    tg.edit_message_text(message, reply_markup=inline_keyboard, parse_mode="HTML")
+            return last_track
+
+
+def get_stats(tg):
+    try:
+        from plugins import chat_stats
+    except AttributeError:
+        return
+    chat_id = tg.message['chat']['id']
+    chat_name = "chat{}stats".format(str(chat_id).replace('-', ''))
+    db_selection = tg.database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
+    if db_selection:
+        db_selection = tg.database.select(chat_name, ["COUNT(*)"], {'user_id': user_id})
+        if len(db_selection) < 50:
+            return
+        user_total = db_selection[0]['COUNT(*)']
+        db_selection = tg.database.select(chat_name, ["COUNT(*)"])
+        percentage = "{:.2%}".format(user_total/db_selection[0]['COUNT(*)'])
+        return {'user_total': user_total, 'percentage': percentage}
 
 
 def add_entry(tg):
     try:
-        with open('data/me/{}.json'.format(user_id)) as file:
+        with open('data/profile/{}.json'.format(user_id)) as file:
             profile = json.load(file)
     except (JSONDecodeError, FileNotFoundError):
-        open('data/me/{}.json'.format(user_id), 'w')
+        open('data/profile/{}.json'.format(user_id), 'w')
         profile = dict()
     site = tg.message['match'][0]
     user_name = tg.message['match'][1]
@@ -82,7 +110,7 @@ def add_entry(tg):
             else:
                 message = "Successfully set your {}!".format(value['pretty_name'])
             profile.update({key: user_name})
-            with open('data/me/{}.json'.format(user_id), 'w') as file:
+            with open('data/profile/{}.json'.format(user_id), 'w') as file:
                 json.dump(profile, file, sort_keys=True, indent=4)
             tg.send_message(message)
             return
@@ -92,11 +120,11 @@ def add_entry(tg):
 
 def delete_entry(tg):
     try:
-        with open('data/me/{}.json'.format(user_id)) as file:
+        with open('data/profile/{}.json'.format(user_id)) as file:
             profile = json.load(file)
     except (JSONDecodeError, FileNotFoundError):
         tg.send_message(
-            "You don't seem to have anything to delete :(\nAdd entries using <code>/me website username</code>")
+            "You don't seem to have anything to delete :(\nAdd entries using <code>/profile website username</code>")
         return
     site = tg.message['match'][1].lower()
     for key, value in entries.items():
@@ -107,23 +135,32 @@ def delete_entry(tg):
                 tg.send_message("You haven't seemed to link a {}".format(value['pretty_name']))
                 return
             tg.send_message("Successfully removed {}".format(value['pretty_name']))
-            with open('data/me/{}.json'.format(user_id), 'w') as file:
+            with open('data/profile/{}.json'.format(user_id), 'w') as file:
                 json.dump(profile, file, sort_keys=True, indent=4)
             return
     tg.send_message("Invalid field")
+
+
+def list_of_options():
+    fields = list()
+    with open('data/entries.json', 'r') as json_file:
+        entries = json.load(json_file)
+    for field in entries.values():
+        fields.append(field['pretty_name'])
+    return "\n".join(["  -  ".join(fields[i:i + 4]) for i in range(0, len(fields), 4)])
 
 
 plugin_parameters = {
     'name': "Profile",
     'desc': "Display information about yourself",
     'extended_desc': "The profile plugin allows you to share various details about yourself. You can add a field using"
-                     "/me website username. Plugins such as LastFM will integrate with this for a seamless experience.",
+                     " <code>/profile website username</code>\n\n<b>List of fields:</b>\n{}".format(list_of_options()),
     'permissions': True
 }
 
 arguments = {
     'text': [
-        "^/me$",
-        "^/me (.*) (.*)$"
+        "^/profile$",
+        "^/profile (.*) (.*)$"
     ]
 }

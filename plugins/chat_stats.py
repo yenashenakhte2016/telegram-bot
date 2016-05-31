@@ -72,28 +72,38 @@ def check_status(tg):
         tg.database.create_table("chat_opt_status", {"chat_id": "TEXT UNIQUE", "status": "BOOLEAN"})
         db_selection = tg.database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
     if db_selection:
-        try:
-            db_selection = tg.database.select(chat_name, ["char_length", "message_type", "time"])
-        except OperationalError:
-            tg.edit_message_text("Error, try again later")
-            return
-        if len(db_selection) < 0:
-            tg.edit_message_text("Still collecting data. Check back in a bit.")
-            return
-        total_messages, total_characters, message_types, times, average_length = parse_db_result(db_selection)
-        message = "<b>Total Messages Sent:</b> {:,}\n<b>Total Characters Sent:</b> {:,}\n" \
-                  "<b>Average Message Length:</b> {:,}".format(total_messages, total_characters, average_length)
-        message += "\n\n<b>Types of Messages Sent</b>"
-        for msg_type, total in message_types.items():
-            message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
-        message += parse_times(times)
-        tg.edit_message_text(message, parse_mode="HTML")
+        give_stats(tg)
     else:
         keyboard = [[{'text': 'Enable Stats', 'callback_data': '%%toggle_on%%'}]]
         tg.edit_message_text(
             "You are not opted into stat collection. A moderator can opt-in by clicking this button.",
             parse_mode="HTML",
             reply_markup=tg.inline_keyboard_markup(keyboard))
+
+
+def give_stats(tg):
+    try:
+        db_selection = tg.database.select(chat_name, ["char_length", "message_type", "time"])
+    except OperationalError:
+        tg.edit_message_text("Error, try again later")
+        return
+    if len(db_selection) < 100:
+        tg.edit_message_text("Still collecting data. Check back in a bit.")
+        return
+
+    total_messages, total_characters, message_types, times, average_length = parse_db_result(db_selection)
+
+    message = "<b>Total Messages Sent:</b> {:,}".format(total_messages)
+    message += "\n<b>Total Characters Sent:</b> {:,}".format(total_characters)
+    message += "\n<b>Average Message Length:</b> {:,}".format(average_length)
+
+    message += "\n\n<b>Types of Messages Sent</b>"
+    for msg_type, total in message_types.items():
+        message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
+
+    message += parse_times(times)
+
+    tg.edit_message_text(message, parse_mode="HTML")
 
 
 def parse_db_result(db_selection):
@@ -114,6 +124,7 @@ def parse_db_result(db_selection):
             message_types[result['message_type']] += 1
         except KeyError:
             message_types[result['message_type']] = 1
+
         hour_sent = ((result['time'] % 86400) / 3600)
         if hour_sent < 6:
             times['0to6'] += 1
@@ -123,10 +134,12 @@ def parse_db_result(db_selection):
             times['12to18'] += 1
         else:
             times['18to0'] += 1
+
     average_char_length = math.ceil(total_characters / message_types['text'])
     for k, v in times.items():
         percent = v / total_messages
         times[k] = "{:.1%}".format(percent)
+
     return total_messages, total_characters, message_types, times, average_char_length
 
 
