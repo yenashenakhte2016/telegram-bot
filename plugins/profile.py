@@ -87,6 +87,8 @@ def get_stats(tg):
     if db_selection:
         db_selection = tg.database.select(chat_name, ["COUNT(*)"], {'user_id': user_id})
         user_total = db_selection[0]['COUNT(*)']
+        if user_total < 50:
+            return
         db_selection = tg.database.select(chat_name, ["COUNT(*)"])
         percentage = "{:.2%}".format(user_total/db_selection[0]['COUNT(*)'])
         return {'user_total': user_total, 'percentage': percentage}

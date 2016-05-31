@@ -18,6 +18,9 @@ def main(tg):
         if tg.message['matched_regex'] == '^/chatstats$':
             tg.send_message("Loading....")
             check_status(tg)
+        elif tg.message['matched_regex'] == '^/stats$':
+            tg.send_message("Loading....")
+            user_stats(tg)
         else:
             opt_out(tg)
     elif tg.callback_query:
@@ -91,8 +94,13 @@ def give_stats(tg):
         tg.edit_message_text("Still collecting data. Check back in a bit.")
         return
 
-    total_messages, total_characters, message_types, times, average_length = parse_db_result(db_selection)
+    message = "<b>Global Chat Stats:</b>\n\n".format(tg.message['chat']['title'])
+    message += create_message(*parse_db_result(db_selection))
 
+    tg.edit_message_text(message, parse_mode="HTML")
+
+
+def create_message(total_messages, total_characters, message_types, times, average_length):
     message = "<b>Total Messages Sent:</b> {:,}".format(total_messages)
     message += "\n<b>Total Characters Sent:</b> {:,}".format(total_characters)
     message += "\n<b>Average Message Length:</b> {:,}".format(average_length)
@@ -102,8 +110,7 @@ def give_stats(tg):
         message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
 
     message += parse_times(times)
-
-    tg.edit_message_text(message, parse_mode="HTML")
+    return message
 
 
 def parse_db_result(db_selection):
@@ -143,6 +150,22 @@ def parse_db_result(db_selection):
     return total_messages, total_characters, message_types, times, average_char_length
 
 
+def user_stats(tg):
+    user_id = tg.message['reply_to_message']['from']['id'] if 'reply_to_message' in tg.message else \
+        tg.message['from']['id']
+    db_selection = tg.database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
+    if db_selection:
+        db_selection = tg.database.select(chat_name, ["char_length", "message_type", "time"], {'user_id': user_id})
+        if len(db_selection) > 50:
+            message = "<b>{}'s Statistics</b>\n\n".format(tg.message['from']['first_name'])
+            message += create_message(*parse_db_result(db_selection))
+            tg.edit_message_text(message, parse_mode="HTML")
+        else:
+            tg.edit_message_text("Still collecting stats. Check back later", parse_mode="HTML")
+    else:
+        tg.edit_message_text("This chat isn't opted into stat collection", parse_mode="HTML")
+
+
 def parse_times(times):
     message = "<b>\n\nActivity By Time</b> <i>(UTC)</i>"
     '12 AM - 6 AM: {}\n6 AM - 12 PM\n12 PM - 6 PM\n6 PM - 12 AM'
@@ -174,6 +197,7 @@ plugin_parameters = {
 arguments = {
     'text': [
         "^/chatstats$",
-        "^/chatstats opt-out$"
+        "^/chatstats opt-out$",
+        "^/stats$"
     ]
 }
