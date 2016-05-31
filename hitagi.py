@@ -63,4 +63,3 @@ def run_extension(result):
 if __name__ == '__main__':
     while True:
         main()
-

@@ -5,7 +5,7 @@ chat_id = int
 chat_name = str
 
 types = ["audio", "document", "photo", "sticker", "video", "voice", "contact", "location", "venue", "text"]
-pretty_types = ["Audio", "Documents", "Photos", "Stickers", "Videos", "voice", "Contacts", "Locations", "Venues",
+pretty_types = ["Audio", "Documents", "Photos", "Stickers", "Videos", "Voice", "Contacts", "Locations", "Venues",
                 "Text"]
 
 
@@ -81,7 +81,6 @@ def check_status(tg):
             tg.edit_message_text("Still collecting data. Check back in a bit.")
             return
         total_messages, total_characters, message_types, times, average_length = parse_db_result(db_selection)
-        print(times)
         message = "<b>Total Messages Sent:</b> {:,}\n<b>Total Characters Sent:</b> {:,}\n" \
                   "<b>Average Message Length:</b> {:,}".format(total_messages, total_characters, average_length)
         message += "\n\n<b>Types of Messages Sent</b>"
