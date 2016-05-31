@@ -42,7 +42,7 @@ def return_profile(tg):
     keyboard = make_keyboard(profile)
     stats = get_stats(tg)
     if stats:
-        message += "\n<b>Total Messages:<b> {:,} ({})".format(stats['user_total'], stats['percentage'])
+        message += "\n<b>Total Messages:</b> {:,} ({})".format(stats['user_total'], stats['percentage'])
     playing = last_fm(profile)
     if playing:
         message += "\n🎶 <b>Currently listening to:</b>\n{} - {}".format(playing['song'], playing['artist'])
@@ -143,8 +143,8 @@ def list_of_options():
     fields = list()
     with open('data/entries.json', 'r') as json_file:
         sites = json.load(json_file)
-    for field in sites.values():
-        sites.append(field['pretty_name'])
+    for site in sites.values():
+        fields.append(site['pretty_name'])
     return "\n".join(["  -  ".join(fields[i:i + 4]) for i in range(0, len(fields), 4)])
 
 
