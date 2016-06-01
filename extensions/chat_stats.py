@@ -1,7 +1,7 @@
 from sqlite3 import OperationalError
 
 
-def main(update, database, pers_data):
+def main(update, database):
     for result in update:
         if 'message' in result:
             chat_id = result['message']['chat']['id']
@@ -12,7 +12,6 @@ def main(update, database, pers_data):
                 db_selection = database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
             if db_selection:
                 add_message(database, result['message'])
-    return pers_data
 
 
 def add_message(database, message):

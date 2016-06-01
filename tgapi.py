@@ -1,18 +1,23 @@
-import json
+import json, urllib3, certifi
 from functools import partial
 from sqlite3 import IntegrityError
-
-import util
+import os
+import re
 
 
 class TelegramApi:
-    def __init__(self, misc, database, plugin_name, message=None, plugin_data=None, callback_query=None):
-        self.message = message
-        self.misc = misc
-        self.database = database
+    def __init__(self, db, get_me, plugin_name, config, message=None, plugin_data=None, callback_query=None):
+        self.database = db
+        self.get_me = get_me
+        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
         self.plugin_name = plugin_name
+        self.config = config
+        self.token = self.config['BOT_CONFIG']['token']
+
+        self.message = message
         self.plugin_data = plugin_data
         self.callback_query = callback_query
+
         self.send_photo = partial(self.send_file, 'sendPhoto')
         self.send_audio = partial(self.send_file, 'sendAudio')
         self.send_document = partial(self.send_file, 'sendDocument')
@@ -23,9 +28,11 @@ class TelegramApi:
         self.get_chat_administrators = partial(self.get_something, 'getChatAdministrators')
         self.get_chat_members_count = partial(self.get_something, 'getChatMembersCount')
         self.edit_message_reply_markup = partial(self.edit_content, 'editMessageReplyMarkup')
+
         self.reply_keyboard_hide = reply_keyboard_hide
         self.reply_keyboard_markup = reply_keyboard_markup
         self.force_reply = force_reply
+
         self.last_sent = None
         if self.message:
             self.chat_data = self.message
@@ -37,19 +44,20 @@ class TelegramApi:
     def method(self, method_name, check_content=True, **kwargs):
         content = dict()
         content['data'] = dict()
-        content['url'] = 'https://api.telegram.org/bot{}/{}'.format(self.misc['token'], method_name)
+        url = "https://api.telegram.org/bot{}/{}".format(self.token, method_name)
+
         if check_content:
             if self.chat_data['chat']['type'] != 'private':
-                content['data'].update({'reply_to_message_id': self.chat_data['message_id']})
+                kwargs['reply_to_message_id'] = self.chat_data['message_id']
             if 'chat_id' not in kwargs:
-                content['data'].update({'chat_id': self.chat_data['chat']['id']})
-            if 'file' in kwargs:
-                content['files'] = kwargs.pop('file')
-        content['data'].update(kwargs)
-        response = util.post(content, self.misc['session']).json()
-        if not response['ok']:
-            print('Error with response\nResponse: {}\nSent: {}'.format(response, content))
-        return response
+                kwargs['chat_id'] = self.chat_data['chat']['id']
+
+        post = self.http.request_encode_body('POST', url, fields=kwargs).data
+        result = json.loads(post.decode('UTF-8'))
+
+        if not result['ok']:
+            print('Error with response\nResponse: {}\nSent: {}'.format(result, content))
+        return result
 
     def get_something(self, method, chat_id=None):
         chat_id = chat_id or self.chat_data['chat']['id']
@@ -83,7 +91,9 @@ class TelegramApi:
 
     def send_file(self, method, file, **kwargs):
         arguments = kwargs
-        arguments.update({'file': file})
+        key = method.replace('send', '').lower()
+        file_name = os.path.basename(file.name)
+        arguments.update({key: (file_name, file.read())})
         return self.method(method, **arguments)
 
     def send_location(self, latitude, longitude, **kwargs):
@@ -197,24 +207,24 @@ class TelegramApi:
                              {"plugin_name": plugin_name, "time": time, "plugin_data": json.dumps(default)})
 
     def download_file(self, file_object):
-        if file_object['ok'] and file_object['result']['file_size'] < 20000000:
-            file_object = file_object['result']
-        else:
-            print("Unable to download file\nObject received: {}".format(file_object))
-            return
+        file_object = file_object['result']
         db_selection = self.database.select("downloads", ["file_path"], {"file_id": file_object["file_id"]})
         if db_selection:
             return db_selection[0]['file_path']
         else:
-            url = "https://api.telegram.org/file/bot{}/{}".format(self.misc['token'], file_object['file_path'])
+            url = "https://api.telegram.org/file/bot{}/{}".format(self.token, file_object['file_path'])
             try:
                 name = file_object['file_path']
             except KeyError:
                 name = None
-            file_name = util.name_file(file_object['file_id'], name)
-            self.database.insert("downloads", {"file_id": file_object["file_id"],
-                                               "file_path": "data/files/{}".format(file_name)})
-            return util.fetch_file(url, 'data/files/{}'.format(file_name), self.misc['session'])
+            file_name = name_file(file_object['file_id'], name)
+            path = 'data/files/{}'.format(file_name)
+            request = self.http.request('get', url)
+            with open(path, 'wb') as output:
+                output.write(request.data)
+            self.database.insert("downloads",
+                                 {"file_id": file_object["file_id"], "file_path": "data/files/{}".format(file_name)})
+            return path
 
     def inline_keyboard_markup(self, list_of_list_of_buttons, plugin_data=None):
         plugin_data = json.dumps(plugin_data)
@@ -268,3 +278,11 @@ def force_reply(forced_reply=True, selective=False):
         'selective': selective
     }
     return json.dumps(package)
+
+
+def name_file(file_id, file_name):
+    if file_name:
+        match = re.findall('(\.[0-9a-zA-Z]+$)', file_name)
+        if match:
+            return file_id + match[0]
+    return str(file_id)

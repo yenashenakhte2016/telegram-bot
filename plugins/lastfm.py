@@ -1,7 +1,6 @@
 import json
 import os
 
-import util
 
 base_url = "http://ws.audioscrobbler.com/2.0/?method={}&api_key={}&format=json"
 api_key = "f8c3ad637c24265f68a66e3b4c997cc2"
@@ -12,6 +11,8 @@ except AttributeError:
 
 
 def main(tg):
+    global http
+    http = tg.http
     if tg.message:
         handle_message(tg)
 
@@ -74,7 +75,8 @@ def create_keyboard(lastfm_name, song_url):
 def get_recently_played(user_name, limit):
     method = 'user.getRecentTracks'
     url = (base_url + '&user={}&limit={}').format(method, api_key, user_name, limit)
-    response = util.fetch(url).json()
+    result = http.request('GET', url).data
+    response = json.loads(result.decode('UTF-8'))
     if 'error' in response:
         return
     tracks = response['recenttracks']['track']
@@ -98,7 +100,7 @@ def get_recently_played(user_name, limit):
 
 def get_lastfm_username(user_id):
     try:
-        with open('data/me/{}.json'.format(user_id)) as json_file:
+        with open('data/profile/{}.json'.format(user_id)) as json_file:
             profile = json.load(json_file)
     except FileNotFoundError:
         return
@@ -107,14 +109,14 @@ def get_lastfm_username(user_id):
 
 
 def link_profile(tg):
-    if not os.path.exists('data/me'):
-        os.makedirs('data/me')
+    if not os.path.exists('data/profile'):
+        os.makedirs('data/profile')
     user_id = tg.message['from']['id']
     try:
-        with open('data/me/{}.json'.format(user_id)) as file:
+        with open('data/profile/{}.json'.format(user_id)) as file:
             profile = json.load(file)
     except (JSONDecodeError, FileNotFoundError):
-        open('data/me/{}.json'.format(user_id), 'w')
+        open('data/profile/{}.json'.format(user_id), 'w')
         profile = dict()
     if tg.message['text']:
         if 'lastfm' in profile:
@@ -135,7 +137,7 @@ def link_profile(tg):
         tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard))
     else:
         tg.send_message("Invalid username")
-    with open('data/me/{}.json'.format(user_id), 'w') as file:
+    with open('data/profile/{}.json'.format(user_id), 'w') as file:
         json.dump(profile, file, sort_keys=True, indent=4)
 
 
@@ -143,7 +145,7 @@ plugin_parameters = {
     'name': "LastFM",
     'desc': "View your recently played LastFM tracks!",
     'extended_desc': "The LastFM plugin allows you to share your most recently played song. If your LastFM is linked"
-                     "with /me it will automatically utilize your profile. You can also supply an username alongside"
+                     "with /profile it will automatically utilize your profile. You can also supply an username alongside"
                      "the command, /lastfm.",
     'permissions': True
 }

@@ -7,11 +7,13 @@ from tgapi import TelegramApi
 
 
 class RouteMessage:
-    def __init__(self, message, misc, plugins, database):
+    def __init__(self, message, plugins, database, http, get_me, config):
         self.message = message
-        self.misc = misc
+        self.http = http
+        self.get_me = get_me
         self.plugins = plugins
         self.database = database
+        self.config = config
         self.message['flagged_message'] = None
         self.message['matched_regex'] = None
         self.message['matched_argument'] = None
@@ -20,7 +22,7 @@ class RouteMessage:
     def route_update(self):
         if 'text' in self.message and 'entities' in self.message:
             message = self.message['text']
-            bot_name = '@' + self.misc['bot_info']['username']
+            bot_name = '@' + self.get_me['result']['username']
             name_match = re.search('^(/[^ ]*){}'.format(bot_name), message)
             if name_match:
                 self.message['text'] = message.replace(message[:name_match.end(0)],
@@ -52,7 +54,8 @@ class RouteMessage:
                 else:
                     plugin_data = None
                 self.plugins[result['plugin_name']].main(
-                    TelegramApi(self.misc, self.database, result['plugin_name'], self.message, plugin_data))
+                    TelegramApi(self.database, self.get_me, result['plugin_name'], self.config, self.message,
+                                plugin_data))
             return True
 
     def check_db_pm(self):
@@ -75,8 +78,8 @@ class RouteMessage:
                 self.database.update("flagged_messages", {"currently_active": False},
                                      {"chat_id": chat_id})
                 self.plugins[result['plugin_name']].main(
-                    TelegramApi(self.misc, self.database, result['plugin_name'], self.message, plugin_data)
-                )
+                    TelegramApi(self.database, self.get_me, result['plugin_name'], self.config, self.message,
+                                plugin_data))
 
     def plugin_check(self):
         if int(time.time()) - int(self.message['date']) >= 180:
@@ -102,7 +105,8 @@ class RouteMessage:
                         enabled = self.add_plugin(plugin_name)
                     if enabled == 1:
                         plugin_triggered = True
-                        plugin_module.main(TelegramApi(self.misc, self.database, plugin_name, self.message))
+                        plugin_module.main(
+                            TelegramApi(self.database, self.get_me, plugin_name, self.config, self.message))
         return plugin_triggered
 
     def check_argument(self, key, value, incremented_message):
@@ -155,12 +159,12 @@ class RouteMessage:
             self.database.insert(chat_name, {"plugin_name": plugin_name, "plugin_status": enabled})
 
 
-def route_callback_query(callback_query, database, plugins, misc):
+def route_callback_query(plugins, database, get_me, config, callback_query):
     db_selection = database.select("callback_queries", ["DISTINCT plugin_name", "plugin_data", "data"],
                                    {"data": callback_query['data']})
+
     for db_result in db_selection:
         plugin_name = db_result['plugin_name']
         plugin_data = json.loads(db_result['plugin_data']) if db_result['plugin_data'] else None
-        api_obj = TelegramApi(misc, database, plugin_name, plugin_data=plugin_data,
-                              callback_query=callback_query)
-        plugins[plugin_name].main(api_obj)
+        tg = TelegramApi(database, get_me, plugin_name, config, plugin_data=plugin_data, callback_query=callback_query)
+        plugins[plugin_name].main(tg)

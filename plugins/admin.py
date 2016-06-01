@@ -116,8 +116,8 @@ def check_if_mod():
 
 
 def check_if_admin():
-    user_id = tg.callback_query['from']['id']
-    if any(int(bot_admin) == user_id for bot_admin in tg.misc['config'].admins):
+    user_id = str(tg.callback_query['from']['id'])
+    if user_id in tg.config['BOT_CONFIG']['admins']:
         return True
     return
 
