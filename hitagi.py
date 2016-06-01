@@ -27,10 +27,8 @@ get_me = json.loads(get_me.decode('UTF-8'))
 def main():
     global update_id
 
-    #time_process = Process(target=check_time_args)
-    #time_process.daemon = True
-    #time_process.start()
-    check_time_args()
+    time_process = Process(target=check_time_args)
+    time_process.start()
 
     get_update = http.request('GET',
                               "{}bot{}/getUpdates?offset={}".format(base_url, token, update_id)).data
