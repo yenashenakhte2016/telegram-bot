@@ -1,4 +1,6 @@
-import json, urllib3, certifi
+import json
+import urllib3
+import certifi
 from functools import partial
 from sqlite3 import IntegrityError
 import os

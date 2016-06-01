@@ -1,7 +1,8 @@
+#!/usr/bin/python3
+
 import json
 import time
 from multiprocessing import Process
-from threading import Lock
 
 import certifi
 import urllib3
@@ -43,7 +44,7 @@ def main():
         extension_process.start()
 
         for update in get_update['result']:
-            if 'message' in update:  # For message updates
+            if 'message' in update:
                 target = RouteMessage(update['message'], plugins, database, http, get_me, config)
                 message_process = Process(target=target.route_update)
                 message_process.daemon = True
