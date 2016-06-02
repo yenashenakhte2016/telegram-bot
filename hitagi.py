@@ -28,13 +28,16 @@ get_me = json.loads(get_me.decode('UTF-8'))
 def main():
     global update_id
 
-    time_process = Process(target=check_time_args)
-    time_process.start()
-
     get_update = http.request('GET',
                               "{}bot{}/getUpdates?offset={}".format(base_url, token, update_id)).data
 
-    get_update = json.loads(get_update.decode('UTF-8'))
+    try:
+        get_update = json.loads(get_update.decode('UTF-8'))
+    except json.decoder.JSONDecodeError:
+        return
+
+    time_process = Process(target=check_time_args)
+    time_process.start()
 
     if get_update['ok'] and get_update['result']:
         update_id = get_update['result'][-1]['update_id'] + 1

@@ -31,7 +31,7 @@ def handle_message(tg):
                 tg.send_message("No recently played tracks :(")
         else:
             tg.send_message("It seems {} LastFM hasn't been linked\n"
-                            "Reply with your LastFM to link!".format(determiner), flag_message=True)
+                            "Reply with your LastFM to link it!".format(determiner), flag_message=True)
 
 
 def determine_names(tg):
@@ -52,7 +52,7 @@ def determine_names(tg):
 
 
 def last_played(first_name, lastfm_name):
-    track_list = get_recently_played(lastfm_name, 1)
+    track_list = get_recently_played(tg.http, lastfm_name, 1)
     if track_list:
         for track in track_list:
             if track['now_playing']:
@@ -71,10 +71,10 @@ def create_keyboard(lastfm_name, song_url):
     return [[{'text': "Profile", 'url': profile_url}, {'text': "Song", 'url': song_url}]]
 
 
-def get_recently_played(user_name, limit):
+def get_recently_played(local_http, user_name, limit):
     method = 'user.getRecentTracks'
     url = (base_url + '&user={}&limit={}').format(method, api_key, user_name, limit)
-    result = http.request('GET', url).data
+    result = local_http.request('GET', url).data
     response = json.loads(result.decode('UTF-8'))
     if 'error' in response:
         return
@@ -123,7 +123,7 @@ def link_profile(tg):
         else:
             message = "Successfully set your LastFM!"
         profile['lastfm'] = tg.message['text'].replace('\n', '')
-        track_list = get_recently_played(profile['lastfm'], 1)
+        track_list = get_recently_played(tg.http, profile['lastfm'], 1)
         keyboard = None
         if track_list:
             track_list = track_list.pop()
@@ -144,8 +144,8 @@ plugin_parameters = {
     'name': "LastFM",
     'desc': "View your recently played LastFM tracks!",
     'extended_desc': "The LastFM plugin allows you to share your most recently played song. If your LastFM is linked"
-                     "with /profile it will automatically utilize your profile. You can also supply an username alongside"
-                     "the command, /lastfm.",
+                     "with /profile it will automatically utilize your profile. You can also supply an username "
+                     "alongside the command, /lastfm.",
     'permissions': True
 }
 
