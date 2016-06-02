@@ -10,8 +10,6 @@ except AttributeError:
 
 
 def main(tg):
-    global http
-    http = tg.http
     if tg.message:
         handle_message(tg)
 
@@ -23,7 +21,7 @@ def handle_message(tg):
     else:
         first_name, lastfm_name, determiner = determine_names(tg)
         if lastfm_name:
-            response = last_played(first_name, lastfm_name)
+            response = last_played(tg.http, first_name, lastfm_name)
             if response:
                 message = response['text']
                 tg.send_message(message, reply_markup=tg.inline_keyboard_markup(response['keyboard']))
@@ -51,8 +49,8 @@ def determine_names(tg):
     return first_name, lastfm_name, determiner
 
 
-def last_played(first_name, lastfm_name):
-    track_list = get_recently_played(tg.http, lastfm_name, 1)
+def last_played(http, first_name, lastfm_name):
+    track_list = get_recently_played(http, lastfm_name, 1)
     if track_list:
         for track in track_list:
             if track['now_playing']:
