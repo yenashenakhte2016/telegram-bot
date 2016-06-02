@@ -43,7 +43,7 @@ def return_profile(tg):
     stats = get_stats(tg)
     if stats:
         message += "\n<b>Total Messages:</b> {:,} ({})".format(stats['user_total'], stats['percentage'])
-    playing = last_fm(profile)
+    playing = last_fm(tg.http, profile)
     if playing:
         message += "\n🎶 <b>Currently listening to:</b>\n{} - {}".format(playing['song'], playing['artist'])
     if len(message.split('\n')) == 1 and not keyboard:
@@ -67,10 +67,10 @@ def make_keyboard(profile):
     return keyboard
 
 
-def last_fm(profile):
+def last_fm(http, profile):
     if 'lastfm' in profile:
         from plugins import lastfm
-        last_track = lastfm.get_recently_played(profile['lastfm'], 1)
+        last_track = lastfm.get_recently_played(http, profile['lastfm'], 1)
         if last_track and last_track[0]['now_playing']:
             last_track = last_track.pop()
             return last_track
