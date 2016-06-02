@@ -7,12 +7,10 @@ class Database:
     def __init__(self, db_name):
         self.connection = sqlite3.connect('data/' + db_name, check_same_thread=False)
         self.db = self.connection.cursor()
-        self.execute_lock = threading.Lock()
         self.select_lock = threading.Lock()
 
     def execute(self, command, bindings=list(), commit=False):
-        with self.execute_lock:
-            self.db.execute(command, bindings)
+        self.db.execute(command, bindings)
         if commit:
             self.connection.commit()
         return True
