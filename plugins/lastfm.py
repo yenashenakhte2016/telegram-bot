@@ -21,32 +21,18 @@ def handle_message(tg):
     else:
         first_name, lastfm_name, determiner = determine_names(tg)
         if lastfm_name:
-            response = last_played(tg.http, first_name, lastfm_name)
-            if response:
-                message = response['text']
-                tg.send_message(message, reply_markup=tg.inline_keyboard_markup(response['keyboard']))
+            if tg.message['matched_regex'] in arguments['text'][:2]:
+                response = last_played(tg.http, first_name, lastfm_name)
+                if response:
+                    message = response['text']
+                    tg.send_message(message, reply_markup=tg.inline_keyboard_markup(response['keyboard']))
+                else:
+                    tg.send_message("No recently played tracks :(")
             else:
-                tg.send_message("No recently played tracks :(")
+                top_tracks(tg, first_name, lastfm_name)
         else:
             tg.send_message("It seems {} LastFM hasn't been linked\n"
                             "Reply with your LastFM to link it!".format(determiner), flag_message=True)
-
-
-def determine_names(tg):
-    if tg.message['matched_regex'] == "^/lastfm (.*)":
-        determiner = None
-        lastfm_name = first_name = tg.message['match']
-    elif 'reply_to_message' in tg.message:
-        user_id = tg.message['reply_to_message']['from']['id']
-        determiner = "this"
-        lastfm_name = get_lastfm_username(user_id)
-        first_name = tg.message['reply_to_message']['from']['first_name']
-    else:
-        user_id = tg.message['from']['id']
-        determiner = "your"
-        lastfm_name = get_lastfm_username(user_id)
-        first_name = tg.message['from']['first_name']
-    return first_name, lastfm_name, determiner
 
 
 def last_played(http, first_name, lastfm_name):
@@ -57,16 +43,42 @@ def last_played(http, first_name, lastfm_name):
                 message = "{} is currently listening to:\n".format(first_name)
             else:
                 message = "{} has last listened to:\n".format(first_name)
-            message += "{}\t-\t{}".format(track['song'], track['artist'])
-            keyboard = create_keyboard(lastfm_name, track['url'])
+            message += "{}\t-\t{}".format(track['name'], track['artist'])
+            keyboard = create_keyboard(lastfm_name, track['song_url'])
             return {'text': message, 'keyboard': keyboard}
     elif track_list is None:
         print('invalid message')
 
 
-def create_keyboard(lastfm_name, song_url):
-    profile_url = "http://www.lastfm.com/user/{}".format(lastfm_name)
-    return [[{'text': "Profile", 'url': profile_url}, {'text': "Song", 'url': song_url}]]
+def top_tracks(tg, first_name, lastfm_name):
+    limit = int(tg.message['match']) if tg.message['matched_regex'] in arguments['text'][3] else 5
+    limit = 25 if limit > 25 else limit
+    track_list = get_top_tracks(tg.http, lastfm_name, limit)
+    if track_list:
+        message = "<b>{}'s Top Tracks</b>\n".format(first_name)
+        for i, track in enumerate(track_list):
+            message += '\n<a href="{}">{}</a>  -  <code>{} plays</code>'.format(track['song_url'], track['name'],
+                                                                                track['play_count'])
+        tg.send_message(message, disable_web_page_preview=True)
+
+
+def get_top_tracks(local_http, user_name, limit, period='1month'):
+    track_list = list()
+    method = 'user.getTopTracks'
+    url = (base_url + '&user={}&limit={}&period={}').format(method, api_key, user_name, limit, period)
+    result = local_http.request('GET', url).data
+    response = json.loads(result.decode('UTF-8'))
+    tracks = response['toptracks']['track']
+    for track in tracks:
+        song = {
+            'name': track['name'],
+            'play_count': track['playcount'],
+            'artist': track['artist']['name'],
+            'song_url': track['url'],
+            'artist_url': track['artist']['url']
+        }
+        track_list.append(song)
+    return track_list
 
 
 def get_recently_played(local_http, user_name, limit):
@@ -84,9 +96,9 @@ def get_recently_played(local_http, user_name, limit):
         else:
             now_playing = False
         song = {
-            'song': track['name'],
+            'name': track['name'],
             'artist': track['artist']['#text'],
-            'url': track['url'],
+            'song_url': track['url'],
             'album': track['album']['#text'],
             'now_playing': now_playing
 
@@ -103,6 +115,23 @@ def get_lastfm_username(user_id):
         return
     if 'lastfm' in profile:
         return profile['lastfm']
+
+
+def determine_names(tg):
+    if '(.*)' in tg.message['matched_regex']:
+        determiner = None
+        lastfm_name = first_name = tg.message['match']
+    elif 'reply_to_message' in tg.message:
+        user_id = tg.message['reply_to_message']['from']['id']
+        determiner = "this"
+        lastfm_name = get_lastfm_username(user_id)
+        first_name = tg.message['reply_to_message']['from']['first_name']
+    else:
+        user_id = tg.message['from']['id']
+        determiner = "your"
+        lastfm_name = get_lastfm_username(user_id)
+        first_name = tg.message['from']['first_name']
+    return first_name, lastfm_name, determiner
 
 
 def link_profile(tg):
@@ -138,6 +167,11 @@ def link_profile(tg):
         json.dump(profile, file, sort_keys=True, indent=4)
 
 
+def create_keyboard(lastfm_name, song_url):
+    profile_url = "http://www.lastfm.com/user/{}".format(lastfm_name)
+    return [[{'text': "Profile", 'url': profile_url}, {'text': "Song", 'url': song_url}]]
+
+
 plugin_parameters = {
     'name': "LastFM",
     'desc': "View your recently played LastFM tracks!",
@@ -149,7 +183,10 @@ plugin_parameters = {
 
 arguments = {
     'text': [
+        "^/lastfm (.*)",
         "^/lastfm$",
-        "^/lastfm (.*)"
+        "^/toptracks$",
+        "^/toptracks --|—(\d+)$",
+        "^/toptracks (.*)"
     ]
 }
