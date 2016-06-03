@@ -15,13 +15,13 @@ def main(tg):
     chat_name = "chat{}stats".format(str(chat_id).replace('-', ''))
     if tg.message:
         tg.send_chat_action('typing')
-        if tg.message['matched_regex'] == '^/chatstats$':
+        if tg.message['matched_regex'] == arguments['text'][0]:
             tg.send_message("Loading....")
             check_status(tg)
-        elif tg.message['matched_regex'] == '^/stats$':
+        elif tg.message['matched_regex'] == arguments['text'][2]:
             tg.send_message("Loading....")
             user_stats(tg)
-        else:
+        elif tg.message['matched_regex'] == arguments['text'][1]:
             opt_out(tg)
     elif tg.callback_query:
         if tg.callback_query['data'] == '%%toggle_on%%':
@@ -198,6 +198,7 @@ arguments = {
     'text': [
         "^/chatstats$",
         "^/chatstats opt-out$",
-        "^/stats$"
+        "^/stats$",
+        #"^/userstats$"
     ]
 }
