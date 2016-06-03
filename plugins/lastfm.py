@@ -28,8 +28,10 @@ def handle_message(tg):
                     tg.send_message(message, reply_markup=tg.inline_keyboard_markup(response['keyboard']))
                 else:
                     tg.send_message("No recently played tracks :(")
-            else:
+            elif tg.message['matched_regex'] in arguments['text'][:5]:
                 top_tracks(tg, first_name, lastfm_name)
+            else:
+                top_artists(tg, first_name, lastfm_name)
         else:
             tg.send_message("It seems {} LastFM hasn't been linked\n"
                             "Reply with your LastFM to link it!".format(determiner), flag_message=True)
@@ -51,15 +53,44 @@ def last_played(http, first_name, lastfm_name):
 
 
 def top_tracks(tg, first_name, lastfm_name):
-    limit = int(tg.message['match']) if tg.message['matched_regex'] in arguments['text'][3] else 5
+    limit = int(tg.message['match'][1]) if tg.message['matched_regex'] in arguments['text'][3] else 8
     limit = 25 if limit > 25 else limit
     track_list = get_top_tracks(tg.http, lastfm_name, limit)
     if track_list:
         message = "<b>{}'s Top Tracks</b>\n".format(first_name)
-        for i, track in enumerate(track_list):
+        for track in track_list:
             message += '\n<a href="{}">{}</a>  -  <code>{} plays</code>'.format(track['song_url'], track['name'],
                                                                                 track['play_count'])
         tg.send_message(message, disable_web_page_preview=True)
+
+
+def top_artists(tg, first_name, lastfm_name):
+    limit = int(tg.message['match'][1]) if tg.message['matched_regex'] in arguments['text'][6] else 8
+    limit = 25 if limit > 25 else limit
+    artists = get_top_artists(tg.http, lastfm_name, limit)
+    if artists:
+        message = "<b>{}'s Top Artists</b>\n".format(first_name)
+        for artist in artists:
+            message += '\n<a href="{}">{}</a>  -  <code>{} plays</code>'.format(artist['url'], artist['name'],
+                                                                                artist['play_count'])
+        tg.send_message(message, disable_web_page_preview=True)
+
+
+def get_top_artists(local_http, user_name, limit, period='1month'):
+    artist_list = list()
+    method = 'user.getTopArtists'
+    url = (base_url + '&user={}&limit={}&period={}').format(method, api_key, user_name, limit, period)
+    result = local_http.request('GET', url).data
+    response = json.loads(result.decode('UTF-8'))
+    artists = response['topartists']['artist']
+    for artist in artists:
+        info = {
+            'name': artist['name'],
+            'play_count': artist['playcount'],
+            'url': artist['url'],
+        }
+        artist_list.append(info)
+    return artist_list
 
 
 def get_top_tracks(local_http, user_name, limit, period='1month'):
@@ -186,7 +217,10 @@ arguments = {
         "^/lastfm (.*)",
         "^/lastfm$",
         "^/toptracks$",
-        "^/toptracks --|—(\d+)$",
-        "^/toptracks (.*)"
+        "^/toptracks (--|—)(\d+)$",
+        "^/toptracks (.*)",
+        "^/topartists$",
+        "^/topartists (--|—)(\d+)$",
+        "^/topartists (.*)"
     ]
 }
