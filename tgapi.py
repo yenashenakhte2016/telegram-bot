@@ -152,6 +152,8 @@ class TelegramApi:
                 arguments.update({'callback_query_id': int(self.callback_query['id'])})
             except KeyError:
                 return "Callback query ID not found!"
+        if text is None:
+            del arguments['text']
         return self.method('answerCallbackQuery', check_content=False, **arguments)
 
     def edit_content(self, method, **kwargs):

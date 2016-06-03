@@ -56,7 +56,6 @@ def add_user(database, user):
         database.create_table("user_list", {'id': "INT NOT NULL PRIMARY KEY", 'first_name': 'text', 'last_name': 'text',
                                             'username': 'text'})
     if not updated:
-        print('new!')
         database.insert("user_list", {'first_name': user['first_name'], 'last_name': last_name, 'username': username,
                                       'id': user['id']})
 
