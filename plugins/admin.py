@@ -73,9 +73,9 @@ def create_plugin_keyboard():
             chat_name = "chat{}blacklist".format(chat_id)
 
             if tg.chat_data['chat']['type'] == "private":
-                status = permissions[1]
+                status = int(permissions[1])
             else:
-                status = permissions[0]
+                status = int(permissions[0])
             tg.database.insert(chat_name, {"plugin_name": plugin_name, "plugin_status": status})
         else:
             status = plugin_status[plugin_name]

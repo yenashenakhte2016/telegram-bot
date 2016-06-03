@@ -52,7 +52,7 @@ def init_plugins():
         if hasattr(plugin, 'plugin_parameters'):
             pretty_name = plugin.plugin_parameters['name']
             desc = plugin.plugin_parameters['desc']
-            permissions = plugin.plugin_parameters['permissions']
+            permissions = numerate_permissions(plugin.plugin_parameters['permissions'])
             extended_desc = plugin.plugin_parameters['extended_desc'] if 'extended_desc' in plugin.plugin_parameters \
                 else None
             database.insert("plugins", {'plugin_name': plugin_name, 'pretty_name': pretty_name, 'desc': desc,
@@ -89,3 +89,11 @@ def file_lists(directory):
             module_list.append(file.replace('.py', ''))
 
     return module_list
+
+
+def numerate_permissions(permission):
+    if permission is True:
+        permission = '11'
+    elif permission is False:
+        permission = '00'
+    return permission
