@@ -1,5 +1,5 @@
 from sqlite3 import OperationalError, IntegrityError
-import concurrent.futures
+
 
 chat_id = None
 
@@ -10,10 +10,9 @@ def main(update, database):
             result = result['message']
             global chat_id
             chat_id = result['chat']['id']
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as e:
-                e.submit(add_message, database, result)
-                e.submit(add_user, database, result['from'])
-                e.submit(add_chat, database, result['chat'])
+            add_message(database, result)
+            add_user(database, result['from'])
+            add_chat(database, result['chat'])
 
 
 def add_message(database, message):
