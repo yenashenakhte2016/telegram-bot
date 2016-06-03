@@ -10,7 +10,7 @@ def main(update, database):
             result = result['message']
             global chat_id
             chat_id = result['chat']['id']
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as e:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as e:
                 e.submit(add_message, database, result)
                 e.submit(add_user, database, result['from'])
                 e.submit(add_chat, database, result['chat'])
