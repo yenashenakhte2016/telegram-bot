@@ -1,4 +1,4 @@
-from sqlite3 import OperationalError
+from sqlite3 import OperationalError, IntegrityError
 import concurrent.futures
 
 chat_id = None
@@ -48,16 +48,15 @@ def add_user(database, user):
     username = user['username'] if 'username' in user else None
     last_name = user['last_name'] if 'last_name' in user else None
     try:
-        updated = database.update("user_list",
-                                  {'first_name': user['first_name'], 'last_name': last_name,
-                                   'username': username}, {'id': user['id']})
-    except OperationalError:
-        updated = False
-        database.create_table("user_list", {'id': "INT NOT NULL PRIMARY KEY", 'first_name': 'text', 'last_name': 'text',
-                                            'username': 'text'})
-    if not updated:
         database.insert("user_list", {'first_name': user['first_name'], 'last_name': last_name, 'username': username,
                                       'id': user['id']})
+    except IntegrityError:
+        database.update("user_list",
+                        {'first_name': user['first_name'], 'last_name': last_name, 'username': username},
+                        {'id': user['id']})
+    except OperationalError:
+        database.create_table("user_list", {'id': "INT NOT NULL PRIMARY KEY", 'first_name': 'text', 'last_name': 'text',
+                                            'username': 'text'})
 
 
 def add_chat(database, chat):
@@ -65,15 +64,15 @@ def add_chat(database, chat):
     username = chat['username'] if 'username' in chat else None
     first_name = chat['first_name'] if 'first_name' in chat else None
     last_name = chat['last_name'] if 'last_name' in chat else None
+
     try:
-        updated = database.update("chat_list", {'type': chat['type'], 'title': title, 'username': username,
-                                                'first_name': first_name, 'last_name': last_name}, {'id': chat['id']})
+        database.insert("chat_list", {'id': chat['id'], 'type': chat['type'], 'title': title, 'username': username,
+                                      'first_name': first_name, 'last_name': last_name})
+    except IntegrityError:
+        database.update("chat_list", {'type': chat['type'], 'title': title, 'username': username,
+                                      'first_name': first_name, 'last_name': last_name}, {'id': chat['id']})
     except OperationalError:
         updated = False
         database.create_table("chat_list",
                               {'id': "INT NOT NULL PRIMARY KEY", 'type': "text", 'title': "text", 'username': 'text',
                                'first_name': 'text', 'last_name': 'text'})
-
-    if not updated:
-        database.insert("chat_list", {'id': chat['id'], 'type': chat['type'], 'title': title, 'username': username,
-                                      'first_name': first_name, 'last_name': last_name})
