@@ -32,6 +32,8 @@ class RouteMessage:
             return self.check_db_reply()
         elif self.message['chat']['type'] == 'private':
             return self.check_db_pm()
+        else:
+            self.plugin_check()
 
     def check_db_reply(self):
         chat_id = self.message['chat']['id']
