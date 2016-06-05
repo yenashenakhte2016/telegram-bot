@@ -30,7 +30,6 @@ def main(tg):
 def return_profile(tg):
     global user_id
     tg.send_chat_action("Typing")
-    tg.send_message("Loading...")
     first_name = tg.message['reply_to_message']['from']['first_name'] if 'reply_to_message' in tg.message else \
         tg.message['from']['first_name']
     try:
@@ -48,7 +47,7 @@ def return_profile(tg):
         message += "\n🎶 <b>Currently listening to:</b>\n{} - {}".format(playing['song'], playing['artist'])
     if len(message.split('\n')) == 1 and not keyboard:
         message = "\nYour profile seems empty. You can add entries using:\n<code>/profile website username</code>"
-    tg.edit_message_text(message, reply_markup=tg.inline_keyboard_markup(keyboard), parse_mode="HTML")
+    tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard), parse_mode="HTML")
 
 
 def make_keyboard(profile):
