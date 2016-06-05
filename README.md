@@ -1,7 +1,7 @@
 # Hitagibot
 
-Hitagi is a plugin based Telegram bot written in Python 3 and licensed under the GNU Affero General Public License
-v3. The bot focuses on providing a lightweight and high performance modular environment for bot creation.
+Hitagi is a plugin based Telegram bot written in Python 3 and licensed
+under the GNU Affero General Public License v3. 
 
 ## Installation
 You will need python 3 (3.5.1 is recommended) to use the bot.
@@ -11,39 +11,27 @@ First clone and cd to the repository
 git clone https://github.com/TopBakuhatsu/hitagibot.git
 cd hitagibot
 ```
-Afterwards set your token in the config.ini
+Give the plugin permission to execute
+```bash
+chmod +x hitagi.py
+```
+Install required dependencies
+```bash
+pip install -r requirements.txt
+```
+Finally set your token in the config.ini. You can get a token from 
+@BotFather on the Telegram client.
 ```
 token = YOUR TOKEN HERE
 ```
+*Note: Some plugins may require separate tokens for their services*
 
-Now you can start the bot with `./hitagi.py`. However the default configuration is very bare-bones. Head to the wiki to
-learn more about plugin creation.
-
-
-*Note:* In some cases you may also need to install requests, `pip3 install requests` or `easy_install3 requests`.
+Now you can start the bot with `./hitagi.py`. Plugin documentation is
+available on the wiki for more advanced users. 
 
 
-## What can it do?
+## Currently unsupported methods
 | Method               | Status |
 | -------------------- | ------ |
-| getMe                | ✔      |
-| sendMessage          | ✔      |
-| forwardMessage       | ✔      |
-| sendPhoto            | ✔      |
-| sendAudio            | ✔      |
-| sendDocument         | ✔      |
-| sendSticker          | ✔      |
-| sendVideo            | ✔      |
-| sendVoice            | ✔      |
-| sendLocation         | ✔      |
-| SendVenue            | ✔      |
-| SendContact          | ✔      |
-| sendChatActions      | ✔      |
-| getUserProfilePhotos | ✔      |
-| getFile              | ✔      |
-| kickChatMember       | ✔      |
-| unbanChatMember      | ✔      |
-| answerCallbackQuery  | ✔      |
-| Updating Messages    | ✔      |
 | Inline Mode          | ✖      |
 
