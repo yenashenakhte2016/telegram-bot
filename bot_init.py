@@ -85,7 +85,7 @@ def file_lists(directory):
     for file in os.listdir(directory):
         if file == '__init__.py':
             continue
-        elif '.py' in file:
+        elif 'py' in file[-2:]:
             module_list.append(file.replace('.py', ''))
 
     return module_list

@@ -28,12 +28,10 @@ class RouteMessage:
                 self.message['text'] = message.replace(message[:name_match.end(0)],
                                                        message[:name_match.end(0) - len(bot_name)])
                 self.message['cleaned_message'] = True
-        if 'reply_to_message' in self.message and not self.check_db_reply():
-            self.plugin_check()
+        if 'reply_to_message' in self.message:
+            return self.check_db_reply()
         elif self.message['chat']['type'] == 'private':
-            self.check_db_pm()
-        else:
-            self.plugin_check()
+            return self.check_db_pm()
 
     def check_db_reply(self):
         chat_id = self.message['chat']['id']
@@ -45,7 +43,7 @@ class RouteMessage:
         if db_selection:
             for result in db_selection:
                 if result['user_id'] and result['user_id'] != self.message['from']['id']:
-                    return True
+                    return False
                 if result['single_use']:
                     self.database.delete('flagged_messages', {'message_id': message_id, 'chat_id': chat_id})
                 self.message['flagged_message'] = True
@@ -56,7 +54,8 @@ class RouteMessage:
                 self.plugins[result['plugin_name']].main(
                     TelegramApi(self.database, self.get_me, result['plugin_name'], self.config, self.message,
                                 plugin_data))
-            return True
+        else:
+            self.plugin_check()
 
     def check_db_pm(self):
         chat_id = self.message['chat']['id']
@@ -75,8 +74,7 @@ class RouteMessage:
                 else:
                     plugin_data = None
                 self.message['flagged_message'] = True
-                self.database.update("flagged_messages", {"currently_active": False},
-                                     {"chat_id": chat_id})
+                self.database.update("flagged_messages", {"currently_active": False}, {"chat_id": chat_id})
                 self.plugins[result['plugin_name']].main(
                     TelegramApi(self.database, self.get_me, result['plugin_name'], self.config, self.message,
                                 plugin_data))

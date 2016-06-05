@@ -189,8 +189,8 @@ def link_profile(tg):
                 message += "\n\nYou are currently listening to:"
             else:
                 message += "\n\nYou have last listened to:"
-            message += "\n{} - {}".format(track_list['song'], track_list['artist'])
-            keyboard = create_keyboard(profile['lastfm'], track_list['url'])
+            message += "\n{} - {}".format(track_list['name'], track_list['artist'])
+            keyboard = create_keyboard(profile['lastfm'], track_list['song_url'])
         tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard))
     else:
         tg.send_message("Invalid username")
