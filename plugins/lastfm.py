@@ -2,7 +2,7 @@ import json
 import os
 
 base_url = "http://ws.audioscrobbler.com/2.0/?method={}&api_key={}&format=json"
-api_key = "f8c3ad637c24265f68a66e3b4c997cc2"
+api_key = None
 try:
     JSONDecodeError = json.JSONDecodeError
 except AttributeError:
@@ -10,6 +10,10 @@ except AttributeError:
 
 
 def main(tg):
+    global api_key
+    api_key = tg.config['LASTFM']['api_key']
+    if not api_key:
+        return
     if tg.message:
         handle_message(tg)
 
