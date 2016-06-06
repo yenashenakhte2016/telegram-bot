@@ -30,12 +30,12 @@ def grab_plugin(tg):
         plugin = tg.callback_query['data'].replace('%%help%%', '').lower()
     else:
         plugin = tg.message['match'].lower()
-    plugin_data = tg.database.select("plugins", ["pretty_name", "desc", "extended_desc"],
+    plugin_data = tg.database.select("plugins", ["pretty_name", "description", "extended_desc"],
                                      {'lower(pretty_name)': plugin})
     if plugin_data:
         plugin_data = plugin_data.pop()
         if tg.callback_query:
-            tg.answer_callback_query(plugin_data['desc'])
+            tg.answer_callback_query(plugin_data['description'])
         else:
             if plugin_data['extended_desc']:
                 tg.send_message(plugin_data['extended_desc'])

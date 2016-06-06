@@ -27,7 +27,7 @@ def init_database():
     database = Database('bot')
 
     database.create_table("plugins",
-                          {"plugin_name": "TEXT", "pretty_name": "TEXT", "desc": "TEXT", "permissions": "TEXT",
+                          {"plugin_name": "TEXT", "pretty_name": "TEXT", "description": "TEXT", "permissions": "TEXT",
                            "extended_desc": "TEXT"}, drop_existing=True)
     database.create_table("flagged_messages",
                           {"plugin_name": "INT", "message_id": "INT", "chat_id": "INT", "user_id": "INT",
@@ -55,7 +55,7 @@ def init_plugins():
             permissions = numerate_permissions(plugin.plugin_parameters['permissions'])
             extended_desc = plugin.plugin_parameters['extended_desc'] if 'extended_desc' in plugin.plugin_parameters \
                 else None
-            database.insert("plugins", {'plugin_name': plugin_name, 'pretty_name': pretty_name, 'desc': desc,
+            database.insert("plugins", {'plugin_name': plugin_name, 'pretty_name': pretty_name, 'description': desc,
                                         'extended_desc': extended_desc, 'permissions': permissions})
             modules.update({plugin_name: plugin})
             print("Plugin {} Loaded".format(plugin_name))
