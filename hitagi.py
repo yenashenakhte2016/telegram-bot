@@ -48,14 +48,14 @@ def main():
 
         for update in get_update['result']:
             if 'message' in update:
-                target = RouteMessage(update['message'], plugins, Database('bot'), http, get_me, config)
+                target = RouteMessage(update['message'], plugins, database, http, get_me, config)
                 message_process = Process(target=target.route_update)
                 message_process.daemon = True
                 message_process.start()
 
             elif 'callback_query' in update:
                 callback_process = Process(target=route_callback_query,
-                                           args=(plugins, Database('bot'), get_me, config, update['callback_query']))
+                                           args=(plugins, database, get_me, config, update['callback_query']))
                 callback_process.daemon = True
                 callback_process.start()
 
@@ -64,7 +64,7 @@ def main():
 
 def run_extensions(update):
     for module in extensions:
-        module.main(update, Database('bot'))
+        module.main(update, database)
 
 
 def check_time_args():
@@ -75,7 +75,7 @@ def check_time_args():
             database.delete("flagged_time", argument)
             plugin_name = argument['plugin_name']
             plugin_data = json.loads(argument['plugin_data']) if argument['plugin_data'] else None
-            tg = TelegramApi(Database('bot'), get_me, plugin_name, config, plugin_data=plugin_data)
+            tg = TelegramApi(database, get_me, plugin_name, config, plugin_data=plugin_data)
             plugins[plugin_name].main(tg)
 
 

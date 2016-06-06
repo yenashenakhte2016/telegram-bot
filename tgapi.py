@@ -94,8 +94,11 @@ class TelegramApi:
     def send_file(self, method, file, **kwargs):
         arguments = kwargs
         key = method.replace('send', '').lower()
-        file_name = os.path.basename(file.name)
-        arguments.update({key: (file_name, file.read())})
+        if type(file) != tuple:
+            file_name = os.path.basename(file.name)
+            arguments.update({key: (file_name, file.read())})
+        else:
+            arguments.update({key: file})
         return self.method(method, **arguments)
 
     def send_location(self, latitude, longitude, **kwargs):

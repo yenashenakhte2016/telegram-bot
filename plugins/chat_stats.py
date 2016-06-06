@@ -153,11 +153,15 @@ def parse_db_result(db_selection):
 def user_stats(tg):
     user_id = tg.message['reply_to_message']['from']['id'] if 'reply_to_message' in tg.message else \
         tg.message['from']['id']
+    first_name = tg.message['reply_to_message']['from']['first_name'] if 'reply_to_message' in tg.message else \
+        tg.message['from']['first_name']
+
     db_selection = tg.database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
+
     if db_selection:
         db_selection = tg.database.select(chat_name, ["char_length", "message_type", "time"], {'user_id': user_id})
         if len(db_selection) > 50:
-            message = "<b>{}'s Statistics</b>\n\n".format(tg.message['from']['first_name'])
+            message = "<b>{}'s Statistics</b>\n\n".format(first_name)
             message += create_message(*parse_db_result(db_selection))
             tg.edit_message_text(message, parse_mode="HTML")
         else:
@@ -199,6 +203,6 @@ arguments = {
         "^/chatstats$",
         "^/chatstats opt-out$",
         "^/stats$",
-        #"^/userstats$"
+        "^/userstats$"
     ]
 }
