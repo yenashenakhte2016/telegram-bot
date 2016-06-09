@@ -207,12 +207,13 @@ def create_keyboard(lastfm_name, song_url):
     return [[{'text': "Profile", 'url': profile_url}, {'text': "Song", 'url': song_url}]]
 
 
-plugin_parameters = {
+parameters = {
     'name': "LastFM",
-    'desc': "View your recently played LastFM tracks!",
-    'extended_desc': "The LastFM plugin allows you to share your most recently played song. If your LastFM is linked"
-                     "with /profile it will automatically utilize your profile. You can also supply an username "
-                     "alongside the command, /lastfm.",
+    'short_description': "View your recently played LastFM tracks!",
+    'long_description': "This plugin allows you to view and share metrics related to your LastFM account. Simply use "
+                        "/lastfm to share your last played track, /toptracks for your most played songs, or /topartists"
+                        " for your most played artists. The commands also works with a specified username or by reply "
+                        "to another users message.",
     'permissions': True
 }
 

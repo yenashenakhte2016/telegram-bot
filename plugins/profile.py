@@ -89,7 +89,7 @@ def get_stats(tg):
         if user_total < 50:
             return
         db_selection = tg.database.select(chat_name, ["COUNT(*)"])
-        percentage = "{:.2%}".format(user_total/db_selection[0]['COUNT(*)'])
+        percentage = "{:.2%}".format(user_total / db_selection[0]['COUNT(*)'])
         return {'user_total': user_total, 'percentage': percentage}
 
 
@@ -146,14 +146,15 @@ def list_of_options():
         sites = json.load(json_file)
     for site in sites.values():
         fields.append(site['pretty_name'])
-    return "\n".join(["  -  ".join(fields[i:i + 4]) for i in range(0, len(fields), 4)])
+    return ", ".join(fields)
 
 
-plugin_parameters = {
+parameters = {
     'name': "Profile",
-    'desc': "Display information about yourself",
-    'extended_desc': "The profile plugin allows you to share various details about yourself. You can add a field using"
-                     " <code>/profile website username</code>\n\n<b>List of fields:</b>\n{}".format(list_of_options()),
+    'short_description': "Display information about yourself",
+    'long_description': "The profile plugin allows you to share various details about yourself. You can add a field "
+                        "using <code>/profile website username</code>\n\n<b>List of fields:</b>\n{}".format(
+                                                                                                list_of_options()),
     'permissions': True
 }
 

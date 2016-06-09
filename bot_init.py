@@ -1,66 +1,74 @@
 import configparser
 import os
-import concurrent.futures
+import warnings
 
-from db import Database
+import MySQLdb
+import _mysql_exceptions
 
 
 def master_mind():
-    init_database()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as e:
-        config = e.submit(init_config).result()
-        extensions = e.submit(init_extensions).result()
-        plugins = e.submit(init_plugins).result()
+    warnings.filterwarnings('ignore')
+    if not os.path.exists('data/files'):
+        os.makedirs('data/files')
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    database = MySQLdb.connect(**config['DATABASE'])
+    init_database(database.cursor())
+    plugins = init_plugins(database.cursor())
+    extensions = init_extensions()
+    database.commit()
     return config, plugins, extensions
 
 
-def init_config():
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    return config
+def init_database(cursor):
+    cursor.execute("DROP TABLE IF EXISTS plugins;")
+
+    cursor.execute("CREATE TABLE plugins(plugin_name VARCHAR(16) NOT NULL UNIQUE, pretty_name VARCHAR(16) NOT NULL "
+                   "UNIQUE, short_description VARCHAR(100) NOT NULL, long_description TEXT, "
+                   "permissions VARCHAR(2) NOT NULL) CHARACTER SET utf8;")
+
+    cursor.execute("CREATE TABLE IF NOT EXISTS flagged_messages(plugin_name VARCHAR(16) NOT NULL, message_id BIGINT "
+                   "UNSIGNED, chat_id BIGINT, user_id BIGINT UNSIGNED, currently_active BOOLEAN, single_use BOOLEAN, "
+                   "plugin_data TEXT) CHARACTER SET utf8;")
+
+    cursor.execute("CREATE TABLE IF NOT EXISTS flagged_time(plugin_name VARCHAR(16) NOT NULL, argument_time DATETIME "
+                   "NOT NULL, previous_message TEXT NOT NULL, plugin_data TEXT) CHARACTER SET utf8;")
+
+    cursor.execute("CREATE TABLE IF NOT EXISTS downloaded_files(file_id VARCHAR(62) NOT NULL, file_path VARCHAR(100),"
+                   "file_hash VARCHAR(64)) CHARACTER SET utf8;")
+
+    cursor.execute("CREATE TABLE IF NOT EXISTS uploaded_files(file_id VARCHAR(62) NOT NULL, file_hash VARCHAR(64),"
+                   "file_type VARCHAR(16)) CHARACTER SET utf8; ")
+
+    cursor.execute("CREATE TABLE IF NOT EXISTS callback_queries(plugin_name VARCHAR(16) NOT NULL, "
+                   "callback_data VARCHAR(120) NOT NULL, plugin_data TEXT) CHARACTER SET utf8;")
+
+    try:
+        cursor.execute("CREATE UNIQUE INDEX callback_plugin_link ON callback_queries(plugin_name, callback_data)")
+    except _mysql_exceptions.OperationalError:
+        return
 
 
-def init_database():
-    if not os.path.exists('data/files'):
-        os.makedirs('data/files')
-
-    database = Database('bot')
-
-    database.create_table("plugins",
-                          {"plugin_name": "TEXT", "pretty_name": "TEXT", "description": "TEXT", "permissions": "TEXT",
-                           "extended_desc": "TEXT"}, drop_existing=True)
-    database.create_table("flagged_messages",
-                          {"plugin_name": "INT", "message_id": "INT", "chat_id": "INT", "user_id": "INT",
-                           "single_use": "BOOLEAN", "currently_active": "BOOLEAN", "plugin_data": "TEXT"})
-    database.create_table("flagged_time", {"plugin_name": "TEXT", "time": "INT", "plugin_data": "TEXT"})
-    database.create_table("downloads", {"file_id": "TEXT", "file_path": "TEXT"})
-    database.create_table("callback_queries", {"plugin_name": "INT", "data": "TEXT UNIQUE", "plugin_data": "TEXT"})
-
-    database.db.close()
-
-
-def init_plugins():
-    database = Database('bot')
-    plugin_list = file_lists('plugins')
-
+def init_plugins(cursor):
     modules = dict()
+    plugin_list = file_lists('plugins')
     plugins = __import__('plugins', fromlist=plugin_list)
+    values = list()
 
     for plugin_name in plugin_list:
         plugin = getattr(plugins, plugin_name)
-
-        if hasattr(plugin, 'plugin_parameters'):
-            pretty_name = plugin.plugin_parameters['name']
-            desc = plugin.plugin_parameters['desc']
-            permissions = numerate_permissions(plugin.plugin_parameters['permissions'])
-            extended_desc = plugin.plugin_parameters['extended_desc'] if 'extended_desc' in plugin.plugin_parameters \
-                else None
-            database.insert("plugins", {'plugin_name': plugin_name, 'pretty_name': pretty_name, 'description': desc,
-                                        'extended_desc': extended_desc, 'permissions': permissions})
+        if hasattr(plugin, 'parameters'):
+            pretty_name = plugin.parameters['name']
+            short_description = plugin.parameters['short_description']
+            long_description = plugin.parameters['long_description'] if 'long_description' in plugin.parameters \
+                else "An extended description is not available :("
+            plugin.parameters['permissions'] = permissions = numerate_permissions(plugin.parameters['permissions'])
+            values.append((plugin_name, pretty_name, short_description, long_description, permissions))
             modules.update({plugin_name: plugin})
             print("Plugin {} Loaded".format(plugin_name))
 
-    database.db.close()
+    cursor.executemany("INSERT INTO plugins VALUES(%s, %s, %s, %s, %s);", values)
+    cursor.close()
 
     return modules
 
@@ -73,7 +81,6 @@ def init_extensions():
     for extension_name in extensions_list:
         extension = getattr(extensions, extension_name)
         modules.append(extension)
-
         print("Extension {} Loaded".format(extension_name))
 
     return modules
@@ -85,9 +92,8 @@ def file_lists(directory):
     for file in os.listdir(directory):
         if file == '__init__.py':
             continue
-        elif 'py' in file[-2:]:
+        elif '.py' == file[-3:]:
             module_list.append(file.replace('.py', ''))
-
     return module_list
 
 

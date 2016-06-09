@@ -18,9 +18,9 @@ def main(tg):
             tg.send_message("Bye {} :(".format(name))
 
 
-plugin_parameters = {
+parameters = {
     'name': "Welcome",
-    'desc': "Greet new members!",
+    'short_description': "Greet new members!",
     'permissions': True
 }
 

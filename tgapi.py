@@ -1,15 +1,20 @@
+import hashlib
 import json
-import urllib3
-import certifi
-from functools import partial
-from sqlite3 import IntegrityError
 import os
 import re
+from functools import partial
+import _mysql_exceptions
+import MySQLdb
+
+import certifi
+import urllib3
 
 
 class TelegramApi:
-    def __init__(self, db, get_me, plugin_name, config, message=None, plugin_data=None, callback_query=None):
-        self.database = db
+    def __init__(self, database, get_me, plugin_name, config, message=None, plugin_data=None, callback_query=None):
+        self.database = database or MySQLdb.connect(**config['DATABASE'])
+        self.database.autocommit(True)
+        self.cursor = self.database.cursor()
         self.get_me = get_me
         self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
         self.plugin_name = plugin_name
@@ -76,11 +81,9 @@ class TelegramApi:
             }
             if flag_message:
                 message_id = response['result']['message_id']
-                if type(flag_message) is dict and 'message_id' not in flag_message:
-                    flag_message.update({'message_id': int(message_id)})
-                else:
-                    flag_message = message_id
-                self.flag_message(flag_message)
+                if type(flag_message) is not dict:
+                    flag_message = dict()
+                self.flag_message(message_id, flag_message)
         return response
 
     def forward_message(self, message_id, **kwargs):
@@ -93,13 +96,27 @@ class TelegramApi:
 
     def send_file(self, method, file, **kwargs):
         arguments = kwargs
-        key = method.replace('send', '').lower()
+        file_type = method.replace('send', '').lower()
         if type(file) != tuple:
             file_name = os.path.basename(file.name)
-            arguments.update({key: (file_name, file.read())})
+            read_file = file.read()
+            file = (file_name, read_file)
+            md5 = hashlib.md5(read_file).hexdigest()
         else:
-            arguments.update({key: file})
-        return self.method(method, **arguments)
+            md5 = hashlib.md5(file[1]).hexdigest()
+        self.database.query('SELECT file_id FROM uploaded_files WHERE file_hash="{}" '
+                            'AND file_type = "{}"'.format(md5, file_type))
+        query = self.database.store_result()
+        row = query.fetch_row(how=1)
+        if row:
+            arguments.update({file_type: row[0]['file_id']})
+            return self.method(method, **arguments)
+        else:
+            arguments.update({file_type: file})
+            result = self.method(method, **arguments)
+            file_id = result['result']['photo'][-1]['file_id']
+            self.cursor.execute("INSERT INTO uploaded_files VALUES(%s, %s, %s)", (file_id, md5, file_type))
+            return result
 
     def send_location(self, latitude, longitude, **kwargs):
         arguments = locals()
@@ -189,48 +206,48 @@ class TelegramApi:
             return 'ERROR: Need caption or reply_markup'
         return self.edit_content('editMessageText', **kwargs)
 
-    def flag_message(self, parameters):
-        chat_id = self.chat_data['chat']['id']
-        default = {"plugin_name": self.plugin_name, "single_use": False, "currently_active": True,
-                   "chat_id": chat_id, "user_id": None}
-        if type(parameters) is dict:
-            if 'chat_id' in parameters:
-                chat_id = parameters['chat_id']
-            if 'plugin_data' in parameters:
-                default['plugin_data'] = json.dumps(parameters.pop('plugin_data'))
-            default.update(parameters)
-        elif type(parameters) is int:
-            default.update({"message_id": parameters})
-        self.database.update("flagged_messages", {"currently_active": False}, {"chat_id": chat_id})
-        self.database.insert('flagged_messages', default)
+    def flag_message(self, message_id, parameters):
+        plugin_name = parameters['plugin_name'] if 'plugin_name' in parameters else self.plugin_name
+        message_id = message_id
+        chat_id = parameters['chat_id'] if 'chat_id' in parameters else self.chat_data['chat']['id']
+        user_id = parameters['user_id'] if 'user_id' in parameters else self.chat_data['from']['id']
+        currently_active = parameters['currently_active'] if 'currently_active' in parameters else True
+        single_use = parameters['single_use'] if 'single_use' in parameters else 0
+        plugin_data = json.dumps(parameters['plugin_data']) if 'plugin_data' in parameters else None
+        self.cursor.execute("UPDATE flagged_messages SET currently_active=0 WHERE chat_id=%s", (chat_id,))
+        self.cursor.execute("INSERT INTO flagged_messages VALUES(%s, %s, %s, %s, %s, %s, %s)",
+                            (plugin_name, message_id, chat_id, user_id, currently_active, single_use, plugin_data))
+        self.database.commit()
 
     def flag_time(self, time, plugin_data=None, plugin_name=None):
-        if not plugin_name:
-            plugin_name = self.plugin_name
-        default = {"prev_message": self.chat_data}
-        if plugin_data and type(plugin_data) is dict:
-            default.update(plugin_data)
-        self.database.insert("flagged_time",
-                             {"plugin_name": plugin_name, "time": time, "plugin_data": json.dumps(default)})
+        plugin_name = plugin_name or self.plugin_name
+        plugin_data = json.dumps(plugin_data) if plugin_data else None
+        previous_message = json.dumps(self.chat_data)
+        self.cursor.execute("INSERT INTO flagged_time VALUES(%s, FROM_UNIXTIME(%s), %s, %s)",
+                            (plugin_name, time, previous_message, plugin_data))
 
     def download_file(self, file_object):
-        file_object = file_object['result']
-        db_selection = self.database.select("downloads", ["file_path"], {"file_id": file_object["file_id"]})
-        if db_selection:
-            return db_selection[0]['file_path']
+        file_id = file_object['result']["file_id"]
+        file_path = file_object['result']['file_path']
+        self.database.query('SELECT file_path FROM downloaded_files WHERE file_id="{}";'.format(file_id))
+        query = self.database.store_result()
+        row = query.fetch_row(how=1)
+        if row:
+            return row[0]['file_path']
         else:
-            url = "https://api.telegram.org/file/bot{}/{}".format(self.token, file_object['file_path'])
+            url = "https://api.telegram.org/file/bot{}/{}".format(self.token, file_path)
             try:
-                name = file_object['file_path']
+                name = file_path
             except KeyError:
                 name = None
-            file_name = name_file(file_object['file_id'], name)
+            file_name = name_file(file_id, name)
             path = 'data/files/{}'.format(file_name)
             request = self.http.request('get', url)
             with open(path, 'wb') as output:
+                file_hash = hashlib.md5(request.data).hexdigest()
                 output.write(request.data)
-            self.database.insert("downloads",
-                                 {"file_id": file_object["file_id"], "file_path": "data/files/{}".format(file_name)})
+            self.cursor.execute("INSERT INTO downloaded_files VALUES(%s, %s, %s)", (file_id, path, file_hash))
+            self.database.commit()
             return path
 
     def inline_keyboard_markup(self, list_of_list_of_buttons, plugin_data=None):
@@ -241,10 +258,9 @@ class TelegramApi:
                     return "Error: Text not found in button object"
                 if 'callback_data' in button:
                     try:
-                        self.database.insert("callback_queries",
-                                             {"plugin_name": self.plugin_name, "data": button['callback_data'],
-                                              "plugin_data": plugin_data})
-                    except IntegrityError:
+                        self.cursor.execute("INSERT INTO callback_queries VALUES(%s, %s, %s)",
+                                            (self.plugin_name, button['callback_data'], plugin_data))
+                    except _mysql_exceptions.IntegrityError:
                         continue
         package = {
             'inline_keyboard': list_of_list_of_buttons

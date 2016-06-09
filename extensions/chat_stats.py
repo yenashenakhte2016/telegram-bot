@@ -1,77 +1,73 @@
-from sqlite3 import OperationalError, IntegrityError
-
-
-chat_id = None
+chats = list()
+users = list()
+types = ["audio", "document", "photo", "sticker", "video", "voice", "contact", "location", "venue", "text"]
 
 
 def main(update, database):
+    cursor = database.cursor()
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS users_list(user_id BIGINT UNIQUE NOT NULL, first_name VARCHAR(64) NOT NULL,"
+        "last_name VARCHAR(64), user_name VARCHAR(128)) CHARACTER SET utf8;")
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS chats_list(chat_id BIGINT UNIQUE NOT NULL, chat_type VARCHAR(24) NOT NULL,"
+        "title VARCHAR(64), username VARCHAR(128), first_name VARCHAR(64), last_name VARCHAR(64)) "
+        "CHARACTER SET utf8;")
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS chat_opt_status(chat_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL, "
+        "toggle_user BIGINT NOT NULL, toggle_date DATETIME NOT NULL);")
     for result in update:
         if 'message' in result:
-            result = result['message']
-            global chat_id
-            chat_id = result['chat']['id']
-            add_message(database, result)
-            add_user(database, result['from'])
-            add_chat(database, result['chat'])
+            add_user(result['message']['from'])
+            add_chat(result['message']['chat'])
+            add_message(result['message'], database, cursor)
+    for user in users:
+        cursor.execute("INSERT INTO users_list VALUES(%s, %s, %s, %s) ON DUPLICATE KEY UPDATE "
+                       "first_name=%s, last_name=%s, user_name=%s", user)
+    for chat in chats:
+        cursor.execute("INSERT INTO chats_list VALUES(%s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE "
+                       "title=%s, username=%s, first_name=%s, last_name =%s", chat)
+    database.commit()
+    cursor.close()
 
 
-def add_message(database, message):
-    try:
-        db_selection = database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
-    except OperationalError:
-        database.create_table("chat_opt_status", {"chat_id": "TEXT UNIQUE", "status": "BOOLEAN"})
-        db_selection = database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
-    if db_selection:
-        types = ["audio", "document", "photo", "sticker", "video", "voice", "contact", "location", "venue", "text"]
-        chat_name = "chat{}stats".format(str(message['chat']['id']).replace('-', ''))
+def add_message(message, database, cursor):
+    database.query("SELECT status FROM chat_opt_status WHERE chat_id={}".format(message['chat']['id']))
+    result = database.store_result().fetch_row(how=1)
+    if result and result[0]['status']:
         user_id = message['from']['id']
         time = message['date']
         char_length = len(message['text']) if 'text' in message else None
-        for message_type in types:
-            if message_type in message:
-                try:
-                    database.insert(chat_name,
-                                    {'user_id': user_id, 'time': time, 'char_length': char_length,
-                                     'message_type': message_type})
-                except OperationalError:
-                    database.create_table(chat_name,
-                                          {"user_id": "INT", "time": "INT", "char_length": "INT",
-                                           "message_type": "TEXT"})
-                    database.insert(chat_name,
-                                    {'user_id': user_id, 'time': time, 'char_length': char_length,
-                                     'message_type': message_type})
-                return
+        word_length = len(message['text'].split()) if 'text' in message else None
+        message_type = None
+        for key in types:
+            if key in message:
+                message_type = key
+                break
+        cursor.execute("CREATE TABLE IF NOT EXISTS `{}stats`(user_id BIGINT NOT NULL, time_sent DATETIME NOT NULL, "
+                       "char_length SMALLINT UNSIGNED, word_count SMALLINT UNSIGNED, "
+                       "message_type VARCHAR(16))".format(message['chat']['id']))
+        values = (user_id, time, char_length, word_length, message_type)
+        cursor.execute("INSERT INTO `{}stats` VALUES(%s, FROM_UNIXTIME(%s), %s, %s, %s)".format(message['chat']['id']),
+                       values)
 
 
-def add_user(database, user):
-    username = user['username'] if 'username' in user else None
+def add_user(user):
+    user_id = user['id']
+    first_name = user['first_name']
     last_name = user['last_name'] if 'last_name' in user else None
-    try:
-        database.insert("user_list", {'first_name': user['first_name'], 'last_name': last_name, 'username': username,
-                                      'id': user['id']})
-    except IntegrityError:
-        database.update("user_list",
-                        {'first_name': user['first_name'], 'last_name': last_name, 'username': username},
-                        {'id': user['id']})
-    except OperationalError:
-        database.create_table("user_list", {'id': "INT NOT NULL PRIMARY KEY", 'first_name': 'text', 'last_name': 'text',
-                                            'username': 'text'})
+    username = user['username'] if 'username' in user else None
+    entry = (user_id, first_name, last_name, username, first_name, last_name, username)
+    if entry not in users:
+        users.append(entry)
 
 
-def add_chat(database, chat):
+def add_chat(chat):
+    chat_id = chat['id']
+    chat_type = chat['type']
     title = chat['title'] if 'title' in chat else None
     username = chat['username'] if 'username' in chat else None
     first_name = chat['first_name'] if 'first_name' in chat else None
     last_name = chat['last_name'] if 'last_name' in chat else None
-
-    try:
-        database.insert("chat_list", {'id': chat['id'], 'type': chat['type'], 'title': title, 'username': username,
-                                      'first_name': first_name, 'last_name': last_name})
-    except IntegrityError:
-        database.update("chat_list", {'type': chat['type'], 'title': title, 'username': username,
-                                      'first_name': first_name, 'last_name': last_name}, {'id': chat['id']})
-    except OperationalError:
-        updated = False
-        database.create_table("chat_list",
-                              {'id': "INT NOT NULL PRIMARY KEY", 'type': "text", 'title': "text", 'username': 'text',
-                               'first_name': 'text', 'last_name': 'text'})
+    entry = (chat_id, chat_type, title, username, first_name, last_name, title, username, first_name, last_name)
+    if entry not in chats:
+        chats.append(entry)

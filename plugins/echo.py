@@ -13,11 +13,11 @@ def main(tg):
         tg.send_message(tg.message['match'])
 
 
-plugin_parameters = {
+parameters = {
     'name': "Echo",
-    'desc': "The echo plugin repeats your message text",
-    'extended_desc': "The echo plugins repeats your text back. You can use /echo alone or include text to repeat."
-                     "You can also reply to a message with /echo.",
+    'short_description': "The echo plugin repeats your message text",
+    'long_description': "The echo plugins repeats your text back. You can use /echo alone or include text to repeat."
+                        "You can also reply to a message with /echo.",
     'permissions': "01"
 }
 

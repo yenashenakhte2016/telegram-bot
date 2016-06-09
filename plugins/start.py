@@ -10,9 +10,9 @@ def main(tg):
         tg.send_message(message, disable_web_page_preview=True)
 
 
-plugin_parameters = {
+parameters = {
     'name': "Start",
-    'desc': "Introduces the bot!",
+    'short_description': "Introduces the bot!",
     'permissions': True
 }
 
