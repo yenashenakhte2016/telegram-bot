@@ -126,7 +126,21 @@ def global_user_stats(tg):
     text = "Global User Stats For Chat: {}\r\nGenerated On: {}\r\n".format(
         tg.message['chat']['title'], datetime.now().strftime("%A, %d. %B %Y %I:%M%p"))
     for rank, user in enumerate(results):
-        text += "\r\n{}. {} [{}] - {} messages".format(rank+1, user[0], user[1], user[2]).replace(u"\u200F", '')
+        first_name = user[0]
+        if not user[0]:
+            chat_member = tg.get_chat_member(chat_id, user[1])
+            chat_member = chat_member['result'] if chat_member['ok'] else None
+            if chat_member:
+                last_name = chat_member['last_name'] if 'last_name' in chat_member else None
+                user_name = chat_member['username'] if 'username' in chat_member else None
+                tg.cursor.execute("INSERT INTO users_list VALUES(%s, %s, %s, %s)",
+                                  (chat_member['id'], chat_member['first_name'], last_name, user_name))
+                first_name = chat_member['first_name']
+            else:
+                tg.cursor.execute("INSERT INTO users_list(first_name, user_id) VALUES(%s, %s)",
+                                  ("Unknown", user[1]))
+                first_name = "Unknown"
+        text += "\r\n{}. {} [{}] - {} messages".format(rank+1, first_name, user[1], user[2]).replace(u"\u200F", '')
     tg.send_document(('stats.txt', text))
 
 

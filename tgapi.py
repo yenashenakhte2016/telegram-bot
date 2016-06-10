@@ -60,11 +60,7 @@ class TelegramApi:
                 kwargs['chat_id'] = self.chat_data['chat']['id']
 
         post = self.http.request_encode_body('POST', url, fields=kwargs).data
-        result = json.loads(post.decode('UTF-8'))
-
-        if not result['ok']:
-            print('Error with response\nResponse: {}\nSent: {}'.format(result, content))
-        return result
+        return json.loads(post.decode('UTF-8'))
 
     def get_something(self, method, chat_id=None):
         chat_id = chat_id or self.chat_data['chat']['id']
