@@ -146,7 +146,8 @@ def global_user_stats(tg):
                 except _mysql_exceptions.IntegrityError:
                     pass
                 first_name = "Unknown"
-        text += "\r\n{}. {} [{}] - {} messages".format(rank+1, first_name, user[1], user[2]).replace(u"\u200F", '')
+        if first_name != "Unknown":
+            text += "\r\n{}. {} [{}] - {} messages".format(rank+1, first_name, user[1], user[2]).replace(u"\u200F", '')
     tg.send_document(('stats.txt', text))
 
 
