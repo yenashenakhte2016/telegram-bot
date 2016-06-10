@@ -133,12 +133,18 @@ def global_user_stats(tg):
             if chat_member:
                 last_name = chat_member['last_name'] if 'last_name' in chat_member else None
                 user_name = chat_member['username'] if 'username' in chat_member else None
-                tg.cursor.execute("INSERT INTO users_list VALUES(%s, %s, %s, %s)",
-                                  (chat_member['id'], chat_member['first_name'], last_name, user_name))
+                try:
+                    tg.cursor.execute("INSERT INTO users_list VALUES(%s, %s, %s, %s)",
+                                      (chat_member['id'], chat_member['first_name'], last_name, user_name))
+                except _mysql_exceptions.IntegrityError:
+                    pass
                 first_name = chat_member['first_name']
             else:
-                tg.cursor.execute("INSERT INTO users_list(first_name, user_id) VALUES(%s, %s)",
-                                  ("Unknown", user[1]))
+                try:
+                    tg.cursor.execute("INSERT INTO users_list(first_name, user_id) VALUES(%s, %s)",
+                                      ("Unknown", user[1]))
+                except _mysql_exceptions.IntegrityError:
+                    pass
                 first_name = "Unknown"
         text += "\r\n{}. {} [{}] - {} messages".format(rank+1, first_name, user[1], user[2]).replace(u"\u200F", '')
     tg.send_document(('stats.txt', text))
