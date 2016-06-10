@@ -101,22 +101,32 @@ class TelegramApi:
             file_name = os.path.basename(file.name)
             read_file = file.read()
             file = (file_name, read_file)
-            md5 = hashlib.md5(read_file).hexdigest()
+            try:
+                md5 = hashlib.md5(read_file).hexdigest()
+            except TypeError:
+                md5 = None
         else:
-            md5 = hashlib.md5(file[1]).hexdigest()
-        self.database.query('SELECT file_id FROM uploaded_files WHERE file_hash="{}" '
-                            'AND file_type = "{}"'.format(md5, file_type))
-        query = self.database.store_result()
-        row = query.fetch_row(how=1)
-        if row:
-            arguments.update({file_type: row[0]['file_id']})
-            return self.method(method, **arguments)
-        else:
-            arguments.update({file_type: file})
-            result = self.method(method, **arguments)
-            file_id = result['result']['photo'][-1]['file_id']
+            try:
+                md5 = hashlib.md5(file[1]).hexdigest()
+            except TypeError:
+                md5 = None
+        if md5:
+            self.database.query('SELECT file_id FROM uploaded_files WHERE file_hash="{}" '
+                                'AND file_type = "{}"'.format(md5, file_type))
+            query = self.database.store_result()
+            row = query.fetch_row(how=1)
+            if row:
+                arguments.update({file_type: row[0]['file_id']})
+                return self.method(method, **arguments)
+        arguments.update({file_type: file})
+        result = self.method(method, **arguments)
+        try:
+            file_id = result['result'][file_type]['file_id']
+        except TypeError:
+            file_id = result['result'][file_type][-1]['file_id']
+        if md5:
             self.cursor.execute("INSERT INTO uploaded_files VALUES(%s, %s, %s)", (file_id, md5, file_type))
-            return result
+        return result
 
     def send_location(self, latitude, longitude, **kwargs):
         arguments = locals()

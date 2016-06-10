@@ -1,4 +1,5 @@
 import _mysql_exceptions
+from datetime import datetime
 
 chat_id = int
 
@@ -20,6 +21,8 @@ def main(tg):
                     chat_stats(tg)
                 elif tg.message['matched_regex'] == arguments['text'][2]:
                     user_stats(tg)
+                elif tg.message['matched_regex'] == arguments['text'][3]:
+                    global_user_stats(tg)
             else:
                 keyboard = [[{'text': 'Enable Stats', 'callback_data': '%%toggle_on%%'}]]
                 message = "You are not opted into stat collection. A moderator can opt-in by clicking this button."
@@ -112,6 +115,19 @@ def user_stats(tg):
     message += hourly_time(total_messages, tg.database)
 
     tg.send_message(message)
+
+
+def global_user_stats(tg):
+    tg.database.query("SELECT first_name, s.user_id, COUNT(*) as `message_count` FROM `{}stats` s "
+                      "LEFT JOIN users_list u ON s.user_id = u.user_id GROUP BY user_id "
+                      "ORDER BY message_count DESC;".format(chat_id))
+    query = tg.database.store_result()
+    results = query.fetch_row(maxrows=0)
+    text = "Global User Stats For Chat: {}\r\nGenerated On: {}\r\n".format(
+        tg.message['chat']['title'], datetime.now().strftime("%A, %d. %B %Y %I:%M%p"))
+    for rank, user in enumerate(results):
+        text += "\r\n{}. {} [{}] - {} messages".format(rank+1, user[0], user[1], user[2]).replace(u"\u200F", '')
+    tg.send_document(('stats.txt', text))
 
 
 def types_breakdown(database, user_id=None):
