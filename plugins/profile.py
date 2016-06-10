@@ -1,5 +1,6 @@
 import json
 import os
+import _mysql_exceptions
 
 user_id = None
 entries = None
@@ -81,16 +82,19 @@ def get_stats(tg):
     except AttributeError:
         return
     chat_id = tg.message['chat']['id']
-    chat_name = "chat{}stats".format(str(chat_id).replace('-', ''))
-    db_selection = tg.database.select("chat_opt_status", ["status"], {"chat_id": chat_id, "status": True})
-    if db_selection:
-        db_selection = tg.database.select(chat_name, ["COUNT(*)"], {'user_id': user_id})
-        user_total = db_selection[0]['COUNT(*)']
-        if user_total < 50:
-            return
-        db_selection = tg.database.select(chat_name, ["COUNT(*)"])
-        percentage = "{:.2%}".format(user_total / db_selection[0]['COUNT(*)'])
-        return {'user_total': user_total, 'percentage': percentage}
+    try:
+        tg.database.query("SELECT COUNT(*) FROM `{}stats`;".format(chat_id))
+    except _mysql_exceptions.ProgrammingError:
+        return
+    query = tg.database.store_result()
+    chat_total = query.fetch_row()
+    if chat_total[0][0] < 100:
+        return
+    tg.database.query("SELECT COUNT(*) FROM `{}stats` WHERE user_id={}".format(chat_id, user_id))
+    query = tg.database.store_result()
+    user_total = query.fetch_row()
+    percentage = "{:.2%}".format(user_total[0][0] / chat_total[0][0])
+    return {'user_total': user_total[0][0], 'percentage': percentage}
 
 
 def add_entry(tg):

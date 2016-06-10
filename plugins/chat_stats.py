@@ -1,7 +1,6 @@
 import _mysql_exceptions
 
 chat_id = int
-chat_name = str
 
 types = ["audio", "document", "photo", "sticker", "video", "voice", "contact", "location", "venue", "text"]
 pretty_types = ["Audio", "Documents", "Photos", "Stickers", "Videos", "Voice", "Contacts", "Locations", "Venues",
@@ -52,7 +51,7 @@ def opt_in(tg):
 def opt_out(tg):
     if tg.callback_query:
         if check_if_mod(tg):
-            tg.database.drop_table(chat_name)
+            tg.cursor.execute("DROP TABLE `{}stats`".format(chat_id))
             tg.cursor.execute("UPDATE chat_opt_status SET status=FALSE AND toggle_user=%s AND toggle_date=now() WHERE"
                               "chat_id=%s", (tg.callback_query['from']['id'], chat_id))
             tg.answer_callback_query()
@@ -83,8 +82,10 @@ def chat_stats(tg):
     message += "\n\n<b>Types of Messages Sent</b>"
     message_types = types_breakdown(tg.database)
     for msg_type, total in message_types.items():
-        message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
-
+        try:
+            message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
+        except ValueError:
+            continue
     message += hourly_time(total_messages, tg.database)
     tg.send_message(message)
 
@@ -104,8 +105,10 @@ def user_stats(tg):
     message += "\n\n<b>Types of Messages Sent</b>"
     message_types = types_breakdown(tg.database)
     for msg_type, total in message_types.items():
-        message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
-
+        try:
+            message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
+        except ValueError:
+            continue
     message += hourly_time(total_messages, tg.database)
 
     tg.send_message(message)
