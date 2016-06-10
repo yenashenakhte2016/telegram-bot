@@ -15,10 +15,13 @@ def main(tg_api):
         tg.send_chat_action('typing')
         if tg.message['chat']['type'] != 'private':
             keyboard = create_plugin_keyboard()
-            tg.send_message("Here are a list of plugins and their status. Only group admins and mods can toggle these.",
-                            reply_markup=tg.inline_keyboard_markup(keyboard))
+            if check_if_mod() or check_if_admin():
+                tg.send_message("Here are a list of plugins and their status. Only admins can "
+                                "toggle these", reply_markup=tg.inline_keyboard_markup(keyboard))
+            else:
+                tg.send_message("Only admins can manage plugins!")
         else:
-            tg.send_message("You can only toggle plugins in groups!")
+            tg.send_message("You can only manage plugins in groups!")
 
 
 def answer_callback():
@@ -33,9 +36,9 @@ def answer_callback():
         tg.edit_message_reply_markup(message_id=tg.callback_query['message']['message_id'],
                                      reply_markup=tg.inline_keyboard_markup(keyboard))
     elif updated is False:
-        tg.answer_callback_query("Only bot admins can toggle this plugin!")
+        tg.answer_callback_query("Only the bot admin can toggle this plugin!")
     else:
-        tg.answer_callback_query("Only chat mods can toggle this plugin!")
+        tg.answer_callback_query("Only chat admins can toggle plugins!")
 
 
 def update_plugin_status(plugin_name):
@@ -59,7 +62,8 @@ def update_plugin_status(plugin_name):
 def create_plugin_keyboard():
     keyboard = list()
     tg.database.query("SELECT b.plugin_name, pretty_name, plugin_status FROM `plugins` p "
-                      "LEFT JOIN `{}blacklist` b ON p.plugin_name=b.plugin_name;".format(chat_id))
+                      "LEFT JOIN `{}blacklist` b ON p.plugin_name=b.plugin_name WHERE "
+                      "b.plugin_name != \"admin\";".format(chat_id))
     query = tg.database.store_result()
     rows = query.fetch_row(how=1, maxrows=0)
     remaining = len(rows)
@@ -74,8 +78,8 @@ def create_plugin_keyboard():
         elif plugin['plugin_status'] == 2:
             button['text'] = button['text'].format(admin, plugin['pretty_name'])
 
-        remaining -= 1
         row_length = 3 if remaining >= 3 or remaining == 1 else 2
+        remaining -= 1
         if keyboard and len(keyboard[-1]) < row_length:
             keyboard[-1].append(button)
         else:
@@ -85,7 +89,7 @@ def create_plugin_keyboard():
 
 def check_if_mod():
     admins = tg.get_chat_administrators()
-    user_id = tg.callback_query['from']['id']
+    user_id = tg.chat_data['from']['id']
     if admins['ok']:
         admins = admins['result']
     else:
@@ -95,7 +99,7 @@ def check_if_mod():
 
 
 def check_if_admin():
-    user_id = str(tg.callback_query['from']['id'])
+    user_id = str(tg.chat_data['from']['id'])
     if user_id in tg.config['BOT_CONFIG']['admins']:
         return True
     return
@@ -104,8 +108,8 @@ def check_if_admin():
 parameters = {
     'name': "Administration",
     'short_description': "Enable and disable plugins in your group!",
-    'long_description': "The administration plugin allows moderators (and only moderators) to enable or disable plugins"
-                        " in their groups. You can use /admin to display a list of plugins and their status. "
+    'long_description': "The administration plugin allows moderators to toggle plugins in their group. "
+                        "The command /admin returns a list of plugins and their current status.  "
                         "Plugins which have a white circle will need to be enabled by the bot admin.",
     'permissions': True
 }
