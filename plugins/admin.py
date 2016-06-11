@@ -89,7 +89,10 @@ def create_plugin_keyboard():
 
 def check_if_mod():
     admins = tg.get_chat_administrators()
-    user_id = tg.chat_data['from']['id']
+    if tg.callback_query:
+        user_id = tg.callback_query['from']['id']
+    else:
+        user_id = tg.chat_data['from']['id']
     if admins['ok']:
         admins = admins['result']
     else:
