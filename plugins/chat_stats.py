@@ -55,7 +55,7 @@ def opt_out(tg):
     if tg.callback_query:
         if check_if_mod(tg):
             tg.cursor.execute("DROP TABLE `{}stats`".format(chat_id))
-            tg.cursor.execute("UPDATE chat_opt_status SET status=FALSE AND toggle_user=%s AND toggle_date=now() WHERE"
+            tg.cursor.execute("UPDATE chat_opt_status SET status=FALSE AND toggle_user=%s AND toggle_date=now() WHERE "
                               "chat_id=%s", (tg.callback_query['from']['id'], chat_id))
             tg.answer_callback_query()
             tg.edit_message_text("You have successfully disabled statistics. All chat data has been deleted.",
@@ -112,7 +112,7 @@ def user_stats(tg):
             message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
         except ValueError:
             continue
-    message += hourly_time(total_messages, tg.database)
+    message += hourly_time(total_messages, tg.database, user_id)
 
     tg.send_message(message)
 
@@ -174,8 +174,12 @@ def metrics(database, user_id=None):
     return rows[0], rows[1], rows[2], rows[3]
 
 
-def hourly_time(total, database):
-    database.query("SELECT hour(time_sent), Count(*) FROM `{}stats` GROUP BY HOUR(time_sent);".format(chat_id))
+def hourly_time(total, database, user_id=None):
+    if user_id:
+        database.query("SELECT hour(time_sent), Count(*) FROM `{}stats` WHERE user_id={} "
+                       "GROUP BY HOUR(time_sent);".format(chat_id, user_id))
+    else:
+        database.query("SELECT hour(time_sent), Count(*) FROM `{}stats` GROUP BY HOUR(time_sent);".format(chat_id))
     query = database.store_result()
     rows = query.fetch_row(maxrows=0)
     times = {
