@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
 
 import json
 import time
@@ -9,7 +11,7 @@ import certifi
 import urllib3
 
 import bot_init
-from route_updates import RouteMessage, route_callback_query
+from route_updates import RouteMessage, route_callback_query, route_inline_query
 from tgapi import TelegramApi
 
 base_url = 'https://api.telegram.org/'
@@ -21,6 +23,7 @@ update_id = 0
 
 get_me = http.request('GET', "https://api.telegram.org/bot{}/getMe".format(token)).data
 get_me = json.loads(get_me.decode('UTF-8'))
+get_me.update({'date': int(time.time())})
 
 
 def main():
@@ -41,21 +44,22 @@ def main():
         update_id = get_update['result'][-1]['update_id'] + 1
 
         extension_process = Process(target=run_extensions, args=(get_update['result'],))
-        extension_process.daemon = True
         extension_process.start()
 
         for update in get_update['result']:
             if 'message' in update:
                 target = RouteMessage(update['message'], plugins, http, get_me, config)
                 message_process = Process(target=target.route_update)
-                message_process.daemon = True
                 message_process.start()
 
             elif 'callback_query' in update:
                 callback_process = Process(target=route_callback_query,
                                            args=(plugins, get_me, config, update['callback_query']))
-                callback_process.daemon = True
                 callback_process.start()
+            elif 'inline_query' in update:
+                inline_process = Process(target=route_inline_query,
+                                         args=(plugins, get_me, config, update['inline_query']))
+                inline_process.start()
     time_process.join()
     time.sleep(float(config['BOT_CONFIG']['sleep']))
 

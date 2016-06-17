@@ -1,5 +1,9 @@
+# -*- coding: utf-8 -*-
+
+
 import json
 import os
+import time
 
 base_url = "http://ws.audioscrobbler.com/2.0/?method={}&api_key={}&format=json"
 api_key = None
@@ -16,6 +20,8 @@ def main(tg):
         return
     if tg.message:
         handle_message(tg)
+    elif tg.inline_query:
+        handle_inline_query(tg)
 
 
 def handle_message(tg):
@@ -41,6 +47,31 @@ def handle_message(tg):
                             "Reply with your LastFM to link it!".format(determiner), flag_message=True)
 
 
+def handle_inline_query(tg):
+    first_name, lastfm_name, determiner = determine_names(tg)
+    boxes = list()
+    if lastfm_name:
+        track_list = get_recently_played(tg.http, lastfm_name, 8)
+        for index, track in enumerate(track_list):
+            if track['now_playing']:
+                time_played = "Currently Playing!"
+                message = "{} is currently listening to:\n".format(first_name)
+            else:
+                time_played = how_long(track['date'])
+                if index == 0:
+                    message = "{} has last listened to:\n".format(first_name)
+                else:
+                    message = "{} has recently listened to:\n".format(first_name)
+            message += "{}\t-\t{}".format(track['name'], track['artist'])
+            message_contents = tg.input_text_message_content(message)
+            keyboard = create_keyboard(lastfm_name, track['song_url'])
+            boxes.append(tg.inline_query_result_article(track['name'], message_contents, description=time_played,
+                                                        reply_markup=tg.inline_keyboard_markup(keyboard),
+                                                        thumb_url=track['image']))
+        is_personal = False if '(.*)' in tg.inline_query['matched_regex'] else True
+        tg.answer_inline_query(boxes, is_personal=is_personal, cache_time=15)
+
+
 def last_played(http, first_name, lastfm_name):
     track_list = get_recently_played(http, lastfm_name, 1)
     if track_list:
@@ -52,8 +83,6 @@ def last_played(http, first_name, lastfm_name):
             message += "{}\t-\t{}".format(track['name'], track['artist'])
             keyboard = create_keyboard(lastfm_name, track['song_url'])
             return {'text': message, 'keyboard': keyboard}
-    elif track_list is None:
-        print('invalid message')
 
 
 def top_tracks(tg, first_name, lastfm_name):
@@ -135,9 +164,14 @@ def get_recently_played(local_http, user_name, limit):
             'artist': track['artist']['#text'],
             'song_url': track['url'],
             'album': track['album']['#text'],
-            'now_playing': now_playing
+            'now_playing': now_playing,
+            'image': track['image'][-1]['#text']
 
         }
+        try:
+            song['date'] = track['date']['utc']
+        except KeyError:
+            song['date'] = None
         track_list.append(song)
     return track_list
 
@@ -153,19 +187,20 @@ def get_lastfm_username(user_id):
 
 
 def determine_names(tg):
-    if '(.*)' in tg.message['matched_regex']:
+    matched_regex = tg.message['matched_regex'] if tg.message else tg.inline_query['matched_regex']
+    if '(.*)' in matched_regex:
         determiner = None
-        lastfm_name = first_name = tg.message['match']
-    elif 'reply_to_message' in tg.message:
+        lastfm_name = first_name = tg.message['match'] if tg.message else tg.inline_query['match']
+    elif tg.message and 'reply_to_message' in tg.message:
         user_id = tg.message['reply_to_message']['from']['id']
         determiner = "this"
         lastfm_name = get_lastfm_username(user_id)
         first_name = tg.message['reply_to_message']['from']['first_name']
     else:
-        user_id = tg.message['from']['id']
+        user_id = tg.message['from']['id'] if tg.message else tg.inline_query['from']['id']
         determiner = "your"
         lastfm_name = get_lastfm_username(user_id)
-        first_name = tg.message['from']['first_name']
+        first_name = tg.message['from']['first_name'] if tg.message else tg.inline_query['from']['first_name']
     return first_name, lastfm_name, determiner
 
 
@@ -186,7 +221,7 @@ def link_profile(tg):
             message = "Successfully set your LastFM!"
         profile['lastfm'] = tg.message['text'].replace('\n', '')
         track_list = get_recently_played(tg.http, profile['lastfm'], 1)
-        keyboard = None
+        keyboard = [[]]
         if track_list:
             track_list = track_list.pop()
             if track_list['now_playing']:
@@ -207,6 +242,21 @@ def create_keyboard(lastfm_name, song_url):
     return [[{'text': "Profile", 'url': profile_url}, {'text': "Song", 'url': song_url}]]
 
 
+def how_long(epoch_time):
+    if epoch_time:
+        diff = int(time.time() - int(epoch_time))
+        if diff < 240:
+            return "Just now"
+        elif diff < 3600:
+            return "{} minutes ago".format(int(diff / 60))
+        elif 86399 > diff > 3600:
+            return "{} hours ago".format(int(diff / 3600))
+        elif diff > 86400:
+            return "{} days ago".format(int(diff / 86400))
+    else:
+        return "Unknown time ago"
+
+
 parameters = {
     'name': "LastFM",
     'short_description': "View your recently played LastFM tracks!",
@@ -222,10 +272,17 @@ arguments = {
         "^/lastfm (.*)",
         "^/lastfm$",
         "^/toptracks$",
-        "^/toptracks (--|—)(\d+)$",
+        u"^/toptracks (--|\u2014)(\d+)$",
         "^/toptracks (.*)",
         "^/topartists$",
-        "^/topartists (--|—)(\d+)$",
+        u"^/topartists (--|\u2014)(\d+)$",
         "^/topartists (.*)"
     ]
 }
+
+inline_arguments = [
+    '^lastfm$',
+    "^lastfm (.*)",
+    "^lastfm (.*)",
+    "^/lastfm$",
+]

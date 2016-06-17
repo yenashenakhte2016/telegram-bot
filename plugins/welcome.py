@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+
 def main(tg):
     tg.send_chat_action('typing')
     group = tg.message['chat']['title']

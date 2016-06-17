@@ -1,11 +1,15 @@
+# -*- coding: utf-8 -*-
+
+
+import _io
 import hashlib
 import json
 import os
 import re
 from functools import partial
-import _mysql_exceptions
-import MySQLdb
 
+import MySQLdb
+import _mysql_exceptions
 import certifi
 import urllib3
 
@@ -16,6 +20,7 @@ class TelegramApi:
         self.database.autocommit(True)
         self.cursor = self.database.cursor()
         self.get_me = get_me
+        self.inline_query = None
         self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
         self.plugin_name = plugin_name
         self.config = config
@@ -95,18 +100,11 @@ class TelegramApi:
         file_type = method.replace('send', '').lower()
         if type(file) != tuple:
             file_name = os.path.basename(file.name)
-            read_file = file.read()
-            file = (file_name, read_file)
-            try:
-                md5 = hashlib.md5(read_file).hexdigest()
-            except TypeError:
-                md5 = None
-        else:
-            try:
-                md5 = hashlib.md5(file[1]).hexdigest()
-            except TypeError:
-                md5 = None
-        if md5:
+            if type(file) is _io.BufferedReader:
+                file = file.read()
+            file = (file_name, file)
+        try:
+            md5 = hashlib.md5(file[1]).hexdigest()
             self.database.query('SELECT file_id FROM uploaded_files WHERE file_hash="{}" '
                                 'AND file_type = "{}"'.format(md5, file_type))
             query = self.database.store_result()
@@ -114,6 +112,8 @@ class TelegramApi:
             if row:
                 arguments.update({file_type: row[0]['file_id']})
                 return self.method(method, **arguments)
+        except TypeError:
+            md5 = None
         arguments.update({file_type: file})
         result = self.method(method, **arguments)
         try:
@@ -216,7 +216,7 @@ class TelegramApi:
         plugin_name = parameters['plugin_name'] if 'plugin_name' in parameters else self.plugin_name
         message_id = message_id
         chat_id = parameters['chat_id'] if 'chat_id' in parameters else self.chat_data['chat']['id']
-        user_id = parameters['user_id'] if 'user_id' in parameters else self.chat_data['from']['id']
+        user_id = parameters['user_id'] if 'user_id' in parameters else None
         currently_active = parameters['currently_active'] if 'currently_active' in parameters else True
         single_use = parameters['single_use'] if 'single_use' in parameters else 0
         plugin_data = json.dumps(parameters['plugin_data']) if 'plugin_data' in parameters else None

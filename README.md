@@ -24,14 +24,11 @@ Finally set your token in the config.ini. You can get a token from
 ```
 token = YOUR TOKEN HERE
 ```
-*Note: Some plugins may require separate tokens for their services*
+#Notes:
+
+* Some plugins may require separate tokens for their services
+* OSx users will need to install OpenSSL & Python3 from homebrew in order for the bot to function properly
+* This bot does not work on Windows without signifi
 
 Now you can start the bot with `./hitagi.py`. Plugin documentation is
-available on the wiki for more advanced users. 
-
-
-## Currently unsupported methods
-| Method               | Status |
-| -------------------- | ------ |
-| Inline Mode          | ✖      |
-
+available on the wiki for more advanced users.

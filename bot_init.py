@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+
 import configparser
 import os
 import warnings
@@ -25,7 +28,7 @@ def init_database(cursor):
 
     cursor.execute("CREATE TABLE plugins(plugin_name VARCHAR(16) NOT NULL UNIQUE, pretty_name VARCHAR(16) NOT NULL "
                    "UNIQUE, short_description VARCHAR(100) NOT NULL, long_description TEXT, "
-                   "permissions VARCHAR(2) NOT NULL) CHARACTER SET utf8;")
+                   "permissions VARCHAR(2) NOT NULL, hidden TINYINT) CHARACTER SET utf8;")
 
     cursor.execute("CREATE TABLE IF NOT EXISTS flagged_messages(plugin_name VARCHAR(16) NOT NULL, message_id BIGINT "
                    "UNSIGNED, chat_id BIGINT, user_id BIGINT UNSIGNED, currently_active BOOLEAN, single_use BOOLEAN, "
@@ -39,6 +42,9 @@ def init_database(cursor):
 
     cursor.execute("CREATE TABLE IF NOT EXISTS uploaded_files(file_id VARCHAR(62) NOT NULL, file_hash VARCHAR(64),"
                    "file_type VARCHAR(16)) CHARACTER SET utf8; ")
+
+    cursor.execute("CREATE TABLE IF NOT EXISTS inline_queries(plugin_name VARCHAR(16) NOT NULL, inline_id VARCHAR(64) "
+                   "NOT NULL UNIQUE) CHARACTER SET utf8;")
 
     cursor.execute("CREATE TABLE IF NOT EXISTS callback_queries(plugin_name VARCHAR(16) NOT NULL, "
                    "callback_data VARCHAR(120) NOT NULL, plugin_data TEXT) CHARACTER SET utf8;")
@@ -62,12 +68,13 @@ def init_plugins(cursor):
             short_description = plugin.parameters['short_description']
             long_description = plugin.parameters['long_description'] if 'long_description' in plugin.parameters \
                 else "An extended description is not available :("
+            hidden = plugin.parameters['hidden'] if 'hidden' in plugin.parameters else 0
             plugin.parameters['permissions'] = permissions = numerate_permissions(plugin.parameters['permissions'])
-            values.append((plugin_name, pretty_name, short_description, long_description, permissions))
+            values.append((plugin_name, pretty_name, short_description, long_description, permissions, hidden))
             modules.update({plugin_name: plugin})
             print("Plugin {} Loaded".format(plugin_name))
 
-    cursor.executemany("INSERT INTO plugins VALUES(%s, %s, %s, %s, %s);", values)
+    cursor.executemany("INSERT INTO plugins VALUES(%s, %s, %s, %s, %s, %s);", values)
     cursor.close()
 
     return modules

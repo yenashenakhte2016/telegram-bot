@@ -1,10 +1,13 @@
+# -*- coding: utf-8 -*-
+
+
 def main(tg):
     if tg.message and tg.message['matched_regex'] == arguments['text'][0]:
         if not tg.message['cleaned_message'] and tg.message['chat']['type'] != "private":
             return
         tg.send_chat_action('typing')
-        tg.database.query("SELECT pretty_name FROM `plugins` p LEFT JOIN `{}blacklist` b ON "
-                          "p.plugin_name=b.plugin_name WHERE b.plugin_status=1;".format(tg.message['from']['id']))
+        tg.database.query("SELECT pretty_name FROM `plugins` p LEFT JOIN `{}blacklist` b ON p.plugin_name=b.plugin_name"
+                          " WHERE b.plugin_status=1 AND hidden=0;".format(tg.message['from']['id']))
         query = tg.database.store_result()
         rows = query.fetch_row(how=1, maxrows=0)
         keyboard = []

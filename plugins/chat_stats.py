@@ -1,5 +1,9 @@
-import _mysql_exceptions
+# -*- coding: utf-8 -*-
+
+
 from datetime import datetime
+
+import _mysql_exceptions
 
 chat_id = int
 
@@ -106,7 +110,7 @@ def user_stats(tg):
     message += "\n<b>Average Characters Per Message:</b> {0:.1f}".format(average_chars)
 
     message += "\n\n<b>Types of Messages Sent</b>"
-    message_types = types_breakdown(tg.database)
+    message_types = types_breakdown(tg.database, user_id)
     for msg_type, total in message_types.items():
         try:
             message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
@@ -147,16 +151,18 @@ def global_user_stats(tg):
                     pass
                 first_name = "Unknown"
         if first_name != "Unknown":
-            text += "\r\n{}. {} [{}] - {} messages".format(rank+1, first_name, user[1], user[2]).replace(u"\u200F", '')
+            text += "\r\n{}. {} [{}] - {} messages".format(rank + 1, first_name, user[1], user[2]).replace(u"\u200F",
+                                                                                                           '')
     tg.send_document(('stats.txt', text))
 
 
 def types_breakdown(database, user_id=None):
     message_types = dict()
-    statement = "SELECT message_type, COUNT(*) FROM `{}stats` GROUP BY message_type;".format(chat_id)
+    statement = "SELECT message_type, COUNT(*) FROM `{}stats`".format(chat_id)
     if user_id:
         statement += " WHERE user_id={}".format(user_id)
-    database.query("SELECT message_type, COUNT(*) FROM `{}stats` GROUP BY message_type;".format(chat_id))
+    statement += " GROUP BY message_type;"
+    database.query(statement)
     query = database.store_result()
     rows = query.fetch_row(maxrows=0)
     for result in rows:

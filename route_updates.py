@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+
 import json
 import re
 import time
@@ -5,6 +8,7 @@ import time
 import MySQLdb
 import _mysql_exceptions
 
+from inline import TelegramInlineAPI
 from tgapi import TelegramApi
 
 
@@ -28,7 +32,7 @@ class RouteMessage:
         if 'text' in self.message and 'entities' in self.message:
             message = self.message['text']
             bot_name = '@' + self.get_me['result']['username']
-            name_match = re.search('^(/[^ ]*){}'.format(bot_name), message)
+            name_match = re.search('(?i)^(/[^ ]*){}'.format(bot_name), message)
             if name_match:
                 self.message['text'] = message.replace(message[:name_match.end(0)],
                                                        message[:name_match.end(0) - len(bot_name)])
@@ -88,22 +92,23 @@ class RouteMessage:
             return False
         plugin_triggered = False
         for plugin_name, plugin_module in self.plugins.items():
-            for key, value in plugin_module.arguments.items():
-                if self.check_argument(key, value, self.message):
-                    statement = 'SELECT plugin_status FROM `{}blacklist` WHERE plugin_name="{}";'.format(
-                        self.message['chat']['id'], plugin_name)
-                    try:
-                        self.database.query(statement)
-                    except _mysql_exceptions.ProgrammingError:
-                        self.create_default_table()
-                        self.database.query(statement)
-                    query = self.database.store_result()
-                    result = query.fetch_row(how=1)
-                    enabled = result[0]['plugin_status'] if result else self.add_plugin(plugin_name)
-                    if enabled:
-                        plugin_triggered = True
-                        tg = TelegramApi(self.database, self.get_me, plugin_name, self.config, self.message)
-                        plugin_module.main(tg)
+            if hasattr(plugin_module, 'arguments'):
+                for key, value in plugin_module.arguments.items():
+                    if self.check_argument(key, value, self.message):
+                        statement = 'SELECT plugin_status FROM `{}blacklist` WHERE plugin_name="{}";'.format(
+                            self.message['chat']['id'], plugin_name)
+                        try:
+                            self.database.query(statement)
+                        except _mysql_exceptions.ProgrammingError:
+                            self.create_default_table()
+                            self.database.query(statement)
+                        query = self.database.store_result()
+                        result = query.fetch_row(how=1)
+                        enabled = result[0]['plugin_status'] if result else self.add_plugin(plugin_name)
+                        if enabled:
+                            plugin_triggered = True
+                            tg = TelegramApi(self.database, self.get_me, plugin_name, self.config, self.message)
+                            plugin_module.main(tg)
         return plugin_triggered
 
     def check_argument(self, key, value, incremented_message):
@@ -172,3 +177,17 @@ def route_callback_query(plugins, get_me, config, callback_query):
         tg = TelegramApi(database, get_me, plugin_name, config, plugin_data=plugin_data,
                          callback_query=callback_query)
         plugins[plugin_name].main(tg)
+
+
+def route_inline_query(plugins, get_me, config, inline_query):
+    database = MySQLdb.connect(**config['DATABASE'])
+    for plugin_name, plugin in plugins.items():
+        if hasattr(plugin, 'inline_arguments'):
+            for argument in plugin.inline_arguments:
+                match = re.findall(str(argument), str(inline_query['query']))
+                if match:
+                    inline_query['matched_regex'] = argument
+                    inline_query['match'] = match[0]
+                    plugin.main(TelegramInlineAPI(database, get_me, plugin_name, config, inline_query))
+                    database.commit()
+                    return

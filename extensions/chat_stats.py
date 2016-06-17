@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+
 chats = list()
 users = list()
 types = ["audio", "document", "photo", "sticker", "video", "voice", "contact", "location", "venue", "text"]

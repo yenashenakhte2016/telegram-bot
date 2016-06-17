@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+
 def main(tg):
     tg.send_chat_action('typing')
     first_name = tg.get_me['result']['first_name']

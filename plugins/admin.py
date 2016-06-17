@@ -1,6 +1,9 @@
-on = '🔵'
-off = '🔴'
-admin = '⚪️'
+# -*- coding: utf-8 -*-
+
+
+on = u"\U0001F535"
+off = u"\U0001F534"
+admin = u"\U0001F536"
 chat_id = int
 tg = None
 
@@ -46,7 +49,7 @@ def update_plugin_status(plugin_name):
     query = tg.database.store_result()
     row = query.fetch_row(how=1)
     if row[0]['plugin_status'] != 2:
-        has_permission = check_if_mod()
+        has_permission = check_if_admin() or check_if_mod()
         if not has_permission:
             return
     else:
@@ -63,7 +66,7 @@ def create_plugin_keyboard():
     keyboard = list()
     tg.database.query("SELECT b.plugin_name, pretty_name, plugin_status FROM `plugins` p "
                       "LEFT JOIN `{}blacklist` b ON p.plugin_name=b.plugin_name WHERE "
-                      "b.plugin_name != \"admin\";".format(chat_id))
+                      "b.plugin_name != \"admin\" AND hidden=0;".format(chat_id))
     query = tg.database.store_result()
     rows = query.fetch_row(how=1, maxrows=0)
     remaining = len(rows)
@@ -102,8 +105,11 @@ def check_if_mod():
 
 
 def check_if_admin():
-    user_id = str(tg.chat_data['from']['id'])
-    if user_id in tg.config['BOT_CONFIG']['admins']:
+    if tg.callback_query:
+        user_id = tg.callback_query['from']['id']
+    else:
+        user_id = tg.chat_data['from']['id']
+    if str(user_id) in tg.config['BOT_CONFIG']['admins']:
         return True
     return
 
