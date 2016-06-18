@@ -132,7 +132,7 @@ def global_user_stats(tg):
     for rank, user in enumerate(results):
         first_name = user[0]
         if not user[0]:
-            chat_member = tg.get_chat_member(chat_id, user[1])
+            chat_member = tg.get_chat_member(chat_id, user[1], check_db=False)
             chat_member = chat_member['result'] if chat_member['ok'] else None
             if chat_member:
                 last_name = chat_member['last_name'] if 'last_name' in chat_member else None

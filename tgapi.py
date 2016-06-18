@@ -239,7 +239,7 @@ class TelegramApi:
         plugin_data = json.dumps(plugin_data) if plugin_data else None
         previous_message = json.dumps(self.chat_data)
         cursor.execute("INSERT INTO flagged_time VALUES(%s, FROM_UNIXTIME(%s), %s, %s)",
-                            (plugin_name, time, previous_message, plugin_data))
+                       (plugin_name, time, previous_message, plugin_data))
         database.commit()
         database.close()
 
@@ -282,7 +282,7 @@ class TelegramApi:
                 if 'callback_data' in button:
                     try:
                         cursor.execute("INSERT INTO callback_queries VALUES(%s, %s, %s)",
-                                            (self.plugin_name, button['callback_data'], plugin_data))
+                                       (self.plugin_name, button['callback_data'], plugin_data))
                     except _mysql_exceptions.IntegrityError:
                         continue
         package = {
@@ -292,7 +292,16 @@ class TelegramApi:
         database.close()
         return json.dumps(package)
 
-    def get_chat_member(self, user_id, chat_id=None):
+    def get_chat_member(self, user_id, chat_id=None, check_db=True):
+        if check_db:
+            database = MySQLdb.connect(**self.config['DATABASE'])
+            database.query("SELECT first_name, last_name, user_name FROM users_list WHERE user_id={}".format(user_id))
+            query = database.store_result()
+            result = query.fetch_row(how=1)
+            if result:
+                user_obj = {'id': user_id}
+                user_obj.update(result[0])
+                return {'result': {'status': 'from_db', 'user': user_obj}, 'ok': True}
         chat_id = chat_id or self.chat_data['chat']['id']
         return self.method('getChatMember', check_content=False, user_id=user_id, chat_id=chat_id)
 
