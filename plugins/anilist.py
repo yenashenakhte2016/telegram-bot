@@ -101,7 +101,7 @@ def handle_inline_query(tg):
             executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
             futures = [executor.submit(create_character_box, tg, character) for character in search_results]
             concurrent.futures.wait(futures)
-            tg.answer_inline_query([box.result() for box in futures], cache_time=259200)
+            tg.answer_inline_query([box.result() for box in futures], cache_time=10800)
     elif tg.inline_query['matched_regex'] == inline_arguments[3]:
         search_results = search_manga(tg.http, tg.inline_query['match'])
         if search_results:
@@ -122,7 +122,7 @@ def handle_inline_query(tg):
             executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
             futures = [executor.submit(create_anime_box, tg, anime) for anime in search_results]
             concurrent.futures.wait(futures)
-            tg.answer_inline_query([box.result() for box in futures], cache_time=259200)
+            tg.answer_inline_query([box.result() for box in futures], cache_time=10800)
             return
         else:
             tg.answer_inline_query(list())
@@ -169,7 +169,7 @@ def anime_model(tg, anime_id):
         if anime['airing_status'] == "currently airing":
             episodes, hours = parse_date(anime)
             message = message.format(hours)
-            message += "\n*Episode Count:* {}/{}".format(episodes, anime['total_episodes'])
+            message += "\n*Episode Count:* {}/{}".format(episodes - 1, anime['total_episodes'])
         else:
             message += "\n*Episode Count:* {}".format(anime['total_episodes'])
         message += "\n*Score:* {}".format(anime['average_score'])

@@ -48,6 +48,7 @@ class TelegramInlineAPI:
         }
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_query_result_photo(self, photo, thumb_url=None, cached=False, **kwargs):
@@ -63,6 +64,7 @@ class TelegramInlineAPI:
             package['thumb_url'] = thumb_url or photo
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_query_result_gif(self, gif, thumb_url=None, cached=False, **kwargs):
@@ -78,6 +80,7 @@ class TelegramInlineAPI:
             package['thumb_url'] = thumb_url or gif
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_query_result_mpeg4_gif(self, mpeg4, thumb_url=None, cached=False, **kwargs):
@@ -93,6 +96,7 @@ class TelegramInlineAPI:
             package['thumb_url'] = thumb_url
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_query_result_sticker(self, sticker_file_id, **kwargs):
@@ -104,6 +108,7 @@ class TelegramInlineAPI:
         }
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_query_result_video(self, title, video, mime_type=None, thumb_url=None, cached=False, **kwargs):
@@ -121,6 +126,7 @@ class TelegramInlineAPI:
             package['thumb_url'] = thumb_url
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_query_result_audio(self, audio, title, cached=False, **kwargs):
@@ -136,6 +142,7 @@ class TelegramInlineAPI:
             package['audio_url'] = audio
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_query_result_voice(self, voice, title, cached=False, **kwargs):
@@ -151,6 +158,7 @@ class TelegramInlineAPI:
             package['voice_url'] = voice,
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_result_document(self, title, document, mime_type=None, cached=False, **kwargs):
@@ -167,6 +175,7 @@ class TelegramInlineAPI:
             document['mime_type'] = mime_type
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_query_result_location(self, latitude, longitude, title, **kwargs):
@@ -180,6 +189,7 @@ class TelegramInlineAPI:
         }
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_result_venue(self, latitude, longitude, title, address, **kwargs):
@@ -194,6 +204,7 @@ class TelegramInlineAPI:
         }
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_query_result_contact(self, phone_number, first_name, **kwargs):
@@ -206,6 +217,7 @@ class TelegramInlineAPI:
         }
         package.update(kwargs)
         cursor.execute("INSERT INTO inline_queries VALUES(%s, %s)", (self.plugin_name, package['id']))
+        cursor.close()
         return package
 
     def inline_keyboard_markup(self, list_of_list_of_buttons, plugin_data=None):
@@ -224,6 +236,7 @@ class TelegramInlineAPI:
         package = {
             'inline_keyboard': list_of_list_of_buttons
         }
+        cursor.close()
         return package
 
     def input_text_message_content(self, message_text, parse_mode=0, disable_web_page_preview=False):
