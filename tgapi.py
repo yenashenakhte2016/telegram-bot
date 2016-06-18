@@ -96,6 +96,7 @@ class TelegramApi:
         return self.method('sendMessage', **package)
 
     def send_file(self, method, file, **kwargs):
+        database = MySQLdb.connect(**self.config['DATABASE'])
         arguments = kwargs
         file_type = method.replace('send', '').lower()
         if type(file) != tuple:
@@ -105,9 +106,9 @@ class TelegramApi:
             file = (file_name, file)
         try:
             md5 = hashlib.md5(file[1]).hexdigest()
-            self.database.query('SELECT file_id FROM uploaded_files WHERE file_hash="{}" '
-                                'AND file_type = "{}"'.format(md5, file_type))
-            query = self.database.store_result()
+            database.query('SELECT file_id FROM uploaded_files WHERE file_hash="{}" '
+                           'AND file_type = "{}"'.format(md5, file_type))
+            query = database.store_result()
             row = query.fetch_row(how=1)
             if row:
                 arguments.update({file_type: row[0]['file_id']})
@@ -121,7 +122,10 @@ class TelegramApi:
         except TypeError:
             file_id = result['result'][file_type][-1]['file_id']
         if md5:
-            self.cursor.execute("INSERT INTO uploaded_files VALUES(%s, %s, %s)", (file_id, md5, file_type))
+            cursor = database.cursor()
+            cursor.execute("INSERT INTO uploaded_files VALUES(%s, %s, %s)", (file_id, md5, file_type))
+        database.commit()
+        database.close()
         return result
 
     def send_location(self, latitude, longitude, **kwargs):
@@ -213,6 +217,8 @@ class TelegramApi:
         return self.edit_content('editMessageText', **kwargs)
 
     def flag_message(self, message_id, parameters):
+        database = MySQLdb.connect(**self.config['DATABASE'])
+        cursor = database.cursor()
         plugin_name = parameters['plugin_name'] if 'plugin_name' in parameters else self.plugin_name
         message_id = message_id
         chat_id = parameters['chat_id'] if 'chat_id' in parameters else self.chat_data['chat']['id']
@@ -220,27 +226,35 @@ class TelegramApi:
         currently_active = parameters['currently_active'] if 'currently_active' in parameters else True
         single_use = parameters['single_use'] if 'single_use' in parameters else 0
         plugin_data = json.dumps(parameters['plugin_data']) if 'plugin_data' in parameters else None
-        self.cursor.execute("UPDATE flagged_messages SET currently_active=0 WHERE chat_id=%s", (chat_id,))
-        self.cursor.execute("INSERT INTO flagged_messages VALUES(%s, %s, %s, %s, %s, %s, %s)",
-                            (plugin_name, message_id, chat_id, user_id, currently_active, single_use, plugin_data))
-        self.database.commit()
+        cursor.execute("UPDATE flagged_messages SET currently_active=0 WHERE chat_id=%s", (chat_id,))
+        cursor.execute("INSERT INTO flagged_messages VALUES(%s, %s, %s, %s, %s, %s, %s)",
+                       (plugin_name, message_id, chat_id, user_id, currently_active, single_use, plugin_data))
+        database.commit()
+        database.close()
 
     def flag_time(self, time, plugin_data=None, plugin_name=None):
+        database = MySQLdb.connect(**self.config['DATABASE'])
+        cursor = database.cursor()
         plugin_name = plugin_name or self.plugin_name
         plugin_data = json.dumps(plugin_data) if plugin_data else None
         previous_message = json.dumps(self.chat_data)
-        self.cursor.execute("INSERT INTO flagged_time VALUES(%s, FROM_UNIXTIME(%s), %s, %s)",
+        cursor.execute("INSERT INTO flagged_time VALUES(%s, FROM_UNIXTIME(%s), %s, %s)",
                             (plugin_name, time, previous_message, plugin_data))
+        database.commit()
+        database.close()
 
     def download_file(self, file_object):
+        database = MySQLdb.connect(**self.config['DATABASE'])
         file_id = file_object['result']["file_id"]
         file_path = file_object['result']['file_path']
-        self.database.query('SELECT file_path FROM downloaded_files WHERE file_id="{}";'.format(file_id))
-        query = self.database.store_result()
+        database.query('SELECT file_path FROM downloaded_files WHERE file_id="{}";'.format(file_id))
+        query = database.store_result()
         row = query.fetch_row(how=1)
         if row:
+            database.close()
             return row[0]['file_path']
         else:
+            cursor = database.cursor()
             url = "https://api.telegram.org/file/bot{}/{}".format(self.token, file_path)
             try:
                 name = file_path
@@ -252,11 +266,14 @@ class TelegramApi:
             with open(path, 'wb') as output:
                 file_hash = hashlib.md5(request.data).hexdigest()
                 output.write(request.data)
-            self.cursor.execute("INSERT INTO downloaded_files VALUES(%s, %s, %s)", (file_id, path, file_hash))
-            self.database.commit()
+            cursor.execute("INSERT INTO downloaded_files VALUES(%s, %s, %s)", (file_id, path, file_hash))
+            database.commit()
+            database.close()
             return path
 
     def inline_keyboard_markup(self, list_of_list_of_buttons, plugin_data=None):
+        database = MySQLdb.connect(**self.config['DATABASE'])
+        cursor = database.cursor()
         plugin_data = json.dumps(plugin_data)
         for button_list in list_of_list_of_buttons:
             for button in button_list:
@@ -264,13 +281,15 @@ class TelegramApi:
                     return "Error: Text not found in button object"
                 if 'callback_data' in button:
                     try:
-                        self.cursor.execute("INSERT INTO callback_queries VALUES(%s, %s, %s)",
+                        cursor.execute("INSERT INTO callback_queries VALUES(%s, %s, %s)",
                                             (self.plugin_name, button['callback_data'], plugin_data))
                     except _mysql_exceptions.IntegrityError:
                         continue
         package = {
             'inline_keyboard': list_of_list_of_buttons
         }
+        database.commit()
+        database.close()
         return json.dumps(package)
 
     def get_chat_member(self, user_id, chat_id=None):
