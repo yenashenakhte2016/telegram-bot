@@ -125,9 +125,9 @@ def handle_inline_query(tg):
     if search_results:
         concurrent.futures.wait(futures)
         offset = '{},{}'.format(max, max + 8) if len(search_results) > max else ""
-        tg.answer_inline_query([box.result() for box in futures], cache_time=0, next_offset=offset)
+        tg.answer_inline_query([box.result() for box in futures], cache_time=259200, next_offset=offset)
     else:
-        tg.answer_inline_query(list())
+        tg.answer_inline_query(list(), cache_time=259200)
 
 
 def create_anime_box(tg, anime):
