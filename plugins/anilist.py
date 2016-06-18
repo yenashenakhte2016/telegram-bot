@@ -95,20 +95,21 @@ def handle_message(tg):
 
 
 def handle_inline_query(tg):
+    if tg.inline_query['offset']:
+        min, max = [int(x) for x in tg.inline_query['offset'].split(',')]
+    else:
+        min = 0
+        max = 8
     if tg.inline_query['matched_regex'] == inline_arguments[2]:
         search_results = search_character(tg.http, tg.inline_query['match'])
         if search_results:
             executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
-            futures = [executor.submit(create_character_box, tg, character) for character in search_results[:8]]
-            concurrent.futures.wait(futures)
-            tg.answer_inline_query([box.result() for box in futures], cache_time=10800)
+            futures = [executor.submit(create_character_box, tg, character) for character in search_results[min:max]]
     elif tg.inline_query['matched_regex'] == inline_arguments[3]:
         search_results = search_manga(tg.http, tg.inline_query['match'])
         if search_results:
             executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
-            futures = [executor.submit(create_manga_box, tg, manga) for manga in search_results[:8]]
-            concurrent.futures.wait(futures)
-            tg.answer_inline_query([box.result() for box in futures], cache_time=0)
+            futures = [executor.submit(create_manga_box, tg, manga) for manga in search_results[min:max]]
     else:
         if tg.inline_query['matched_regex'] == inline_arguments[1]:
             search_results = search_anime(tg.http, tg.inline_query['match'])
@@ -120,12 +121,13 @@ def handle_inline_query(tg):
             search_results = json.loads(post.data.decode('UTF-8'))
         if search_results:
             executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
-            futures = [executor.submit(create_anime_box, tg, anime) for anime in search_results[:8]]
-            concurrent.futures.wait(futures)
-            tg.answer_inline_query([box.result() for box in futures], cache_time=10800)
-            return
-        else:
-            tg.answer_inline_query(list())
+            futures = [executor.submit(create_anime_box, tg, anime) for anime in search_results[min:max]]
+    if search_results:
+        concurrent.futures.wait(futures)
+        offset = '{},{}'.format(max, max + 8) if len(search_results) > max else ""
+        tg.answer_inline_query([box.result() for box in futures], cache_time=0, next_offset=offset)
+    else:
+        tg.answer_inline_query(list())
 
 
 def create_anime_box(tg, anime):
