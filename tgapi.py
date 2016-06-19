@@ -117,13 +117,14 @@ class TelegramApi:
             md5 = None
         arguments.update({file_type: file})
         result = self.method(method, **arguments)
-        try:
-            file_id = result['result'][file_type]['file_id']
-        except TypeError:
-            file_id = result['result'][file_type][-1]['file_id']
-        if md5:
-            cursor = database.cursor()
-            cursor.execute("INSERT INTO uploaded_files VALUES(%s, %s, %s)", (file_id, md5, file_type))
+        if result['ok']:
+            try:
+                file_id = result['result'][file_type]['file_id']
+            except TypeError:
+                file_id = result['result'][file_type][-1]['file_id']
+            if md5:
+                cursor = database.cursor()
+                cursor.execute("INSERT INTO uploaded_files VALUES(%s, %s, %s)", (file_id, md5, file_type))
         database.commit()
         database.close()
         return result
