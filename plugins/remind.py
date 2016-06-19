@@ -55,9 +55,12 @@ def main(tg):
                 tg.answer_callback_query("You aren't the one who set the reminder!")
         elif 'cancel' in tg.callback_query['data']:
             time_id = tg.callback_query['data'].replace('cancel', '')
-            tg.answer_callback_query("Successfully Cancelled")
-            tg.edit_message_text("Cancelled Reminder")
-            tg.cursor.execute("DELETE FROM `flagged_time` WHERE time_id=%s", (time_id,))
+            permission = check_user(time_id, tg.callback_query['message']['chat']['id'],
+                                    tg.callback_query['from']['id'], tg.database)
+            if permission:
+                tg.answer_callback_query("Successfully Cancelled")
+                tg.edit_message_text("Cancelled Reminder")
+                tg.cursor.execute("DELETE FROM `flagged_time` WHERE time_id=%s", (time_id,))
         elif '+' in tg.callback_query['data']:
             time_id = tg.callback_query['data'][3:]
             permission = check_user(time_id, tg.callback_query['message']['chat']['id'],
