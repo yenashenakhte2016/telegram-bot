@@ -74,19 +74,19 @@ def run_extensions(update):
 def check_time_args():
     database = MySQLdb.connect(**config['DATABASE'])
     current_time = int(time.time())
-    database.query("SELECT argument_time, plugin_name,plugin_data,previous_message FROM flagged_time WHERE "
+    database.query("SELECT time_id, plugin_name,plugin_data,previous_message FROM flagged_time WHERE "
                    "argument_time < from_unixtime({})".format(current_time))
 
     query = database.store_result()
     rows = query.fetch_row(how=1, maxrows=0)
     cursor = database.cursor() if rows else None
     for result in rows:
-        arg_time = result['argument_time']
+        time_id = result['time_id']
         plugin_name = result['plugin_name']
         plugin_data = json.loads(result['plugin_data'])
         previous_message = json.loads(result['previous_message'])
-        cursor.execute('DELETE FROM `flagged_time` WHERE argument_time=%s '
-                       'AND plugin_name=%s;', (arg_time, plugin_name))
+        previous_message['time_id'] = time_id
+        cursor.execute('DELETE FROM `flagged_time` WHERE time_id=%s;', (time_id,))
         tg = TelegramApi(None, get_me, plugin_name, config, previous_message, plugin_data)
         plugins[plugin_name].main(tg)
     if cursor:

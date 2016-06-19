@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import time
 from functools import partial
 
 import MySQLdb
@@ -39,7 +40,6 @@ class TelegramApi:
         self.get_chat = partial(self.get_something, 'getChat')
         self.get_chat_administrators = partial(self.get_something, 'getChatAdministrators')
         self.get_chat_members_count = partial(self.get_something, 'getChatMembersCount')
-        self.edit_message_reply_markup = partial(self.edit_content, 'editMessageReplyMarkup')
 
         self.reply_keyboard_hide = reply_keyboard_hide
         self.reply_keyboard_markup = reply_keyboard_markup
@@ -187,35 +187,53 @@ class TelegramApi:
             del arguments['text']
         return self.method('answerCallbackQuery', check_content=False, **arguments)
 
-    def edit_content(self, method, **kwargs):
-        arguments = kwargs
-        if 'chat_id' and 'inline_message_id' not in arguments:
-            if 'message_id' in arguments:
-                chat_id = self.chat_data['chat']['id']
-                arguments.update({'chat_id': chat_id})
-            else:
-                return 'ERROR: Need chat_id + message_id or inline_message_id'
-        return self.method(method, check_content=False, **arguments)
-
     def edit_message_text(self, text, **kwargs):
-        arguments = locals()
-        del arguments['self']
-        arguments.update(arguments.pop('kwargs'))
-        if 'chat_id' or 'message_id' not in arguments:
-            if 'message_id' in arguments:
-                arguments['chat_id'] = self.chat_data['chat']['id']
-            elif 'inline_message_id' not in arguments:
-                try:
-                    arguments['message_id'] = self.last_sent['message_id']
-                    arguments['chat_id'] = self.last_sent['chat_id']
-                except TypeError:
-                    return
-        return self.edit_content('editMessageText', **arguments)
+        message_id, chat_id = self.get_edit_parameters()
+        package = {
+            'chat_id': chat_id,
+            'message_id': message_id,
+            'text': text,
+            'parse_mode': self.config['BOT_CONFIG']['default_parse_mode']
+        }
+        package.update(kwargs)
+        return self.method('editMessageText', check_content=False, **package)
 
-    def edit_message_caption(self, **kwargs):
-        if 'caption' and 'reply_markup' not in kwargs:
-            return 'ERROR: Need caption or reply_markup'
-        return self.edit_content('editMessageText', **kwargs)
+    def edit_message_caption(self, caption=None, **kwargs):
+        message_id, chat_id = self.get_edit_parameters()
+        package = {
+            'chat_id': chat_id,
+            'message_id': message_id
+        }
+        if caption:
+            package['caption'] = caption
+        package.update(kwargs)
+        return self.method('editMessageCaption', check_content=False, **package)
+
+    def edit_message_reply_markup(self, reply_markup=None, **kwargs):
+        message_id, chat_id = self.get_edit_parameters()
+        package = {
+            'chat_id': chat_id,
+            'message_id': message_id
+        }
+        if reply_markup:
+            package['reply_markup'] = reply_markup
+        package.update(kwargs)
+        return self.method('editMessageReplyMarkup', check_content=False, **package)
+
+    def get_edit_parameters(self):
+        if self.last_sent:
+            message_id = self.last_sent['message_id']
+            chat_id = self.last_sent['chat_id']
+        elif self.message and 'reply_to_message' in self.message:
+            message_id = self.message['reply_to_message']['message_id']
+            chat_id = self.message['chat']['id']
+        elif self.callback_query:
+            message_id = self.callback_query['message']['message_id']
+            chat_id = self.callback_query['message']['chat']['id']
+        else:
+            message_id = None
+            chat_id = None
+        return message_id, chat_id
 
     def flag_message(self, message_id, parameters):
         database = MySQLdb.connect(**self.config['DATABASE'])
@@ -233,16 +251,22 @@ class TelegramApi:
         database.commit()
         database.close()
 
-    def flag_time(self, time, plugin_data=None, plugin_name=None):
+    def flag_time(self, reminder_time, plugin_data=None, plugin_name=None):
+        if self.message:
+            reminder_id = "{}-{}-{}".format(self.message['message_id'], self.message['chat']['id'], time.time())
+        else:
+            reminder_id = "{}-{}-{}".format(self.callback_query['id'], self.callback_query['from']['id'], time.time())
         database = MySQLdb.connect(**self.config['DATABASE'])
         cursor = database.cursor()
         plugin_name = plugin_name or self.plugin_name
         plugin_data = json.dumps(plugin_data) if plugin_data else None
+        self.chat_data.update({'reminder_id': reminder_id})
         previous_message = json.dumps(self.chat_data)
-        cursor.execute("INSERT INTO flagged_time VALUES(%s, FROM_UNIXTIME(%s), %s, %s)",
-                       (plugin_name, time, previous_message, plugin_data))
+        cursor.execute("INSERT INTO flagged_time VALUES(%s, %s, FROM_UNIXTIME(%s), %s, %s)",
+                       (reminder_id, plugin_name, reminder_time, previous_message, plugin_data))
         database.commit()
         database.close()
+        return reminder_id
 
     def download_file(self, file_object):
         database = MySQLdb.connect(**self.config['DATABASE'])
