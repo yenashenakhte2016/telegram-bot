@@ -1,8 +1,8 @@
+import concurrent.futures
 import json
 import time
-import concurrent.futures
 
-base_url = "https://ibsearch.xxx/api/v1/images.json"
+base_url = "https://ibsearch.xxx/api/v1/"
 image_path = "https://{}.ibsearch.xxx/{}"
 thumb_path = "https://{}.ibsearch.xxx/t{}"
 api_key = None
@@ -15,14 +15,14 @@ def main(tg):
         return
     if tg.inline_query:
         page = int(tg.inline_query['offset']) if tg.inline_query['offset'] else 1
-        if tg.inline_query['matched_regex'] == inline_arguments[0]:
+        if tg.inline_query['matched_regex'] in inline_arguments[:2]:
             query = 'random: rating:s'
         else:
-            query = tg.inline_query['match'].replace(' ','') + ' rating:s'
+            query = tg.inline_query['match'].replace(' ', '') + ' rating:s'
         images = get_images(tg.http, query, page=page)
         if images:
             executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
-            futures = [executor.submit(create_box, tg.inline_query_result_photo, pic) for pic in images]
+            futures = [executor.submit(create_box, tg, pic) for pic in images]
             concurrent.futures.wait(futures)
             offset = page + 1 if len(images) == 50 else ''
             tg.answer_inline_query([box.result() for box in futures], cache_time=86400, next_offset=offset)
@@ -30,12 +30,18 @@ def main(tg):
             tg.answer_inline_query([], cache_time=0)
 
 
-def create_box(inline_query_result_photo, pic):
+def create_box(tg, pic):
     image_url = image_path.format(pic['server'], pic['path'])
     thumb_url = thumb_path.format(pic['server'], pic['path'])
+    if pic['site_deleted'] != '0':
+        sauce = image_url
+    else:
+        sauce = pic['site_file']
+    keyboard = [[{'text': 'Source', 'url': sauce}]]
     width = int(pic['width'])
     height = int(pic['height'])
-    return inline_query_result_photo(image_url, thumb_url, photo_width=width, photo_height=height)
+    return tg.inline_query_result_photo(image_url, thumb_url, photo_width=width, photo_height=height,
+                                        reply_markup=tg.inline_keyboard_markup(keyboard))
 
 
 def get_images(http, query, limit=50, page=1):
@@ -44,9 +50,10 @@ def get_images(http, query, limit=50, page=1):
         'limit': limit,
         'page': page,
         'q': query,
-        'rating': 's'
+        'rating': 's',
+        'sources': 'one'
     }
-    response = http.request('GET', base_url, fields=fields)
+    response = http.request('GET', base_url + 'images.json', fields=fields)
     if response.status == 200:
         try:
             return json.loads(response.data.decode('UTF-8'))
@@ -66,6 +73,7 @@ parameters = {
 
 inline_arguments = [
     'animepic$',
+    '/animepic#',
     'animepic (.*)',
     '/animepic (.*)'
 ]
