@@ -25,7 +25,7 @@ def main(tg):
             futures = [executor.submit(create_box, tg.inline_query_result_photo, pic) for pic in images]
             concurrent.futures.wait(futures)
             offset = page + 1 if len(images) == 50 else ''
-            tg.answer_inline_query([box.result() for box in futures], cache_time=0, next_offset=offset)
+            tg.answer_inline_query([box.result() for box in futures], cache_time=86400, next_offset=offset)
         else:
             tg.answer_inline_query([], cache_time=0)
 
