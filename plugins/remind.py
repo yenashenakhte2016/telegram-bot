@@ -72,8 +72,13 @@ def main(tg):
                 tg.answer_callback_query("Delayed the reminder by {} minutes!".format(time))
                 keyboard = [[{'text': "Cancel", 'callback_data': 'cancel{}'.format(time_id)},
                              {'text': "Add Time", 'callback_data': 'add{}'.format(time_id)}]]
-                tg.edit_message_reply_markup(reply_markup=tg.inline_keyboard_markup(keyboard))
-                tg.cursor.execute("UPDATE `flagged_time` SET argument_time=ADDTIME(argument_time, %s00) WHERE "
+                message = tg.callback_query['message']['text'] + '\n<i>Added {} minutes</i>'.format(time)
+                tg.edit_message_text(message, reply_markup=tg.inline_keyboard_markup(keyboard))
+                if time == 60:
+                    time = '1:00:00'
+                else:
+                    time = '{}:00'.format(time)
+                tg.cursor.execute("UPDATE `flagged_time` SET argument_time=ADDTIME(argument_time, %s) WHERE "
                                   "time_id=%s", (time, time_id))
             else:
                 tg.answer_callback_query("You aren't the one who set the reminder!")

@@ -196,7 +196,7 @@ class TelegramApi:
             'chat_id': chat_id,
             'message_id': message_id,
             'text': text,
-            'parse_mode': self.config['BOT_CONFIG']['default_parse_mode']
+            'parse_mode': self.config['MESSAGE_OPTIONS']['PARSE_MODE']
         }
         package.update(kwargs)
         return self.method('editMessageText', check_content=False, **package)

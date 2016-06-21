@@ -216,7 +216,7 @@ class TelegramInlineAPI:
 
     def input_text_message_content(self, message_text, parse_mode=0, disable_web_page_preview=False):
         if parse_mode == 0:
-            parse_mode = self.config['BOT_CONFIG']['default_parse_mode']
+            parse_mode = self.config['MESSAGE_OPTIONS']['PARSE_MODE']
         return {'message_text': message_text, 'parse_mode': parse_mode,
                 'disable_web_page_preview': disable_web_page_preview}
 
