@@ -169,7 +169,7 @@ def get_recently_played(local_http, user_name, limit):
 
         }
         try:
-            song['date'] = track['date']['utc']
+            song['date'] = track['date']['uts']
         except KeyError:
             song['date'] = None
         track_list.append(song)

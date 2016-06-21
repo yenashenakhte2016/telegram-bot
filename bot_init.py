@@ -28,7 +28,7 @@ def init_database(cursor):
 
     cursor.execute("CREATE TABLE plugins(plugin_name VARCHAR(16) NOT NULL UNIQUE, pretty_name VARCHAR(16) NOT NULL "
                    "UNIQUE, short_description VARCHAR(100) NOT NULL, long_description TEXT, "
-                   "permissions VARCHAR(2) NOT NULL, hidden TINYINT) CHARACTER SET utf8;")
+                   "permissions VARCHAR(2) NOT NULL, hidden TINYINT, inline_only TINYINT) CHARACTER SET utf8;")
 
     cursor.execute("CREATE TABLE IF NOT EXISTS flagged_messages(plugin_name VARCHAR(16) NOT NULL, message_id BIGINT "
                    "UNSIGNED, chat_id BIGINT, user_id BIGINT UNSIGNED, currently_active BOOLEAN, single_use BOOLEAN, "
@@ -71,11 +71,13 @@ def init_plugins(cursor):
                 else "An extended description is not available :("
             hidden = plugin.parameters['hidden'] if 'hidden' in plugin.parameters else 0
             plugin.parameters['permissions'] = permissions = numerate_permissions(plugin.parameters['permissions'])
-            values.append((plugin_name, pretty_name, short_description, long_description, permissions, hidden))
+            inline_only = 0 if hasattr(plugin, 'arguments') else 1
+            values.append(
+                (plugin_name, pretty_name, short_description, long_description, permissions, hidden, inline_only))
             modules.update({plugin_name: plugin})
             print("Plugin {} Loaded".format(plugin_name))
 
-    cursor.executemany("INSERT INTO plugins VALUES(%s, %s, %s, %s, %s, %s);", values)
+    cursor.executemany("INSERT INTO plugins VALUES(%s, %s, %s, %s, %s, %s, %s);", values)
     cursor.close()
 
     return modules
