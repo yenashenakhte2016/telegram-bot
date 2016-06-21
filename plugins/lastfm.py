@@ -4,6 +4,7 @@
 import json
 import os
 import time
+import concurrent.futures
 
 base_url = "http://ws.audioscrobbler.com/2.0/?method={}&api_key={}&format=json"
 api_key = None
@@ -49,27 +50,31 @@ def handle_message(tg):
 
 def handle_inline_query(tg):
     first_name, lastfm_name, determiner = determine_names(tg)
-    boxes = list()
     if lastfm_name:
-        track_list = get_recently_played(tg.http, lastfm_name, 8)
-        for index, track in enumerate(track_list):
-            if track['now_playing']:
-                time_played = "Currently Playing!"
-                message = "{} is currently listening to:\n".format(first_name)
-            else:
-                time_played = how_long(track['date'])
-                if index == 0:
-                    message = "{} last listened to:\n".format(first_name)
-                else:
-                    message = "{} has recently listened to:\n".format(first_name)
-            message += "{}\t-\t{}".format(track['name'], track['artist'])
-            message_contents = tg.input_text_message_content(message)
-            keyboard = create_keyboard(lastfm_name, track['song_url'])
-            boxes.append(tg.inline_query_result_article(track['name'], message_contents, description=time_played,
-                                                        reply_markup=tg.inline_keyboard_markup(keyboard),
-                                                        thumb_url=track['image']))
+        page = int(tg.inline_query['offset']) if tg.inline_query['offset'] else 1
+        track_list = get_recently_played(tg.http, lastfm_name, 14, page=page)
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
+        futures = [executor.submit(create_track_result, tg, track, lastfm_name, first_name) for track in track_list]
+        concurrent.futures.wait(futures)
+        offset = page + 1 if len(track_list) == 14 else ''
         is_personal = False if '(.*)' in tg.inline_query['matched_regex'] else True
-        tg.answer_inline_query(boxes, is_personal=is_personal, cache_time=15)
+        tg.answer_inline_query([box.result() for box in futures], is_personal=is_personal, cache_time=15,
+                               next_offset=offset)
+
+
+def create_track_result(tg, track, lastfm_name, first_name):
+    if track['now_playing']:
+        time_played = "Currently Playing!"
+        message = "{} is currently listening to:\n".format(first_name)
+    else:
+        time_played = how_long(track['date'])
+        message = "{} recently listened to:\n".format(first_name)
+    keyboard = create_keyboard(lastfm_name, track['song_url'])
+    message_contents = tg.input_text_message_content(message)
+    description = "{}\n{}".format(track['artist'], time_played)
+    return tg.inline_query_result_article(track['name'], message_contents, description=description,
+                                          reply_markup=tg.inline_keyboard_markup(keyboard),
+                                          thumb_url=track['image'])
 
 
 def last_played(http, first_name, lastfm_name):
@@ -109,10 +114,10 @@ def top_artists(tg, first_name, lastfm_name):
         tg.send_message(message, disable_web_page_preview=True)
 
 
-def get_top_artists(local_http, user_name, limit, period='1month'):
+def get_top_artists(local_http, user_name, limit, period='1month', page=1):
     artist_list = list()
     method = 'user.getTopArtists'
-    url = (base_url + '&user={}&limit={}&period={}').format(method, api_key, user_name, limit, period)
+    url = (base_url + '&user={}&limit={}&period={}&page={}').format(method, api_key, user_name, limit, period, page)
     result = local_http.request('GET', url).data
     response = json.loads(result.decode('UTF-8'))
     artists = response['topartists']['artist']
@@ -126,10 +131,10 @@ def get_top_artists(local_http, user_name, limit, period='1month'):
     return artist_list
 
 
-def get_top_tracks(local_http, user_name, limit, period='1month'):
+def get_top_tracks(local_http, user_name, limit, period='1month', page=1):
     track_list = list()
     method = 'user.getTopTracks'
-    url = (base_url + '&user={}&limit={}&period={}').format(method, api_key, user_name, limit, period)
+    url = (base_url + '&user={}&limit={}&period={}&page={}').format(method, api_key, user_name, limit, period, page)
     result = local_http.request('GET', url).data
     response = json.loads(result.decode('UTF-8'))
     tracks = response['toptracks']['track']
@@ -145,9 +150,9 @@ def get_top_tracks(local_http, user_name, limit, period='1month'):
     return track_list
 
 
-def get_recently_played(local_http, user_name, limit):
+def get_recently_played(local_http, user_name, limit, page=1):
     method = 'user.getRecentTracks'
-    url = (base_url + '&user={}&limit={}').format(method, api_key, user_name, limit)
+    url = (base_url + '&user={}&limit={}&page={}').format(method, api_key, user_name, limit, page)
     result = local_http.request('GET', url).data
     response = json.loads(result.decode('UTF-8'))
     if 'error' in response:

@@ -72,7 +72,7 @@ def main(tg):
                 tg.answer_callback_query("Delayed the reminder by {} minutes!".format(time))
                 keyboard = [[{'text': "Cancel", 'callback_data': 'cancel{}'.format(time_id)},
                              {'text': "Add Time", 'callback_data': 'add{}'.format(time_id)}]]
-                message = tg.callback_query['message']['text'] + '\n<i>Added {} minutes</i>'.format(time)
+                message = tg.callback_query['message']['text'] + '\nAdded {} minutes'.format(time)
                 tg.edit_message_text(message, reply_markup=tg.inline_keyboard_markup(keyboard))
                 if time == 60:
                     time = '1:00:00'
