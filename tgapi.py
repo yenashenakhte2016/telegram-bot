@@ -59,7 +59,10 @@ class TelegramApi:
         url = "https://api.telegram.org/bot{}/{}".format(self.token, method_name)
 
         if check_content:
-            if self.chat_data['chat']['type'] != 'private':
+            if self.chat_data['chat']['type'] != 'private' and eval(self.config['MESSAGE_OPTIONS']['reply_in_groups']):
+                kwargs['reply_to_message_id'] = self.chat_data['message_id']
+            elif eval(self.config['MESSAGE_OPTIONS']['reply_in_private']):
+                print(self.config['MESSAGE_OPTIONS']['reply_in_private'])
                 kwargs['reply_to_message_id'] = self.chat_data['message_id']
             if 'chat_id' not in kwargs:
                 kwargs['chat_id'] = self.chat_data['chat']['id']
@@ -72,7 +75,7 @@ class TelegramApi:
         return self.method(method, check_content=False, chat_id=chat_id)
 
     def send_message(self, text, flag_message=None, **kwargs):
-        arguments = {'text': text, 'parse_mode': 'HTML'}
+        arguments = {'text': text, 'parse_mode': self.config['MESSAGE_OPTIONS']['PARSE_MODE']}
         arguments.update(kwargs)
         response = self.method('sendMessage', **arguments)
         if response['ok']:

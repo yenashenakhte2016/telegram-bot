@@ -59,7 +59,7 @@ def handle_inline_query(tg):
             else:
                 time_played = how_long(track['date'])
                 if index == 0:
-                    message = "{} has last listened to:\n".format(first_name)
+                    message = "{} last listened to:\n".format(first_name)
                 else:
                     message = "{} has recently listened to:\n".format(first_name)
             message += "{}\t-\t{}".format(track['name'], track['artist'])
@@ -79,7 +79,7 @@ def last_played(http, first_name, lastfm_name):
             if track['now_playing']:
                 message = "{} is currently listening to:\n".format(first_name)
             else:
-                message = "{} has last listened to:\n".format(first_name)
+                message = "{} last listened to:\n".format(first_name)
             message += "{}\t-\t{}".format(track['name'], track['artist'])
             keyboard = create_keyboard(lastfm_name, track['song_url'])
             return {'text': message, 'keyboard': keyboard}
