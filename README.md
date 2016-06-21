@@ -28,7 +28,7 @@ token = YOUR TOKEN HERE
 
 * Some plugins may require separate tokens for their services
 * OSx users will need to install OpenSSL & Python3 from homebrew in order for the bot to function properly
-* This bot does not work on Windows without signifi
+* This bot does not work on Windows without significant modifications
 
 Now you can start the bot with `./hitagi.py`. Plugin documentation is
 available on the wiki for more advanced users.

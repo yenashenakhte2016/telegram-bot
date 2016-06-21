@@ -114,8 +114,8 @@ def create_message(message):
         unit = "second"
     elif message['match'][1] == 'm' or "minute" in message['match'][1]:
         unit = "minute"
-    elif message['match'][1] == 'd' or "hour" in message['match'][1]:
-        unit = "day"
+    elif message['match'][1] == 'h' or "hour" in message['match'][1]:
+        unit = "hour"
     unit = unit if time == 1 else (unit + 's')
     return "{} {} {}".format(random.choice(responses), time, unit)
 
@@ -131,7 +131,7 @@ parameters = {
 
 arguments = {
     'text': [
-        "(?i)remind .* (\d+)([smd]) (.*)",
+        "(?i)remind .* (\d+)([smh]) (.*)",
         "(?i)remind .* (\d+) (seconds|minutes|hours) (.*)",
         "(?i)remind .* (\d+) (second|minute|hour) (.*)",
     ]
