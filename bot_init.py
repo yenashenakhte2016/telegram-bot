@@ -70,7 +70,10 @@ def init_plugins(cursor):
             long_description = plugin.parameters['long_description'] if 'long_description' in plugin.parameters \
                 else "An extended description is not available :("
             hidden = plugin.parameters['hidden'] if 'hidden' in plugin.parameters else 0
-            plugin.parameters['permissions'] = permissions = numerate_permissions(plugin.parameters['permissions'])
+            if 'permissions' in plugin.parameters:
+                plugin.parameters['permissions'] = permissions = numerate_permissions(plugin.parameters['permissions'])
+            else:
+                plugin.parameters['permissions'] = permissions = '11'
             inline_only = 0 if hasattr(plugin, 'arguments') else 1
             values.append(
                 (plugin_name, pretty_name, short_description, long_description, permissions, hidden, inline_only))
