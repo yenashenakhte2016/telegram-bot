@@ -40,11 +40,11 @@ def handle_message(tg):
         match = tg.plugin_data
     else:
         match = tg.message['matched_regex']
-    if match in arguments['text'][:2]:
+    if match in arguments['text'][0:2]:
         return_anime_result(tg)
-    elif match in arguments['text'][2:5]:
+    elif match in arguments['text'][2:4]:
         return_character_result(tg)
-    elif match in arguments['text'][5:]:
+    elif match in arguments['text'][4:6]:
         return_manga_result(tg)
 
 
@@ -105,8 +105,8 @@ def return_anime_result(tg):
 
 
 def return_manga_result(tg):
-    if tg.message['matched_regex'] == arguments['text'][2]:
-        tg.send_message("Which manga should I look for?", flag_message={'plugin_data': arguments['text'][2]})
+    if tg.message['matched_regex'] == arguments['text'][4]:
+        tg.send_message("Which manga should I look for?", flag_message={'plugin_data': arguments['text'][4]})
         return
     elif tg.message['flagged_message']:
         if 'text' in tg.message:
@@ -127,8 +127,8 @@ def return_manga_result(tg):
 
 
 def return_character_result(tg):
-    if tg.message['matched_regex'] == arguments['text'][4]:
-        tg.send_message("Which character should I look for?", flag_message={'plugin_data': arguments['text'][4]})
+    if tg.message['matched_regex'] == arguments['text'][2]:
+        tg.send_message("Which character should I look for?", flag_message={'plugin_data': arguments['text'][2]})
         return
     elif tg.message['flagged_message']:
         if 'text' in tg.message:
@@ -346,7 +346,7 @@ arguments = {
     'text': [
         "^/anime$", "^/anime (.*)",
         "^/character$", "^/character (.*)",
-        "^/manga$", "^/manga (.*)"
+        "^/manga$", "^/manga (.*)",
     ]
 }
 
