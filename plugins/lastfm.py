@@ -40,7 +40,8 @@ def handle_message(tg):
                 response = last_played(tg.http, first_name, lastfm_name)
                 if response:
                     message = response['text']
-                    tg.send_message(message, reply_markup=tg.inline_keyboard_markup(response['keyboard']))
+                    tg.send_message(message, reply_markup=tg.inline_keyboard_markup(response['keyboard']),
+                                    parse_mode="None")
                 else:
                     tg.send_message("No recently played tracks :(")
             elif tg.message['matched_regex'] in arguments['text'][:5]:
@@ -83,7 +84,7 @@ def create_track_result(tg, track, lastfm_name, first_name):
     description = "{}\n{}".format(track['artist'], time_played)
     return tg.inline_query_result_article(track['name'], message_contents, description=description,
                                           reply_markup=tg.inline_keyboard_markup(keyboard),
-                                          thumb_url=track['image'])
+                                          thumb_url=track['image'], parse_mode="None")
 
 
 def last_played(http, first_name, lastfm_name):
@@ -254,7 +255,7 @@ def link_profile(tg):
                 message += "\n\nYou have last listened to:"
             message += "\n{} - {}".format(track_list['name'], track_list['artist'])
             keyboard = create_keyboard(profile['lastfm'], track_list['song_url'])
-        tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard))
+        tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard), parse_mode="None")
     else:
         tg.send_message("Invalid username")
     with open('data/profile/{}.json'.format(user_id), 'w') as file:
