@@ -203,11 +203,11 @@ def determine_names(tg):
         name = tg.message['match'] if tg.message else tg.inline_query['match']
         if name[0] == '@':
             tg.database.query(
-                'SELECT user_id, first_name FROM users_list WHERE user_name="{}"'.format(name.replace('@', '')))
+                'SELECT user_id FROM users_list WHERE user_name="{}"'.format(name.replace('@', '')))
             query = tg.database.store_result()
             result = query.fetch_row(how=1, maxrows=0)
             if result:
-                return result[0]['first_name'], get_lastfm_username(result[0]['user_id']), "this"
+                return name, get_lastfm_username(result[0]['user_id']), "this"
             else:
                 return False
         lastfm_name = first_name = tg.message['match'] if tg.message else tg.inline_query['match']
