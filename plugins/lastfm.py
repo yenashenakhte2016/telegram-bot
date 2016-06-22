@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 
+import concurrent.futures
 import json
 import os
 import time
-import concurrent.futures
 
 base_url = "http://ws.audioscrobbler.com/2.0/?method={}&api_key={}&format=json"
 api_key = None
@@ -30,7 +30,11 @@ def handle_message(tg):
     if tg.message['flagged_message']:
         link_profile(tg)
     else:
-        first_name, lastfm_name, determiner = determine_names(tg)
+        try:
+            first_name, lastfm_name, determiner = determine_names(tg)
+        except TypeError:
+            tg.send_message("I can't find this user :(")
+            return
         if lastfm_name:
             if tg.message['matched_regex'] in arguments['text'][:2]:
                 response = last_played(tg.http, first_name, lastfm_name)
@@ -196,6 +200,16 @@ def determine_names(tg):
     matched_regex = tg.message['matched_regex'] if tg.message else tg.inline_query['matched_regex']
     if '(.*)' in matched_regex:
         determiner = None
+        name = tg.message['match'] if tg.message else tg.inline_query['match']
+        if name[0] == '@':
+            tg.database.query(
+                'SELECT user_id, first_name FROM users_list WHERE user_name="{}"'.format(name.replace('@', '')))
+            query = tg.database.store_result()
+            result = query.fetch_row(how=1, maxrows=0)
+            if result:
+                return result[0]['first_name'], result[0]['user_id'], "this"
+            else:
+                return False
         lastfm_name = first_name = tg.message['match'] if tg.message else tg.inline_query['match']
     elif tg.message and 'reply_to_message' in tg.message:
         user_id = tg.message['reply_to_message']['from']['id']
