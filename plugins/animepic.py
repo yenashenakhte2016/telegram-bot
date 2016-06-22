@@ -18,7 +18,7 @@ def main(tg):
         if tg.inline_query['matched_regex'] in inline_arguments[:2]:
             query = 'random: rating:s'
         else:
-            query = tg.inline_query['match'].replace(' ', '') + ' rating:s'
+            query = tg.inline_query['match'].replace(' ', '_') + ' rating:s'
         images = get_images(tg.http, query, page=page)
         if images:
             executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
