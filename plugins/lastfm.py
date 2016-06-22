@@ -69,6 +69,7 @@ def create_track_result(tg, track, lastfm_name, first_name):
     else:
         time_played = how_long(track['date'])
         message = "{} recently listened to:\n".format(first_name)
+    message += "{}\t-\t{}".format(track['name'], track['artist'])
     keyboard = create_keyboard(lastfm_name, track['song_url'])
     message_contents = tg.input_text_message_content(message)
     description = "{}\n{}".format(track['artist'], time_played)
