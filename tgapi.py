@@ -22,7 +22,7 @@ class TelegramApi:
         self.cursor = self.database.cursor()
         self.get_me = get_me
         self.inline_query = None
-        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
+        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where(), timeout=1.5, retries=2)
         self.plugin_name = plugin_name
         self.config = config
         self.token = self.config['BOT_CONFIG']['token']

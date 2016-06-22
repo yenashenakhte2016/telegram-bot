@@ -17,7 +17,8 @@ from tgapi import TelegramApi
 base_url = 'https://api.telegram.org/'
 config, plugins, extensions = bot_init.master_mind()
 
-http = urllib3.connection_from_url(base_url, cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
+http = urllib3.connection_from_url(base_url, cert_reqs='CERT_REQUIRED', ca_certs=certifi.where(), timeout=1.5,
+                                   retries=2)
 token = config['BOT_CONFIG']['token']
 update_id = 0
 
