@@ -19,7 +19,8 @@ class TelegramInlineAPI:
         self.plugin_name = plugin_name
         self.config = config
         self.inline_query = inline_query
-        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where(), timeout=1.5, retries=2)
+        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where(),
+                                        timeout=urllib3.Timeout(connect=1.0), retries=3)
         self.token = self.config['BOT_CONFIG']['token']
         self.message = self.callback_query = None
         self.input_location_message_content = input_location_message_content
@@ -270,7 +271,8 @@ class InlineCallbackQuery:
     def __init__(self, database, config, callback_query):
         self.config = config
         self.token = self.config['BOT_CONFIG']['token']
-        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where(), timeout=1.5, retries=2)
+        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where(),
+                                        timeout=urllib3.Timeout(connect=1.0), retries=3)
         self.callback_query = callback_query
         self.database = database
         self.message = self.inline_query = None
