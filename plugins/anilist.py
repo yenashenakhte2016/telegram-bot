@@ -5,7 +5,6 @@ import concurrent.futures
 import html
 import json
 import time
-from functools import partial
 
 import _mysql_exceptions
 
@@ -14,105 +13,59 @@ client_id = None
 client_secret = None
 token = None
 youtube = "https://www.youtube.com/watch?v={}"
-search_anime = search_character = get_anime = get_character = search_manga = get_manga = None
 
 
 def main(tg):
-    global client_id, client_secret, token, search_anime, search_character, get_anime, get_character, \
-        search_manga, get_manga
-    client_id = tg.config['ANILIST']['client_id']
-    client_secret = tg.config['ANILIST']['client_secret']
-    if not client_id or not client_secret:
+    global client_id, client_secret, token
+    try:
+        client_id = tg.config['ANILIST']['client_id']
+        client_secret = tg.config['ANILIST']['client_secret']
+    except KeyError:
         return
-    token = client_credentials(tg)
-    if not token:
-        tg.send_message("It seems that Anilist is down right now :(")
-        return
-    search_anime = partial(search, 'anime/search/')
-    search_character = partial(search, 'character/search/')
-    search_manga = partial(search, 'manga/search/')
-    get_anime = partial(get_model, 'anime/')
-    get_character = partial(get_model, 'character/')
-    get_manga = partial(get_model, 'manga/')
-    if tg.message:
-        handle_message(tg)
-    elif tg.inline_query:
-        handle_inline_query(tg)
+    if client_id and client_secret:
+        token = client_credentials(tg)
+        if token:
+            if tg.message:
+                handle_message(tg)
+            elif tg.inline_query:
+                handle_inline_query(tg)
+        elif tg.message:
+            tg.send_message("It seems that Anilist is down right now :(")
+        elif tg.inline_query:
+            tg.answer_inline_query([], cache_time=0)
 
 
 def handle_message(tg):
-    tg.send_chat_action("typing")
     if tg.message['flagged_message']:
-        if 'text' not in tg.message:
-            tg.send_message("I can't search using this :(")
-            return
-        if tg.plugin_data == arguments['text'][0]:
-            search_results = search_anime(tg.http, tg.message['text'])
-            if search_results:
-                tg.send_message(**anime_model(tg, search_results[0]['id']))
-            else:
-                tg.send_message("I couldn't find any results or AniList is down :(")
-        elif tg.plugin_data == arguments['text'][2]:
-            search_results = search_character(tg.http, tg.message['text'])
-            if search_results:
-                tg.send_message(**character_model(tg, search_results[0]['id']))
-            else:
-                tg.send_message("I couldn't find any results or AniList is down :(")
-        elif tg.plugin_data == arguments['text'][4]:
-            search_results = search_manga(tg.http, tg.message['text'])
-            if search_results:
-                tg.send_message(**manga_model(tg, search_results[0]['id']))
-            else:
-                tg.send_message("I couldn't find any results or AniList is down :(")
+        match = tg.plugin_data
     else:
-        if tg.message['matched_regex'] == arguments['text'][0]:
-            plugin_data = {'plugin_data': arguments['text'][0]}
-            tg.send_message("Which anime should I look for?", flag_message=plugin_data)
-        elif tg.message['matched_regex'] == arguments['text'][1]:
-            search_results = search_anime(tg.http, tg.message['match'])
-            if search_results:
-                tg.send_message(**anime_model(tg, search_results[0]['id']))
-            else:
-                tg.send_message("I couldn't find any results or AniList is down :(")
-        elif tg.message['matched_regex'] == arguments['text'][2]:
-            plugin_data = {'plugin_data': arguments['text'][2]}
-            tg.send_message("Which character should I look for?", flag_message=plugin_data)
-        elif tg.message['matched_regex'] == arguments['text'][3]:
-            search_results = search_character(tg.http, tg.message['match'])
-            if search_results:
-                tg.send_message(**character_model(tg, search_results[0]['id']))
-            else:
-                tg.send_message("I couldn't find any results or AniList is down :(")
-        elif tg.message['matched_regex'] == arguments['text'][4]:
-            plugin_data = {'plugin_data': arguments['text'][4]}
-            tg.send_message("Which manga should I look for?", flag_message=plugin_data)
-        elif tg.message['matched_regex'] == arguments['text'][5]:
-            search_results = search_manga(tg.http, tg.message['match'])
-            if search_results:
-                tg.send_message(**manga_model(tg, search_results[0]['id']))
-            else:
-                tg.send_message("I couldn't find any results or AniList is down :(")
+        match = tg.message['matched_regex']
+    if match in arguments['text'][:2]:
+        return_anime_result(tg)
+    elif match in arguments['text'][2:5]:
+        return_character_result(tg)
+    elif match in arguments['text'][5:]:
+        return_manga_result(tg)
 
 
 def handle_inline_query(tg):
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
     if tg.inline_query['offset']:
-        min, max = [int(x) for x in tg.inline_query['offset'].split(',')]
+        query_start, query_end = [int(x) for x in tg.inline_query['offset'].split(',')]
     else:
-        min = 0
-        max = 8
+        query_start, query_end = 0, 8
     if tg.inline_query['matched_regex'] == inline_arguments[2]:
-        search_results = search_character(tg.http, tg.inline_query['match'])
+        search_results = search('character/search/{}', tg.http, tg.inline_query['match'])
         if search_results:
-            executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
-            futures = [executor.submit(create_character_box, tg, character) for character in search_results[min:max]]
+            futures = [executor.submit(create_character_box, tg, character) for character
+                       in search_results[query_start:query_end]]
     elif tg.inline_query['matched_regex'] == inline_arguments[3]:
-        search_results = search_manga(tg.http, tg.inline_query['match'])
+        search_results = search('manga/search/{}', tg.http, tg.inline_query['match'])
         if search_results:
-            executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
-            futures = [executor.submit(create_manga_box, tg, manga) for manga in search_results[min:max]]
+            futures = [executor.submit(create_manga_box, tg, manga) for manga in search_results[query_start:query_end]]
     else:
         if tg.inline_query['matched_regex'] == inline_arguments[1]:
-            search_results = search_anime(tg.http, tg.inline_query['match'])
+            search_results = search('anime/search/{}', tg.http, tg.inline_query['match'])
         else:
             url = base_url + 'browse/anime'
             fields = {'year': 2016, 'season': "spring", 'access_token': token, 'status': "Currently Airing",
@@ -120,14 +73,79 @@ def handle_inline_query(tg):
             post = tg.http.request('GET', url, fields=fields)
             search_results = json.loads(post.data.decode('UTF-8'))
         if search_results:
-            executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
-            futures = [executor.submit(create_anime_box, tg, anime) for anime in search_results[min:max]]
+            futures = [executor.submit(create_anime_box, tg, anime) for anime in search_results[query_start:query_end]]
     if search_results:
         concurrent.futures.wait(futures)
-        offset = '{},{}'.format(max, max + 8) if len(search_results) > max else ""
+        offset = '{},{}'.format(query_end, query_end + 8) if len(search_results) > query_end else ""
         tg.answer_inline_query([box.result() for box in futures], cache_time=259200, next_offset=offset)
     else:
         tg.answer_inline_query(list(), cache_time=259200)
+
+
+def return_anime_result(tg):
+    if tg.message['matched_regex'] == arguments['text'][0]:
+        tg.send_message("Which anime should I look for?", flag_message={'plugin_data': arguments['text'][0]})
+        return
+    elif tg.message['flagged_message']:
+        if 'text' in tg.message:
+            query = tg.message['text']
+        else:
+            tg.send_message("I can only search for anime using text :(")
+            return
+    else:
+        query = tg.message['match']
+    search_results = search('anime/search/{}', tg.http, query)
+    if search_results == int:
+        tg.send_message("Anilist seems to be down right now :(")
+    elif search_results:
+        anime_id = search_results[0]['id']
+        tg.send_message(**anime_model(tg, anime_id))
+    else:
+        tg.send_message("I couldn't find any results :(")
+
+
+def return_manga_result(tg):
+    if tg.message['matched_regex'] == arguments['text'][2]:
+        tg.send_message("Which manga should I look for?", flag_message={'plugin_data': arguments['text'][2]})
+        return
+    elif tg.message['flagged_message']:
+        if 'text' in tg.message:
+            query = tg.message['text']
+        else:
+            tg.send_message("I can only search for manga using text :(")
+            return
+    else:
+        query = tg.message['match']
+    search_results = search('manga/search/{}', tg.http, query)
+    if search_results == int:
+        tg.send_message("Anilist seems to be down right now :(")
+    elif search_results:
+        manga_id = search_results[0]['id']
+        tg.send_message(**manga_model(tg, manga_id))
+    else:
+        tg.send_message("I couldn't find any results :(")
+
+
+def return_character_result(tg):
+    if tg.message['matched_regex'] == arguments['text'][4]:
+        tg.send_message("Which character should I look for?", flag_message={'plugin_data': arguments['text'][4]})
+        return
+    elif tg.message['flagged_message']:
+        if 'text' in tg.message:
+            query = tg.message['text']
+        else:
+            tg.send_message("I can only search for characters using text :(")
+            return
+    else:
+        query = tg.message['match']
+    search_results = search('character/search/{}', tg.http, query)
+    if search_results == int:
+        tg.send_message("Anilist seems to be down right now :(")
+    elif search_results:
+        character_id = search_results[0]['id']
+        tg.send_message(**character_model(tg, character_id))
+    else:
+        tg.send_message("I couldn't find any results :(")
 
 
 def create_anime_box(tg, anime):
@@ -157,7 +175,7 @@ def create_manga_box(tg, manga):
 
 
 def anime_model(tg, anime_id):
-    anime = get_anime(tg.http, anime_id)
+    anime = get_model('anime/{}', tg.http, anime_id)
     if anime:
         message = "*{}* - {}".format(anime['title_romaji'], anime['title_japanese'])
         if anime['airing_status'] == "currently airing":
@@ -187,11 +205,11 @@ def anime_model(tg, anime_id):
             keyboard[0].append({'text': "Youtube Trailer", 'url': youtube_url})
 
         return {'text': message, 'reply_markup': tg.inline_keyboard_markup(keyboard), 'parse_mode': "markdown"}
-    return {'text': "I couldn't find any results or AniList is down :("}
+    return {'text': "Anilist seems to be down :("}
 
 
 def character_model(tg, character_id, inline=False):
-    character = get_character(tg.http, character_id)
+    character = get_model('character/{}', tg.http, character_id)
     if character:
         message = "*{} {}*".format(character['name_first'], character['name_last'])
 
@@ -212,11 +230,11 @@ def character_model(tg, character_id, inline=False):
             return msg_contents, character
         else:
             return msg_contents
-    return {'text': "I couldn't find any results or AniList is down :("}
+    return {'text': "Anilist seems to be down :("}
 
 
 def manga_model(tg, manga_id):
-    manga = get_manga(tg.http, manga_id)
+    manga = get_model('manga/{}', tg.http, manga_id)
     if manga:
         message = "*{}* - {}".format(manga['title_romaji'], manga['title_japanese'])
 
@@ -239,24 +257,29 @@ def manga_model(tg, manga_id):
         manga_page = "http://anilist.co/manga/{}".format(manga['id'])
         keyboard = [[{'text': "Full Manga Page", 'url': manga_page}]]
         return {'text': message, 'reply_markup': tg.inline_keyboard_markup(keyboard), 'parse_mode': "markdown"}
+    return {'text': "Anilist seems to be down :("}
 
 
 def search(method, http, query):
-    url = base_url + "{}{}".format(method, query)
+    url = base_url + method.format(query)
     post = http.request('GET', url, fields={'access_token': token})
-    try:
-        return json.loads(post.data.decode('UTF-8'))
-    except json.decoder.JSONDecodeError:
-        return
+    if post.status == 200:
+        try:
+            return json.loads(post.data.decode('UTF-8'))
+        except json.decoder.JSONDecodeError:
+            return
+    return
 
 
 def get_model(method, http, query_id):
-    url = base_url + "{}{}".format(method, query_id)
-    post = http.request('GET', url, fields={'access_token': token}).data
-    try:
-        return json.loads(post.decode('UTF-8'))
-    except json.decoder.JSONDecodeError:
-        return
+    url = base_url + method.format(query_id)
+    post = http.request('GET', url, fields={'access_token': token})
+    if post.status == 200:
+        try:
+            return json.loads(post.data.decode('UTF-8'))
+        except json.decoder.JSONDecodeError:
+            return
+    return
 
 
 def client_credentials(tg):
@@ -282,9 +305,8 @@ def client_credentials(tg):
     except json.decoder.JSONDecodeError:
         return post.status
     tg.cursor.execute('DELETE FROM anilist_tokens WHERE grant_type="client_credentials"')
-    statement = "INSERT INTO anilist_tokens(access_token, token_type, expires, grant_type) " \
-                "VALUES(%s, %s, FROM_UNIXTIME(%s), %s);"
-    tg.cursor.execute(statement,
+    tg.cursor.execute("INSERT INTO anilist_tokens(access_token, token_type, expires, grant_type) VALUES(%s, %s, "
+                      "FROM_UNIXTIME(%s), %s);",
                       (result['access_token'], result['token_type'], result['expires'], "client_credentials"))
     return result['access_token']
 
@@ -316,24 +338,19 @@ def parse_date(anime):
 
 parameters = {
     'name': "Anilist",
-    'short_description': "Search for anime and characters",
+    'short_description': "Search for anime, characters, and manga.",
     'permissions': True
 }
 
 arguments = {
     'text': [
-        "^/anime$",
-        "^/anime (.*)",
-        "^/character$",
-        "^/character (.*)",
-        "^/manga$",
-        "^/manga (.*)"
+        "^/anime$", "^/anime (.*)",
+        "^/character$", "^/character (.*)",
+        "^/manga$", "^/manga (.*)"
     ]
 }
 
 inline_arguments = [
-    '^/?anime$',
-    '^/?anime (.*)',
-    '^/?character (.*)',
-    '^/?manga (.*)'
+    '^/?anime$', '^/?anime (.*)',
+    '^/?character (.*)', '^/?manga (.*)'
 ]
