@@ -52,7 +52,7 @@ class TelegramInlineAPI:
     def inline_query_result_article(self, title, input_message_content, **kwargs):
         package = {
             'type': 'article',
-            'id': '{}{}{}'.format(self.inline_query['id'], self.plugin_name, time.time()),
+            'id': uuid.uuid4(),
             'title': title,
             'input_message_content': input_message_content
         }
@@ -77,7 +77,7 @@ class TelegramInlineAPI:
     def inline_query_result_gif(self, gif, thumb_url=None, cached=False, **kwargs):
         package = {
             'type': "gif",
-            'id': '{}{}{}'.format(self.inline_query['id'], self.plugin_name, time.time())
+            'id': uuid.uuid4()
         }
         if cached:
             package['gif_file_id'] = gif
