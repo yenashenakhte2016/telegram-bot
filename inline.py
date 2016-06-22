@@ -9,7 +9,7 @@ import _mysql_exceptions
 import certifi
 import urllib3
 
-import UUID
+import uuid
 
 
 class TelegramInlineAPI:
