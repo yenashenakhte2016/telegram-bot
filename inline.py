@@ -3,13 +3,12 @@
 
 import json
 import time
+import uuid
 
 import MySQLdb
 import _mysql_exceptions
 import certifi
 import urllib3
-
-import uuid
 
 
 class TelegramInlineAPI:
@@ -36,6 +35,16 @@ class TelegramInlineAPI:
             'results': json.dumps(results)
         }
         package.update(kwargs)
+        if 'switch_pm_parameter' in kwargs:
+            database = MySQLdb.connect(**self.config['DATABASE'])
+            parameter = kwargs['switch_pm_parameter']
+            cursor = database.cursor()
+            try:
+                cursor.execute("INSERT INTO pm_parameters VALUES(%s, %s);", (self.plugin_name, parameter))
+                database.commit()
+            except _mysql_exceptions.IntegrityError:
+                pass
+            database.close()
         post = self.http.request_encode_body('POST', url, fields=package).data
         return json.loads(post.decode('UTF-8'))
 
@@ -255,3 +264,27 @@ def input_contact_message_content(phone_number, first_name, last_name=None):
     if last_name:
         package['last_name'] = last_name
     return package
+
+
+class InlineCallbackQuery:
+    def __init__(self, database, config, callback_query):
+        self.config = config
+        self.token = self.config['BOT_CONFIG']['token']
+        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
+        self.callback_query = callback_query
+        self.database = database
+        self.message = self.inline_query = None
+
+    def answer_callback_query(self, text=None, callback_query_id=None, show_alert=False):
+        arguments = locals()
+        del arguments['self']
+        if not callback_query_id:
+            try:
+                arguments.update({'callback_query_id': int(self.callback_query['id'])})
+            except KeyError:
+                return "Callback query ID not found!"
+        if text is None:
+            del arguments['text']
+        url = "https://api.telegram.org/bot{}/{}".format(self.token, 'answerCallbackQuery')
+        post = self.http.request_encode_body('POST', url, fields=arguments).data
+        return json.loads(post.decode('UTF-8'))

@@ -38,6 +38,9 @@ def init_database(cursor):
                    "VARCHAR(16) NOT NULL, argument_time DATETIME NOT NULL, previous_message TEXT NOT NULL, "
                    "plugin_data TEXT) CHARACTER SET utf8;")
 
+    cursor.execute("CREATE TABLE IF NOT EXISTS pm_parameters(plugin_name VARCHAR(16) NOT NULL, parameter VARCHAR(300) "
+                   "NOT NULL, PRIMARY KEY (plugin_name, parameter)) CHARACTER SET utf8;")
+
     cursor.execute("CREATE TABLE IF NOT EXISTS downloaded_files(file_id VARCHAR(62) NOT NULL, file_path VARCHAR(100),"
                    "file_hash VARCHAR(64)) CHARACTER SET utf8;")
 
@@ -53,7 +56,7 @@ def init_database(cursor):
     try:
         cursor.execute("CREATE UNIQUE INDEX callback_plugin_link ON callback_queries(plugin_name, callback_data)")
     except _mysql_exceptions.OperationalError:
-        return
+        pass
 
 
 def init_plugins(cursor):

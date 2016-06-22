@@ -26,7 +26,7 @@ def main(tg):
     if tg.message['matched_regex'] == arguments['text'][0]:
         return_profile(tg)
     elif tg.message['matched_regex'] == arguments['text'][1]:
-        if tg.message['match'][0] == 'delete' or tg.message['match'][0] == 'del':
+        if tg.message['match'][1] == 'delete' or tg.message['match'][1] == 'del':
             delete_entry(tg)
         else:
             add_entry(tg)
@@ -108,8 +108,8 @@ def add_entry(tg):
     except (JSONDecodeError, FileNotFoundError):
         open('data/profile/{}.json'.format(user_id), 'w')
         profile = dict()
-    site = tg.message['match'][0]
-    user_name = tg.message['match'][1]
+    site = tg.message['match'][1]
+    user_name = tg.message['match'][2]
     for key, value in entries.items():
         if site.lower() == key or site.lower() in value['aliases']:
             if key in profile:
@@ -133,7 +133,7 @@ def delete_entry(tg):
         tg.send_message(
             "You don't seem to have anything to delete :(\nAdd entries using <code>/profile website username</code>")
         return
-    site = tg.message['match'][1].lower()
+    site = tg.message['match'][2].lower()
     for key, value in entries.items():
         if site.lower() == key or site.lower() in value['aliases']:
             try:
@@ -168,7 +168,7 @@ parameters = {
 
 arguments = {
     'text': [
-        "^/profile$",
-        "^/profile (.*) (.*)$"
+        "^/(profile|me)$",
+        "^/(profile|me) (.*) (.*)$"
     ]
 }

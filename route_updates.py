@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 
 
+import concurrent.futures
 import json
 import re
 import time
 
 import MySQLdb
-import _mysql_exceptions
 
+from inline import InlineCallbackQuery
 from inline import TelegramInlineAPI
 from tgapi import TelegramApi
 
@@ -25,6 +26,7 @@ class RouteMessage:
         self.message['matched_regex'] = None
         self.message['matched_argument'] = None
         self.message['cleaned_message'] = False
+        self.message['pm_parameter'] = False
 
     def route_update(self):
         self.database = MySQLdb.connect(**self.config['DATABASE'])
@@ -65,11 +67,11 @@ class RouteMessage:
             tg = TelegramApi(self.database, self.get_me, result['plugin_name'], self.config, self.message, plugin_data)
             self.plugins[result['plugin_name']].main(tg)
         else:
-            self.plugin_check()
+            self.handle_plugins()
 
     def check_db_pm(self):
         chat_id = self.message['chat']['id']
-        if self.plugin_check():
+        if self.handle_plugins():
             return
         self.database.query("SELECT plugin_name, single_use, message_id, plugin_data FROM flagged_messages WHERE "
                             "chat_id={} AND currently_active=1".format(chat_id))
@@ -87,29 +89,45 @@ class RouteMessage:
             self.plugins[result['plugin_name']].main(
                 TelegramApi(self.database, self.get_me, result['plugin_name'], self.config, self.message, plugin_data))
 
-    def plugin_check(self):
+    def handle_plugins(self):
         if int(time.time()) - int(self.message['date']) >= 180:
             return False
-        plugin_triggered = False
-        for plugin_name, plugin_module in self.plugins.items():
-            if hasattr(plugin_module, 'arguments'):
-                for key, value in plugin_module.arguments.items():
-                    if self.check_argument(key, value, self.message):
-                        statement = 'SELECT plugin_status FROM `{}blacklist` WHERE plugin_name="{}";'.format(
-                            self.message['chat']['id'], plugin_name)
-                        try:
-                            self.database.query(statement)
-                        except _mysql_exceptions.ProgrammingError:
-                            self.create_default_table()
-                            self.database.query(statement)
-                        query = self.database.store_result()
-                        result = query.fetch_row(how=1)
-                        enabled = result[0]['plugin_status'] if result else self.add_plugin(plugin_name)
-                        if enabled:
-                            plugin_triggered = True
-                            tg = TelegramApi(self.database, self.get_me, plugin_name, self.config, self.message)
-                            plugin_module.main(tg)
-        return plugin_triggered
+        chat_id = self.message['chat']['id']
+        self.database.query(
+            'SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_NAME="{}blacklist"'.format(chat_id))
+        query = self.database.store_result()
+        result = query.fetch_row()
+        if not result:
+            self.create_default_table()
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+        futures = [executor.submit(self.plugin_check, plugin) for plugin in self.plugins.items()]
+        if 'text' in self.message:
+            futures.append(executor.submit(self.check_pm_parameters))
+        concurrent.futures.wait(futures)
+        if True in [trig.result() for trig in futures]:
+            return True
+        else:
+            return False
+
+    def plugin_check(self, plugin):
+        plugin_name, plugin_module = plugin
+        if hasattr(plugin_module, 'arguments'):
+            database = MySQLdb.connect(**self.config['DATABASE'])
+            for key, value in plugin_module.arguments.items():
+                if self.check_argument(key, value, self.message):
+                    chat_id = self.message['chat']['id']
+                    statement = 'SELECT plugin_status FROM `{}blacklist` WHERE plugin_name="{}";'.format(chat_id,
+                                                                                                         plugin_name)
+                    database.query(statement)
+                    query = database.store_result()
+                    result = query.fetch_row(how=1)
+                    enabled = result[0]['plugin_status'] if result else self.add_plugin(plugin_name)
+                    if enabled:
+                        tg = TelegramApi(database, self.get_me, plugin_name, self.config, self.message)
+                        plugin_module.main(tg)
+                        database.close()
+                        return True
+            database.close()
 
     def check_argument(self, key, value, incremented_message):
         if key in incremented_message:
@@ -137,6 +155,21 @@ class RouteMessage:
                 return True
         return False
 
+    def check_pm_parameters(self):
+        match = re.findall("^/start (.*)", self.message['text'])
+        if match:
+            self.message['pm_parameter'] = True
+            database = MySQLdb.connect(**self.config['DATABASE'])
+            database.query('SELECT plugin_name FROM pm_parameters WHERE parameter="{}"'.format(match[0]))
+            query = database.store_result()
+            result = query.fetch_row()
+            for plugin in result:
+                tg = TelegramApi(database, self.get_me, plugin[0], self.config, self.message)
+                self.plugins[plugin[0]].main(tg)
+            database.close()
+            return True if result else False
+        return False
+
     def add_plugin(self, plugin_name):
         chat_name = "{}blacklist".format(self.message['chat']['id'])
         perms = self.plugins[plugin_name].parameters['permissions']
@@ -162,7 +195,6 @@ class RouteMessage:
             values.append((plugin_name, enabled))
         self.cursor.executemany("INSERT INTO `{}` VALUES(%s, %s, 0)".format(chat_name), values)
         self.database.commit()
-        return enabled
 
 
 def route_callback_query(plugins, get_me, config, callback_query):
@@ -174,8 +206,11 @@ def route_callback_query(plugins, get_me, config, callback_query):
     for db_result in rows:
         plugin_name = db_result['plugin_name']
         plugin_data = json.loads(db_result['plugin_data']) if db_result['plugin_data'] else None
-        tg = TelegramApi(database, get_me, plugin_name, config, plugin_data=plugin_data,
-                         callback_query=callback_query)
+        if 'message' in callback_query:
+            tg = TelegramApi(database, get_me, plugin_name, config, plugin_data=plugin_data,
+                             callback_query=callback_query)
+        else:
+            tg = InlineCallbackQuery(database, config, callback_query)
         plugins[plugin_name].main(tg)
 
 

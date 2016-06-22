@@ -68,7 +68,8 @@ def get_images(http, query, limit=50, page=1):
 
 parameters = {
     'name': "AnimePic",
-    'short_description': "Search for anime pictures inline by typing in @hitagibot animepic"
+    'short_description': "Search for anime pictures inline by typing in @hitagibot animepic",
+    'inline_only': True
 }
 
 inline_arguments = [
