@@ -52,7 +52,7 @@ class TelegramInlineAPI:
     def inline_query_result_article(self, title, input_message_content, **kwargs):
         package = {
             'type': 'article',
-            'id': uuid.uuid4(),
+            'id': str(uuid.uuid4()),
             'title': title,
             'input_message_content': input_message_content
         }
@@ -77,7 +77,7 @@ class TelegramInlineAPI:
     def inline_query_result_gif(self, gif, thumb_url=None, cached=False, **kwargs):
         package = {
             'type': "gif",
-            'id': uuid.uuid4()
+            'id': str(uuid.uuid4())
         }
         if cached:
             package['gif_file_id'] = gif
@@ -105,7 +105,7 @@ class TelegramInlineAPI:
     def inline_query_result_sticker(self, sticker_file_id, **kwargs):
         package = {
             'type': "sticker",
-            'id': uuid.uuid4(),
+            'id': str(uuid.uuid4()),
             'sticker_file_id': sticker_file_id
         }
         package.update(kwargs)
@@ -115,7 +115,7 @@ class TelegramInlineAPI:
     def inline_query_result_video(self, title, video, mime_type=None, thumb_url=None, cached=False, **kwargs):
         package = {
             'type': "video",
-            'id': uuid.uuid4(),
+            'id': str(uuid.uuid4()),
             'title': title
         }
         if cached:
@@ -131,7 +131,7 @@ class TelegramInlineAPI:
     def inline_query_result_audio(self, audio, title, cached=False, **kwargs):
         package = {
             'type': "audio",
-            'id': uuid.uuid4(),
+            'id': str(uuid.uuid4()),
             'title': title
         }
         if cached:
@@ -145,7 +145,7 @@ class TelegramInlineAPI:
     def inline_query_result_voice(self, voice, title, cached=False, **kwargs):
         package = {
             'type': 'voice',
-            'id': uuid.uuid4(),
+            'id': str(uuid.uuid4()),
             'title': title
         }
         if cached:
@@ -159,7 +159,7 @@ class TelegramInlineAPI:
     def inline_result_document(self, title, document, mime_type=None, cached=False, **kwargs):
         package = {
             'type': "document",
-            'id': uuid.uuid4(),
+            'id': str(uuid.uuid4()),
             'title': title
         }
         if cached:
@@ -174,7 +174,7 @@ class TelegramInlineAPI:
     def inline_query_result_location(self, latitude, longitude, title, **kwargs):
         package = {
             'type': 'location',
-            'id': uuid.uuid4(),
+            'id': str(uuid.uuid4()),
             'latitude': latitude,
             'longitude': longitude,
             'title': title
@@ -186,7 +186,7 @@ class TelegramInlineAPI:
     def inline_result_venue(self, latitude, longitude, title, address, **kwargs):
         package = {
             'type': 'venue',
-            'id': uuid.uuid4(),
+            'id': str(uuid.uuid4()),
             'latitude': latitude,
             'longitude': longitude,
             'title': title,
@@ -199,7 +199,7 @@ class TelegramInlineAPI:
     def inline_query_result_contact(self, phone_number, first_name, **kwargs):
         package = {
             'type': "contact",
-            'id': uuid.uuid4(),
+            'id': str(uuid.uuid4()),
             'phone_number': phone_number,
             'first_name': first_name
         }
