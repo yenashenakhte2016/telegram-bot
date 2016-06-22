@@ -44,7 +44,7 @@ class RouteMessage:
         elif self.message['chat']['type'] == 'private':
             self.check_db_pm()
         else:
-            self.plugin_check()
+            self.handle_plugins()
         self.cursor.close()
         self.database.commit()
         self.database.close()

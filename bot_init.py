@@ -38,7 +38,7 @@ def init_database(cursor):
                    "VARCHAR(16) NOT NULL, argument_time DATETIME NOT NULL, previous_message TEXT NOT NULL, "
                    "plugin_data TEXT) CHARACTER SET utf8;")
 
-    cursor.execute("CREATE TABLE IF NOT EXISTS pm_parameters(plugin_name VARCHAR(16) NOT NULL, parameter VARCHAR(300) "
+    cursor.execute("CREATE TABLE IF NOT EXISTS pm_parameters(plugin_name VARCHAR(16) NOT NULL, parameter VARCHAR(164) "
                    "NOT NULL, PRIMARY KEY (plugin_name, parameter)) CHARACTER SET utf8;")
 
     cursor.execute("CREATE TABLE IF NOT EXISTS downloaded_files(file_id VARCHAR(62) NOT NULL, file_path VARCHAR(100),"
