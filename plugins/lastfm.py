@@ -188,7 +188,7 @@ def get_recently_played(local_http, user_name, limit, page=1):
 
 def get_lastfm_username(user_id):
     try:
-        with open('data/profile/{}.json'.format(user_id)) as json_file:
+        with open('data/profile/{}.json'.format(int(user_id))) as json_file:
             profile = json.load(json_file)
     except FileNotFoundError:
         return
@@ -207,7 +207,7 @@ def determine_names(tg):
             query = tg.database.store_result()
             result = query.fetch_row(how=1, maxrows=0)
             if result:
-                return result[0]['first_name'], result[0]['user_id'], "this"
+                return result[0]['first_name'], get_lastfm_username(result[0]['user_id']), "this"
             else:
                 return False
         lastfm_name = first_name = tg.message['match'] if tg.message else tg.inline_query['match']
