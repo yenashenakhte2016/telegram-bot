@@ -53,7 +53,11 @@ def handle_message(tg):
 
 
 def handle_inline_query(tg):
-    first_name, lastfm_name, determiner = determine_names(tg)
+    try:
+        first_name, lastfm_name, determiner = determine_names(tg)
+    except TypeError:
+        tg.answer_inline_query([])
+        return
     if lastfm_name:
         page = int(tg.inline_query['offset']) if tg.inline_query['offset'] else 1
         track_list = get_recently_played(tg.http, lastfm_name, 14, page=page)
