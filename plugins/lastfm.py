@@ -67,7 +67,6 @@ def handle_inline_query(tg):
         concurrent.futures.wait(futures)
         offset = page + 1 if len(track_list) == 14 else ''
         is_personal = False if '(.*)' in tg.inline_query['matched_regex'] else True
-        resul
         tg.answer_inline_query([box.result() for box in futures], is_personal=is_personal, cache_time=15,
                                next_offset=offset)
 

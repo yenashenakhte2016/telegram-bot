@@ -47,7 +47,7 @@ def answer_callback():
 def update_plugin_status(plugin_name):
     tg.database.query('SELECT plugin_status FROM `{}blacklist` WHERE plugin_name="{}"'.format(chat_id, plugin_name))
     query = tg.database.store_result()
-    row = query.fetch_row(how=1)
+    row = query.fetch_row(how=1, maxrows=0)
     if row[0]['plugin_status'] != 2:
         has_permission = check_if_admin() or check_if_mod()
         if not has_permission:
