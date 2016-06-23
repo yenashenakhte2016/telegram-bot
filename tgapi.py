@@ -11,19 +11,17 @@ from functools import partial
 
 import MySQLdb
 import _mysql_exceptions
-import certifi
-import urllib3
 
 
 class TelegramApi:
-    def __init__(self, database, get_me, plugin_name, config, message=None, plugin_data=None, callback_query=None):
+    def __init__(self, database, get_me, plugin_name, config, http, message=None, plugin_data=None,
+                 callback_query=None):
         self.database = database or MySQLdb.connect(**config['DATABASE'])
         self.database.autocommit(True)
         self.cursor = self.database.cursor()
         self.get_me = get_me
         self.inline_query = None
-        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where(),
-                                        timeout=urllib3.Timeout(connect=1.0), retries=3)
+        self.http = http
         self.plugin_name = plugin_name
         self.config = config
         self.token = self.config['BOT_CONFIG']['token']

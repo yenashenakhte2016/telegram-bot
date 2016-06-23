@@ -36,6 +36,7 @@ def main(tg):
 
 
 def handle_message(tg):
+    tg.send_chat_action('typing')
     if tg.message['flagged_message']:
         match = tg.plugin_data
     else:

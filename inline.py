@@ -7,20 +7,17 @@ import uuid
 
 import MySQLdb
 import _mysql_exceptions
-import certifi
-import urllib3
 
 
 class TelegramInlineAPI:
-    def __init__(self, database, get_me, plugin_name, config, inline_query):
+    def __init__(self, database, get_me, plugin_name, config, http, inline_query):
         self.database = database
         self.cursor = self.database.cursor()
         self.get_me = get_me
         self.plugin_name = plugin_name
         self.config = config
         self.inline_query = inline_query
-        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where(),
-                                        timeout=urllib3.Timeout(connect=1.0), retries=3)
+        self.http = http
         self.token = self.config['BOT_CONFIG']['token']
         self.message = self.callback_query = None
         self.input_location_message_content = input_location_message_content
@@ -268,11 +265,10 @@ def input_contact_message_content(phone_number, first_name, last_name=None):
 
 
 class InlineCallbackQuery:
-    def __init__(self, database, config, callback_query):
+    def __init__(self, database, config, http, callback_query):
         self.config = config
         self.token = self.config['BOT_CONFIG']['token']
-        self.http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where(),
-                                        timeout=urllib3.Timeout(connect=1.0), retries=3)
+        self.http = http
         self.callback_query = callback_query
         self.database = database
         self.message = self.inline_query = None

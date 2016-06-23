@@ -64,7 +64,8 @@ class RouteMessage:
                                     (message_id, chat_id))
             self.message['flagged_message'] = True
             plugin_data = json.loads(result['plugin_data']) if result['plugin_data'] else None
-            tg = TelegramApi(self.database, self.get_me, result['plugin_name'], self.config, self.message, plugin_data)
+            tg = TelegramApi(self.database, self.get_me, result['plugin_name'], self.config, self.http, self.message,
+                             plugin_data)
             self.plugins[result['plugin_name']].main(tg)
         else:
             self.handle_plugins()
@@ -87,7 +88,8 @@ class RouteMessage:
             self.cursor.execute("UPDATE flagged_messages SET currently_active=FALSE WHERE chat_id=%s", (chat_id,))
             self.database.commit()
             self.plugins[result['plugin_name']].main(
-                TelegramApi(self.database, self.get_me, result['plugin_name'], self.config, self.message, plugin_data))
+                TelegramApi(self.database, self.get_me, result['plugin_name'], self.config, self.http, self.message,
+                            plugin_data))
 
     def handle_plugins(self):
         if int(time.time()) - int(self.message['date']) >= 180:
@@ -123,7 +125,7 @@ class RouteMessage:
                     result = query.fetch_row(how=1)
                     enabled = result[0]['plugin_status'] if result else self.add_plugin(plugin_name)
                     if enabled:
-                        tg = TelegramApi(database, self.get_me, plugin_name, self.config, self.message)
+                        tg = TelegramApi(database, self.get_me, plugin_name, self.config, self.http, self.message)
                         plugin_module.main(tg)
                         database.close()
                         return True
@@ -164,7 +166,7 @@ class RouteMessage:
             query = database.store_result()
             result = query.fetch_row()
             for plugin in result:
-                tg = TelegramApi(database, self.get_me, plugin[0], self.config, self.message)
+                tg = TelegramApi(database, self.get_me, plugin[0], self.config, self.http, self.message)
                 self.plugins[plugin[0]].main(tg)
             database.close()
             return True if result else False
@@ -197,7 +199,7 @@ class RouteMessage:
         self.database.commit()
 
 
-def route_callback_query(plugins, get_me, config, callback_query):
+def route_callback_query(plugins, get_me, config, http, callback_query):
     database = MySQLdb.connect(**config['DATABASE'])
     data = callback_query['data']
     database.query('SELECT plugin_name, plugin_data FROM callback_queries WHERE callback_data="{}"'.format(data))
@@ -207,14 +209,14 @@ def route_callback_query(plugins, get_me, config, callback_query):
         plugin_name = db_result['plugin_name']
         plugin_data = json.loads(db_result['plugin_data']) if db_result['plugin_data'] else None
         if 'message' in callback_query:
-            tg = TelegramApi(database, get_me, plugin_name, config, plugin_data=plugin_data,
+            tg = TelegramApi(database, get_me, plugin_name, config, http, plugin_data=plugin_data,
                              callback_query=callback_query)
         else:
-            tg = InlineCallbackQuery(database, config, callback_query)
+            tg = InlineCallbackQuery(database, config, http, callback_query)
         plugins[plugin_name].main(tg)
 
 
-def route_inline_query(plugins, get_me, config, inline_query):
+def route_inline_query(plugins, get_me, config, http, inline_query):
     database = MySQLdb.connect(**config['DATABASE'])
     for plugin_name, plugin in plugins.items():
         if hasattr(plugin, 'inline_arguments'):
@@ -223,6 +225,6 @@ def route_inline_query(plugins, get_me, config, inline_query):
                 if match:
                     inline_query['matched_regex'] = argument
                     inline_query['match'] = match[0]
-                    plugin.main(TelegramInlineAPI(database, get_me, plugin_name, config, inline_query))
+                    plugin.main(TelegramInlineAPI(database, get_me, plugin_name, config, http, inline_query))
                     database.commit()
                     return

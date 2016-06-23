@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
-chats = list()
-users = list()
 types = ["audio", "document", "photo", "sticker", "video", "voice", "contact", "location", "venue", "text"]
 
 
@@ -18,17 +15,13 @@ def main(update, database):
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS chat_opt_status(chat_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL, "
         "toggle_user BIGINT NOT NULL, toggle_date DATETIME NOT NULL);")
-    for result in update:
-        if 'message' in result:
-            add_user(result['message']['from'])
-            add_chat(result['message']['chat'])
-            add_message(result['message'], database, cursor)
-    for user in users:
+
+    if 'message' in update:
+        add_message(update['message'], database, cursor)
         cursor.execute("INSERT INTO users_list VALUES(%s, %s, %s, %s) ON DUPLICATE KEY UPDATE "
-                       "first_name=%s, last_name=%s, user_name=%s", user)
-    for chat in chats:
+                       "first_name=%s, last_name=%s, user_name=%s", add_user(update['message']['from']))
         cursor.execute("INSERT INTO chats_list VALUES(%s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE "
-                       "title=%s, username=%s, first_name=%s, last_name =%s", chat)
+                       "title=%s, username=%s, first_name=%s, last_name =%s", add_chat(update['message']['chat']))
     database.commit()
     cursor.close()
 
@@ -61,8 +54,7 @@ def add_user(user):
     last_name = user['last_name'] if 'last_name' in user else None
     username = user['username'] if 'username' in user else None
     entry = (user_id, first_name, last_name, username, first_name, last_name, username)
-    if entry not in users:
-        users.append(entry)
+    return entry
 
 
 def add_chat(chat):
@@ -73,5 +65,4 @@ def add_chat(chat):
     first_name = chat['first_name'] if 'first_name' in chat else None
     last_name = chat['last_name'] if 'last_name' in chat else None
     entry = (chat_id, chat_type, title, username, first_name, last_name, title, username, first_name, last_name)
-    if entry not in chats:
-        chats.append(entry)
+    return entry
