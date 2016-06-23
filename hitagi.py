@@ -104,7 +104,7 @@ def check_time_args():
 if __name__ == '__main__':
     getUpdates = Process(target=get_updates)
     getUpdates.start()
-    for i in range(0, int(config['BOT_CONFIG']['worker'])):
+    for i in range(0, int(config['BOT_CONFIG']['workers'])):
         worker_processes.append(Process(target=process_updates))
         worker_processes[-1].start()
     time_args = Process(target=check_time_args)
