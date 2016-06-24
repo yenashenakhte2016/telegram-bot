@@ -111,6 +111,11 @@ if __name__ == '__main__':
     time_args.start()
     while running.value:
         time.sleep(5)
+        for index, worker in enumerate(worker_processes):
+            if not worker.is_alive():
+                del worker_processes[index]
+                worker_processes.append(Process(target=process_updates))
+                worker_processes[-1].start()
     getUpdates.join()
     time_args.join()
     for worker in worker_processes:

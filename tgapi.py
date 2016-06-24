@@ -101,7 +101,10 @@ class TelegramApi:
         database = MySQLdb.connect(**self.config['DATABASE'])
         arguments = kwargs
         file_type = method.replace('send', '').lower()
-        if type(file) != tuple:
+        if type(file) is str:
+            arguments.update({file_type: file})
+            return self.method(method, **arguments)
+        elif type(file) != tuple:
             file_name = os.path.basename(file.name)
             if type(file) is _io.BufferedReader:
                 file = file.read()

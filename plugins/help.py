@@ -35,8 +35,9 @@ def grab_plugin(tg):
     tg.database.query('SELECT pretty_name, short_description, long_description FROM plugins '
                       'WHERE lower(pretty_name)="{}"'.format(plugin))
     query = tg.database.store_result()
-    row = query.fetch_row(how=1)[0] if query else None
+    row = query.fetch_row(how=1)
     if row:
+        row = row[0]
         if tg.callback_query:
             tg.answer_callback_query(row['short_description'])
         else:
