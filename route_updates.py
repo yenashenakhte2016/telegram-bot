@@ -14,23 +14,23 @@ from tgapi import TelegramApi
 
 
 class RouteMessage:
-    def __init__(self, message, plugins, http, get_me, config):
-        self.message = message
+    def __init__(self, database, cursor, plugins, http, get_me, config):
+        self.database = database
+        self.cursor = cursor
+        self.plugins = plugins
         self.http = http
         self.get_me = get_me
-        self.plugins = plugins
-        self.database = None
-        self.cursor = None
         self.config = config
+        self.message = None
+
+    def route_update(self, message):
+        self.message = message
         self.message['flagged_message'] = None
         self.message['matched_regex'] = None
         self.message['matched_argument'] = None
         self.message['cleaned_message'] = False
         self.message['pm_parameter'] = False
 
-    def route_update(self):
-        self.database = MySQLdb.connect(**self.config['DATABASE'])
-        self.cursor = self.database.cursor()
         if 'text' in self.message and 'entities' in self.message:
             message = self.message['text']
             bot_name = '@' + self.get_me['result']['username']
@@ -39,15 +39,13 @@ class RouteMessage:
                 self.message['text'] = message.replace(message[:name_match.end(0)],
                                                        message[:name_match.end(0) - len(bot_name)])
                 self.message['cleaned_message'] = True
+
         if 'reply_to_message' in self.message:
             self.check_db_reply()
         elif self.message['chat']['type'] == 'private':
             self.check_db_pm()
         else:
             self.handle_plugins()
-        self.cursor.close()
-        self.database.commit()
-        self.database.close()
 
     def check_db_reply(self):
         chat_id = self.message['chat']['id']
@@ -67,6 +65,7 @@ class RouteMessage:
             tg = TelegramApi(self.database, self.get_me, result['plugin_name'], self.config, self.http, self.message,
                              plugin_data)
             self.plugins[result['plugin_name']].main(tg)
+            self.database.commit()
         else:
             self.handle_plugins()
 
@@ -114,22 +113,20 @@ class RouteMessage:
     def plugin_check(self, plugin):
         plugin_name, plugin_module = plugin
         if hasattr(plugin_module, 'arguments'):
-            database = MySQLdb.connect(**self.config['DATABASE'])
             for key, value in plugin_module.arguments.items():
                 if self.check_argument(key, value, self.message):
                     chat_id = self.message['chat']['id']
                     statement = 'SELECT plugin_status FROM `{}blacklist` WHERE plugin_name="{}";'.format(chat_id,
                                                                                                          plugin_name)
-                    database.query(statement)
-                    query = database.store_result()
+                    self.database.query(statement)
+                    query = self.database.store_result()
                     result = query.fetch_row(how=1)
                     enabled = result[0]['plugin_status'] if result else self.add_plugin(plugin_name)
                     if enabled:
-                        tg = TelegramApi(database, self.get_me, plugin_name, self.config, self.http, self.message)
+                        tg = TelegramApi(self.database, self.get_me, plugin_name, self.config, self.http, self.message)
                         plugin_module.main(tg)
-                        database.close()
+                        self.database.commit()
                         return True
-            database.close()
 
     def check_argument(self, key, value, incremented_message):
         if key in incremented_message:
@@ -161,14 +158,12 @@ class RouteMessage:
         match = re.findall("^/start (.*)", self.message['text'])
         if match:
             self.message['pm_parameter'] = True
-            database = MySQLdb.connect(**self.config['DATABASE'])
-            database.query('SELECT plugin_name FROM pm_parameters WHERE parameter="{}"'.format(match[0]))
-            query = database.store_result()
+            self.database.query('SELECT plugin_name FROM pm_parameters WHERE parameter="{}"'.format(match[0]))
+            query = self.database.store_result()
             result = query.fetch_row()
             for plugin in result:
-                tg = TelegramApi(database, self.get_me, plugin[0], self.config, self.http, self.message)
+                tg = TelegramApi(self.database, self.get_me, plugin[0], self.config, self.http, self.message)
                 self.plugins[plugin[0]].main(tg)
-            database.close()
             return True if result else False
         return False
 
@@ -199,8 +194,7 @@ class RouteMessage:
         self.database.commit()
 
 
-def route_callback_query(plugins, get_me, config, http, callback_query):
-    database = MySQLdb.connect(**config['DATABASE'])
+def route_callback_query(database, plugins, get_me, config, http, callback_query):
     data = callback_query['data']
     database.query('SELECT plugin_name, plugin_data FROM callback_queries WHERE callback_data="{}"'.format(data))
     query = database.store_result()
@@ -214,10 +208,10 @@ def route_callback_query(plugins, get_me, config, http, callback_query):
         else:
             tg = InlineCallbackQuery(database, config, http, callback_query)
         plugins[plugin_name].main(tg)
+        database.commit()
 
 
-def route_inline_query(plugins, get_me, config, http, inline_query):
-    database = MySQLdb.connect(**config['DATABASE'])
+def route_inline_query(database, plugins, get_me, config, http, inline_query):
     for plugin_name, plugin in plugins.items():
         if hasattr(plugin, 'inline_arguments'):
             for argument in plugin.inline_arguments:

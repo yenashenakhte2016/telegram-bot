@@ -16,7 +16,7 @@ import _mysql_exceptions
 class TelegramApi:
     def __init__(self, database, get_me, plugin_name, config, http, message=None, plugin_data=None,
                  callback_query=None):
-        self.database = database or MySQLdb.connect(**config['DATABASE'])
+        self.database = database
         self.database.autocommit(True)
         self.cursor = self.database.cursor()
         self.get_me = get_me

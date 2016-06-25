@@ -6,11 +6,11 @@ types = ["audio", "document", "photo", "sticker", "video", "voice", "contact", "
 def main(update, database):
     cursor = database.cursor()
     cursor.execute(
-        "CREATE TABLE IF NOT EXISTS users_list(user_id BIGINT UNIQUE NOT NULL, first_name VARCHAR(64) NOT NULL,"
-        "last_name VARCHAR(64), user_name VARCHAR(128)) CHARACTER SET utf8;")
+        "CREATE TABLE IF NOT EXISTS users_list(user_id BIGINT UNIQUE NOT NULL, first_name VARCHAR(128) NOT NULL,"
+        "last_name VARCHAR(128), user_name VARCHAR(128)) CHARACTER SET utf8;")
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS chats_list(chat_id BIGINT UNIQUE NOT NULL, chat_type VARCHAR(24) NOT NULL,"
-        "title VARCHAR(64), username VARCHAR(128), first_name VARCHAR(64), last_name VARCHAR(64)) "
+        "title VARCHAR(128), username VARCHAR(128), first_name VARCHAR(128), last_name VARCHAR(128)) "
         "CHARACTER SET utf8;")
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS chat_opt_status(chat_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL, "
