@@ -15,7 +15,7 @@ def main(tg):
         return
     if tg.inline_query:
         page = int(tg.inline_query['offset']) if tg.inline_query['offset'] else 1
-        if tg.inline_query['matched_regex'] in inline_arguments[:2]:
+        if tg.inline_query['matched_regex'] == inline_arguments[0]:
             query = 'random: rating:s'
         else:
             query = tg.inline_query['match'].replace(' ', '_') + ' rating:s'
@@ -67,14 +67,12 @@ def get_images(http, query, limit=50, page=1):
 
 
 parameters = {
-    'name': "AnimePic",
-    'short_description': "Search for anime pictures inline by typing in @hitagibot animepic",
+    'name': "Ibsearch",
+    'short_description': "Search Ibsearch for anime pictures inline by typing in ibsearch <query>",
     'inline_only': True
 }
 
 inline_arguments = [
-    'animepic$',
-    '/animepic#',
-    'animepic (.*)',
-    '/animepic (.*)'
+    '^/?ibsearch$',
+    '^/?ibsearch (.*)'
 ]
