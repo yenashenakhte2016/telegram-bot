@@ -27,7 +27,7 @@ def main(tg):
             offset = page + 1 if len(images) == 50 else ''
             tg.answer_inline_query([box.result() for box in futures], cache_time=86400, next_offset=offset)
         else:
-            tg.answer_inline_query([], cache_time=0)
+            tg.answer_inline_query([], cache_time=86400)
 
 
 def create_box(tg, pic):
