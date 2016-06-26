@@ -47,9 +47,12 @@ def return_profile(tg):
     stats = get_stats(tg)
     if stats:
         message += "\n<b>Total Messages:</b> {:,} ({})".format(stats['user_total'], stats['percentage'])
-    playing = last_fm(tg.http, profile)
+    try:
+        playing = last_fm(tg.http, profile, tg.config['LASTFM']['api_key'])
+    except KeyError:
+        playing = None
     if playing:
-        message += u"\n\U0001F3B6 <b>Currently listening to:</b>\n{} - {}".format(playing['name'], playing['artist'])
+        message += u"\n\U0001F3B6 {} - {}".format(playing['name'], playing['artist'])
     if len(message.split('\n')) == 1 and not keyboard:
         message = "\nYour profile seems empty. You can add entries using:\n<code>/profile website username</code>"
     tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard), parse_mode="HTML")
@@ -71,9 +74,10 @@ def make_keyboard(profile):
     return keyboard
 
 
-def last_fm(http, profile):
+def last_fm(http, profile, api_key):
     if 'lastfm' in profile:
         from plugins import lastfm
+        lastfm.api_key = api_key
         last_track = lastfm.get_recently_played(http, profile['lastfm'], 1)
         if last_track and last_track[0]['now_playing']:
             last_track = last_track.pop()
