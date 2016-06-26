@@ -49,7 +49,7 @@ def return_profile(tg):
         message += "\n<b>Total Messages:</b> {:,} ({})".format(stats['user_total'], stats['percentage'])
     playing = last_fm(tg.http, profile)
     if playing:
-        message += u"\n\U0001F3B6 <b>Currently listening to:</b>\n{} - {}".format(playing['song'], playing['artist'])
+        message += u"\n\U0001F3B6 <b>Currently listening to:</b>\n{} - {}".format(playing['name'], playing['artist'])
     if len(message.split('\n')) == 1 and not keyboard:
         message = "\nYour profile seems empty. You can add entries using:\n<code>/profile website username</code>"
     tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard), parse_mode="HTML")
