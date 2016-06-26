@@ -9,7 +9,7 @@ def main(tg):
     global api_key
     api_key = tg.config['DANBOORU']['api_key']
     page = int(tg.inline_query['offset']) if tg.inline_query['offset'] else 1
-    query = "rating:s" if tg.inline_query['matched_regex'] == inline_arguments[0] else tg.inline_query['match']
+    query = "rating:s" if tg.inline_query['matched_regex'] == inline_arguments[0] else tg.inline_query['match'][1]
     result = get_post(tg.http, query, page)
     if result:
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
