@@ -18,25 +18,42 @@ def main(tg):
     global user_id, entries
     if not os.path.exists('data/profile'):
         os.makedirs('data/profile')
-    tg.send_chat_action('typing')
-    user_id = tg.message['reply_to_message']['from']['id'] if 'reply_to_message' in tg.message else \
-        tg.message['from']['id']
+    if tg.message:
+        tg.send_chat_action('typing')
+        if 'reply_to_message' in tg.message:
+            user_id = tg.message['reply_to_message']['from']['id']
+        else:
+            user_id = tg.message['from']['id']
+    else:
+        user_id = tg.inline_query['from']['id']
     with open('data/entries.json', 'r') as json_file:
         entries = json.load(json_file)
-    if tg.message['matched_regex'] == arguments['text'][0]:
-        return_profile(tg)
-    elif tg.message['matched_regex'] == arguments['text'][1]:
-        if tg.message['match'][1] == 'delete' or tg.message['match'][1] == 'del':
-            delete_entry(tg)
-        else:
-            add_entry(tg)
+    if tg.message:
+        if tg.message['matched_regex'] == arguments['text'][0]:
+            message, keyboard = return_profile(tg)
+            tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard))
+        elif tg.message['matched_regex'] == arguments['text'][1]:
+            if "delete" in tg.message['match'] or "del" in tg.message['match']:
+                delete_entry(tg)
+            else:
+                add_entry(tg)
+    else:
+        message, keyboard = return_profile(tg)
+        message_contents = tg.input_text_message_content(message)
+        box = tg.inline_query_result_article("Share your profile!", message_contents,
+                                             reply_markup=tg.inline_keyboard_markup(keyboard))
+        tg.answer_inline_query([box], is_personal=True, cache_time=60)
 
 
 def return_profile(tg):
     global user_id
-    tg.send_chat_action("Typing")
-    first_name = tg.message['reply_to_message']['from']['first_name'] if 'reply_to_message' in tg.message else \
-        tg.message['from']['first_name']
+    if tg.message:
+        if 'reply_to_message' in tg.message:
+            first_name = tg.message['reply_to_message']['from']['first_name']
+        else:
+            first_name = tg.message['from']['first_name']
+    else:
+        first_name = tg.inline_query['from']['first_name']
     try:
         with open('data/profile/{}.json'.format(user_id)) as json_file:
             profile = json.load(json_file)
@@ -44,7 +61,7 @@ def return_profile(tg):
         profile = dict()
     message = "<b>{}'s Profile</b>".format(first_name.title())
     keyboard = make_keyboard(profile)
-    stats = get_stats(tg)
+    stats = get_stats(tg) if tg.message else None
     if stats:
         message += "\n<b>Total Messages:</b> {:,} ({})".format(stats['user_total'], stats['percentage'])
     try:
@@ -55,7 +72,7 @@ def return_profile(tg):
         message += u"\n\U0001F3B6 {} - {}".format(playing['name'], playing['artist'])
     if len(message.split('\n')) == 1 and not keyboard:
         message = "\nYour profile seems empty. You can add entries using:\n<code>/profile website username</code>"
-    tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard), parse_mode="HTML")
+    return message, keyboard
 
 
 def make_keyboard(profile):
@@ -137,7 +154,10 @@ def delete_entry(tg):
         tg.send_message(
             "You don't seem to have anything to delete :(\nAdd entries using <code>/profile website username</code>")
         return
-    site = tg.message['match'][2].lower()
+    if tg.message['match'][1] == "del" or tg.message['match'][1] == "delete":
+        site = tg.message['match'][2].lower()
+    else:
+        site = tg.message['match'][1].lower()
     for key, value in entries.items():
         if site.lower() == key or site.lower() in value['aliases']:
             try:
@@ -165,8 +185,8 @@ parameters = {
     'name': "Profile",
     'short_description': "Display information about yourself",
     'long_description': "The profile plugin allows you to share various details about yourself. You can add a field "
-                        "using <code>/profile website username</code>\n\n<b>List of fields:</b>\n{}".format(
-                                                                                                list_of_options()),
+                        "using <code>/profile website username</code> You can also delete an entry using <code>/profile"
+                        " delete website</code><b>List of fields:</b>\n{}".format(list_of_options()),
     'permissions': True
 }
 
@@ -176,3 +196,7 @@ arguments = {
         "^/(profile|me) (.*) (.*)$"
     ]
 }
+
+inline_arguments = [
+    "^/?(profile|me)$"
+]
