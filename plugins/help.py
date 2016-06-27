@@ -14,7 +14,7 @@ def main(tg):
         remaining = len(rows)
         for plugin in rows:
             pretty_name = plugin['pretty_name']
-            row_length = 3 if remaining >= 3 or remaining == 1 else 2
+            row_length = 4 if remaining >= 4 or remaining == 1 else 3
             button = {'text': pretty_name, 'callback_data': '%%help%%{}'.format(pretty_name)}
             if keyboard and len(keyboard[-1]) < row_length:
                 keyboard[-1].append(button)
@@ -52,9 +52,8 @@ def grab_plugin(tg):
 parameters = {
     'name': "Help",
     'short_description': "Learn about this bots various functions!",
-    'long_description': "The help plugin provides a list of active plugins and their usage. Use /help to receive alone "
-                        "to receive list of plugins in the form of buttons and /help plugin-name for an "
-                        "extended description.",
+    'long_description': "The /help command allows you to learn about the bots various functions. For more detail on a "
+                        "command you can also type in <code>/help plugin_name</code>.",
     'permissions': True
 }
 

@@ -184,9 +184,10 @@ def list_of_options():
 parameters = {
     'name': "Profile",
     'short_description': "Display information about yourself",
-    'long_description': "The profile plugin allows you to share various details about yourself. You can add a field "
-                        "using <code>/profile website username</code> You can also delete an entry using <code>/profile"
-                        " delete website</code><b>List of fields:</b>\n{}".format(list_of_options()),
+    'long_description': "The /profile command allows you to share your other online accounts from within a chat or "
+                        "inline mode. Type in <code>/profile &lt;website&gt; &lt;your_user_name&gt;</code> within a "
+                        "chat to add entry. To remove an entry replace <code>&lt;your_user_name&gt;</code> with delete."
+                        "\n\nSupported Sites: {}".format(list_of_options()),
     'permissions': True
 }
 

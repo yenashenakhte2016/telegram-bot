@@ -340,6 +340,8 @@ def parse_date(anime):
 parameters = {
     'name': "Anilist",
     'short_description': "Search for anime, characters, and manga.",
+    'long_description': "Search anilist using /anime, /character, and /manga for information like rating, summary, and "
+                        "episode count. You can also use this command inline from within any chat.",
     'permissions': True
 }
 

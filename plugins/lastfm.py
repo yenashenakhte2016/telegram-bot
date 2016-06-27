@@ -285,10 +285,8 @@ def how_long(epoch_time):
 parameters = {
     'name': "LastFM",
     'short_description': "View your recently played LastFM tracks!",
-    'long_description': "This plugin allows you to view and share metrics related to your LastFM account. Simply use "
-                        "/lastfm to share your last played track, /toptracks for your most played songs, or /topartists"
-                        " for your most played artists. The commands also works with a specified username or by reply "
-                        "to another users message.",
+    'long_description': "The LastFM function of this bot allows you to share your currently and recently listened to "
+                        "tracks. You can use the command /lastfm both in a chat and inline to do so.",
     'permissions': True
 }
 

@@ -53,8 +53,10 @@ def get_post(http, tags, page):
 
 
 parameters = {
-    'name': "Danbooru Search",
-    'short_description': "Search Danbooru for anime art inline using: animepic <query>",
+    'name': "Danbooru",
+    'short_description': "Search for anime art inline using animepic <search_term>",
+    'long_description': "This is an inline only function which allows you to search Danbooru for anime art. Simply "
+                        "initiate an inline query from any chat and type in <code>animepic &lt;search_term&gt;</code>.",
     'inline_only': True
 }
 

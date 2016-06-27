@@ -38,12 +38,7 @@ def main(tg):
         leet = tg.inline_query_result_article("1337", leet_contents, description=leet_message,
                                               thumb_url="https://botnets.me/hitagi/1337.png")
 
-        flipped_message = flipped_text(tg.inline_query['match'])
-        flipped_contents = tg.input_text_message_content(flipped_message)
-        flipped = tg.inline_query_result_article("Flip your text", flipped_contents, description=flipped_message,
-                                                 thumb_url="https://botnets.me/hitagi/flipped.png")
-
-        tg.answer_inline_query([bold, italic, code, leet, flipped], cache_time=0)
+        tg.answer_inline_query([bold, italic, code, leet], cache_time=0)
 
 
 def leet_text(text):
@@ -53,18 +48,11 @@ def leet_text(text):
     return text
 
 
-def flipped_text(text):
-    flipped = list('ɐqɔpǝɟƃɥıɾʞlɯuodbɹsʇnʌʍxʎzɐqɔpǝɟƃɥıɾʞlɯuodbɹsʇnʌʍxʎz')
-    for letter in range(len(normal)):
-        text = text.replace(normal[letter], flipped[letter])
-    return text
-
-
 parameters = {
     'name': "Echo",
-    'short_description': "The echo plugin repeats your message text",
-    'long_description': "The echo plugins repeats your text back. You can use /echo alone or include text to repeat."
-                        "You can also reply to a message with /echo to have it repeated.",
+    'short_description': "The echo command repeats your message text.",
+    'long_description': "The /echo command repeats your message text. You can also use it inline by initiating an "
+                        "inline chat and typing in <code>echo <your_text></code>.",
     'permissions': "01"
 }
 

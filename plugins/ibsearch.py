@@ -68,7 +68,9 @@ def get_images(http, query, limit=50, page=1):
 
 parameters = {
     'name': "Ibsearch",
-    'short_description': "Search Ibsearch for anime pictures inline by typing in ibsearch <query>",
+    'short_description': "Search Ibsearch for anime art inline using ibsearch <search_term>",
+    'long_description': "This is an inline only function which allows you to search Ibsearch for anime art. Simply "
+                        "initiate an inline query from any chat and type in <code>ibsearch &lt;search_term&gt;</code>.",
     'inline_only': True
 }
 

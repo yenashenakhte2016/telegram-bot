@@ -128,9 +128,8 @@ def create_message(message):
 parameters = {
     'name': "Remind",
     'short_description': "The remind plugin gives you a notification at the time you specify",
-    'long_description': "The remind plugins pings you at a time you specify. To cancel the reminder you just have to "
-                        "delete the message which triggered it. Here's an example: \n<code>Remind me in 30 minutes to "
-                        "take out the trash</code>",
+    'long_description': "The remind plugins pings you at a time you specify. To set a reminder simply ask the bot. \n"
+                        "ie: Remind me in 30 minutes to take out the trash.",
     'permissions': True
 }
 

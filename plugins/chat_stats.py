@@ -235,11 +235,11 @@ def check_if_mod(tg):
 
 
 parameters = {
-    'name': "Chat Stats",
+    'name': "Stats",
     'short_description': "Chat and user message statistics",
-    'long_description': "When enabled the bot will track useful metrics related to the chat such as a time and message"
-                        " type breakdowns. Collection is opt in and no actual messages are stored. You can opt out any"
-                        " time using /chatstats opt-out.",
+    'long_description': "View the most active users, activity breakdowns, and a variety of other metrics by opting into"
+                        " message collection. The actual contents of a message are not logged by the bot. You can opt-"
+                        "out and delete prior data using <code>/chatstats opt-out.</code>",
     'permissions': '10'
 }
 

@@ -81,7 +81,7 @@ def create_plugin_keyboard():
         elif plugin['plugin_status'] == 2:
             button['text'] = button['text'].format(admin, plugin['pretty_name'])
 
-        row_length = 3 if remaining >= 3 or remaining == 1 else 2
+        row_length = 4 if remaining >= 4 or remaining == 1 else 3
         remaining -= 1
         if keyboard and len(keyboard[-1]) < row_length:
             keyboard[-1].append(button)
@@ -115,11 +115,11 @@ def check_if_admin():
 
 
 parameters = {
-    'name': "Administration",
+    'name': "Admin",
     'short_description': "Enable and disable plugins in your group!",
-    'long_description': "The administration plugin allows moderators to toggle plugins in their group. "
-                        "The command /admin returns a list of plugins and their current status.  "
-                        "Plugins which have a white circle will need to be enabled by the bot admin.",
+    'long_description': "The admin plugin allows you to enable and disable plugins in your group. Simply use the "
+                        "/admin command for an interactive plugin control panel. Only chat administrators are allowed "
+                        "to toggle plugins.",
     'permissions': True
 }
 
