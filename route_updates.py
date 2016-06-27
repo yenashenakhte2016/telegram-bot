@@ -14,22 +14,23 @@ from tgapi import TelegramApi
 
 
 class RouteMessage:
-    def __init__(self, database, cursor, plugins, http, get_me, config):
-        self.database = database
+    def __init__(self, cursor, plugins, http, get_me, config):
         self.cursor = cursor
         self.plugins = plugins
         self.http = http
         self.get_me = get_me
         self.config = config
         self.message = None
+        self.database = None
 
-    def route_update(self, message):
+    def route_update(self, message, database):
         self.message = message
         self.message['flagged_message'] = None
         self.message['matched_regex'] = None
         self.message['matched_argument'] = None
         self.message['cleaned_message'] = False
         self.message['pm_parameter'] = False
+        self.database = database
 
         if 'text' in self.message and 'entities' in self.message:
             message = self.message['text']
@@ -127,6 +128,8 @@ class RouteMessage:
                         plugin_module.main(tg)
                         self.database.commit()
                         return True
+        else:
+            del self.plugins[plugin_name]
 
     def check_argument(self, key, value, incremented_message):
         if key in incremented_message:

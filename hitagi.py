@@ -60,14 +60,14 @@ def process_updates():
     plugin_http.retries = 3
     database = MySQLdb.connect(**config['DATABASE'])
     cursor = database.cursor()
-    update_router = RouteMessage(database, cursor, plugins, plugin_http, get_me, config)
+    update_router = RouteMessage(cursor, plugins, plugin_http, get_me, config)
     while running.value:
         update = message_queue.get()
         if update:
             extension_thread = ThreadProcess(target=run_extensions, args=(update,))
             extension_thread.start()
             if 'message' in update:
-                update_router.route_update(update['message'])
+                update_router.route_update(update['message'], database)
             elif 'callback_query' in update:
                 route_callback_query(database, plugins, get_me, config, plugin_http, update['callback_query'])
             elif 'inline_query' in update:
