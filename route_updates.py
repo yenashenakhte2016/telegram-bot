@@ -22,7 +22,6 @@ class RouteMessage:
         self.config = config
         self.message = None
         self.database = None
-        self.clean_plugin_list()
 
     def route_update(self, message, database):
         self.message = message
@@ -194,15 +193,6 @@ class RouteMessage:
             values.append((plugin_name, enabled))
         self.cursor.executemany("INSERT INTO `{}` VALUES(%s, %s, 0)".format(chat_name), values)
         self.database.commit()
-
-    def clean_plugin_list(self):
-        deletion_list = list()
-        for plugin_name, module in self.plugins.items():
-            if not hasattr(module, 'arguments'):
-                deletion_list.append(plugin_name)
-        for plugin_name in deletion_list:
-            del self.plugins[plugin_name]
-
 
 def route_callback_query(database, plugins, get_me, config, http, callback_query):
     data = callback_query['data']
