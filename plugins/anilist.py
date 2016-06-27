@@ -182,7 +182,9 @@ def anime_model(tg, anime_id):
         if anime['airing_status'] == "currently airing":
             message += '\n*Airs in {}*'
 
-        if anime['image_url_lge']:
+        if anime['image_url_banner']:
+            message += '[​]({})'.format(anime['image_url_banner'])
+        elif anime['image_url_lge']:
             message += '[​]({})'.format(anime['image_url_lge'])
 
         message += "\n\n*Type:* {}".format(anime['type'])
@@ -217,7 +219,9 @@ def character_model(tg, character_id, inline=False):
         if character['name_alt']:
             message += "\n*Aliases:* {}".format(character['name_alt'])
 
-        if character['image_url_lge']:
+        if character['image_url_banner']:
+            message += '[​]({})'.format(character['image_url_banner'])
+        elif character['image_url_lge']:
             message += '[​]({})'.format(character['image_url_lge'])
 
         if character['info']:
@@ -239,7 +243,9 @@ def manga_model(tg, manga_id):
     if manga:
         message = "*{}* - {}".format(manga['title_romaji'], manga['title_japanese'])
 
-        if manga['image_url_lge']:
+        if manga['image_url_banner']:
+            message += '[​]({})'.format(manga['image_url_banner'])
+        elif manga['image_url_lge']:
             message += '[​]({})'.format(manga['image_url_lge'])
 
         message += "\n*Type:* {}".format(manga['type'])
