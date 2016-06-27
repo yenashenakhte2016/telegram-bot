@@ -7,7 +7,7 @@ def main(tg):
             return
         tg.send_chat_action('typing')
         tg.database.query("SELECT pretty_name FROM `plugins` p LEFT JOIN `{}blacklist` b ON p.plugin_name=b.plugin_name"
-                          " WHERE b.plugin_status=1 AND hidden=0;".format(tg.message['chat']['id']))
+                          " WHERE hidden=0 AND b.plugin_status=1 OR p.inline_only=1;".format(tg.message['chat']['id']))
         query = tg.database.store_result()
         rows = query.fetch_row(how=1, maxrows=0)
         keyboard = []
@@ -33,7 +33,7 @@ def grab_plugin(tg):
     else:
         plugin = tg.message['match'].lower()
     tg.database.query('SELECT pretty_name, short_description, long_description FROM plugins '
-                      'WHERE lower(pretty_name)="{}"'.format(plugin))
+                      'WHERE lower(pretty_name)="{0}" OR lower(plugin_name) ="{0}"'.format(plugin))
     query = tg.database.store_result()
     row = query.fetch_row(how=1)
     if row:
