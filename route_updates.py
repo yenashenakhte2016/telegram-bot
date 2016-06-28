@@ -14,14 +14,14 @@ from tgapi import TelegramApi
 
 
 class RouteMessage:
-    def __init__(self, cursor, plugins, http, get_me, config):
-        self.cursor = cursor
+    def __init__(self, plugins, http, get_me, config):
         self.plugins = plugins
         self.http = http
         self.get_me = get_me
         self.config = config
         self.message = None
         self.database = None
+        self.cursor = None
 
     def route_update(self, message, database):
         self.message = message
@@ -31,6 +31,7 @@ class RouteMessage:
         self.message['cleaned_message'] = False
         self.message['pm_parameter'] = False
         self.database = database
+        self.cursor = self.database.cursor()
 
         if 'text' in self.message and 'entities' in self.message:
             message = self.message['text']
@@ -217,6 +218,7 @@ def route_inline_query(database, plugins, get_me, config, http, inline_query):
             for argument in plugin.inline_arguments:
                 match = re.findall(str(argument), str(inline_query['query']))
                 if match:
+                    print(match)
                     inline_query['matched_regex'] = argument
                     inline_query['match'] = match[0]
                     plugin.main(TelegramInlineAPI(database, get_me, plugin_name, config, http, inline_query))
