@@ -58,10 +58,9 @@ def process_updates():
     plugin_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
     plugin_http.timeout = urllib3.Timeout(connect=1.0)
     plugin_http.retries = 3
-    database = MySQLdb.connect(**config['DATABASE'])
-    cursor = database.cursor()
-    update_router = RouteMessage(cursor, plugins, plugin_http, get_me, config)
+    update_router = RouteMessage(plugins, plugin_http, get_me, config)
     while running.value:
+        database = MySQLdb.connect(**config['DATABASE'])
         update = message_queue.get()
         if update:
             extension_thread = ThreadProcess(target=run_extensions, args=(update,))
@@ -74,6 +73,7 @@ def process_updates():
                 route_inline_query(database, plugins, get_me, config, plugin_http, update['inline_query'])
             extension_thread.join()
         database.commit()
+        database.close()
         time.sleep(sleep_time)
 
 
