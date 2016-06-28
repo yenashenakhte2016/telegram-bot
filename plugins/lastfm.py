@@ -239,7 +239,7 @@ def link_profile(tg):
     except (JSONDecodeError, FileNotFoundError):
         open('data/profile/{}.json'.format(user_id), 'w')
         profile = dict()
-    if tg.message['text']:
+    if 'text' in tg.message:
         if 'lastfm' in profile:
             message = "Updated your LastFM!"
         else:
