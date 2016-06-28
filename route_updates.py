@@ -218,7 +218,6 @@ def route_inline_query(database, plugins, get_me, config, http, inline_query):
             for argument in plugin.inline_arguments:
                 match = re.findall(str(argument), str(inline_query['query']))
                 if match:
-                    print(match)
                     inline_query['matched_regex'] = argument
                     inline_query['match'] = match[0]
                     plugin.main(TelegramInlineAPI(database, get_me, plugin_name, config, http, inline_query))
