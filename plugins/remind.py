@@ -98,7 +98,7 @@ def check_user(time_id, chat_id, user_id, database):
 def added_time(time, unit):
     if "second" in unit:
         multiplier = 1
-    elif "minute" in unit:
+    elif "min" in unit:
         multiplier = 60
     elif "hour" in unit:
         multiplier = 3600
