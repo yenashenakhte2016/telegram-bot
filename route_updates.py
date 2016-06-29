@@ -23,14 +23,14 @@ class RouteMessage:
         self.database = None
         self.cursor = None
 
-    def route_update(self, message, database):
+    def route_update(self, message):
         self.message = message
         self.message['flagged_message'] = None
         self.message['matched_regex'] = None
         self.message['matched_argument'] = None
         self.message['cleaned_message'] = False
         self.message['pm_parameter'] = False
-        self.database = database
+        self.database = MySQLdb.connect(**self.config['DATABASE'])
         self.cursor = self.database.cursor()
 
         if 'text' in self.message and 'entities' in self.message:
@@ -195,7 +195,9 @@ class RouteMessage:
         self.cursor.executemany("INSERT INTO `{}` VALUES(%s, %s, 0)".format(chat_name), values)
         self.database.commit()
 
-def route_callback_query(database, plugins, get_me, config, http, callback_query):
+
+def route_callback_query(plugins, get_me, config, http, callback_query):
+    database = MySQLdb.connect(**config['DATABASE'])
     data = callback_query['data']
     database.query('SELECT plugin_name, plugin_data FROM callback_queries WHERE callback_data="{}"'.format(data))
     query = database.store_result()
@@ -210,16 +212,19 @@ def route_callback_query(database, plugins, get_me, config, http, callback_query
             tg = InlineCallbackQuery(database, config, http, callback_query)
         plugins[plugin_name].main(tg)
         database.commit()
+        database.close()
 
 
-def route_inline_query(database, plugins, get_me, config, http, inline_query):
+def route_inline_query(plugins, get_me, config, http, inline_query):
     for plugin_name, plugin in plugins.items():
         if hasattr(plugin, 'inline_arguments'):
             for argument in plugin.inline_arguments:
                 match = re.findall(str(argument), str(inline_query['query']))
                 if match:
+                    database = MySQLdb.connect(**config['DATABASE'])
                     inline_query['matched_regex'] = argument
                     inline_query['match'] = match[0]
                     plugin.main(TelegramInlineAPI(database, get_me, plugin_name, config, http, inline_query))
                     database.commit()
+                    database.close()
                     return
