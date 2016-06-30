@@ -60,8 +60,12 @@ def return_profile(tg):
     except (JSONDecodeError, FileNotFoundError):
         profile = dict()
     message = "<b>{}'s Profile</b>".format(first_name.title())
+    misc_details = profile.pop('misc', None)
     keyboard = make_keyboard(profile)
     stats = get_stats(tg) if tg.message else None
+    if misc_details:
+        for field, value in misc_details.items():
+            message += "\n<b>{}:</b> {}".format(field.title(), value)
     if stats:
         message += "\n<b>Total Messages:</b> {:,} ({})".format(stats['user_total'], stats['percentage'])
     try:
@@ -129,21 +133,28 @@ def add_entry(tg):
     except (JSONDecodeError, FileNotFoundError):
         open('data/profile/{}.json'.format(user_id), 'w')
         profile = dict()
-    site = tg.message['match'][1]
-    user_name = tg.message['match'][2]
-    for key, value in entries.items():
-        if site.lower() == key or site.lower() in value['aliases']:
-            if key in profile:
-                message = "Updated your {}!".format(value['pretty_name'])
-            else:
-                message = "Successfully set your {}!".format(value['pretty_name'])
-            profile.update({key: user_name})
-            with open('data/profile/{}.json'.format(user_id), 'w') as file:
-                json.dump(profile, file, sort_keys=True, indent=4)
-            tg.send_message(message)
-            return
+    message = "This entry doesn't seem to be an option"
+    field = tg.message['match'][1].lower()
+    entry = tg.message['match'][2]
+    if field in entries['misc']:
+        max_length = entries['misc'][field]
+        if len(entry) <= max_length:
+            message = "Successfully updated your {}".format(field)
+            profile.update({'misc': {field: entry}})
+        else:
+            message = "Your {} can only be {} characters at most :(".format(field, max_length)
     else:
-        tg.send_message("This entry doesn't seem to be an option")
+        del entries['misc']
+        for key, value in entries.items():
+            if field.lower() == key or field.lower() in value['aliases']:
+                if key in profile:
+                    message = "Updated your {}!".format(value['pretty_name'])
+                else:
+                    message = "Successfully set your {}!".format(value['pretty_name'])
+                profile.update({key: entry})
+    with open('data/profile/{}.json'.format(user_id), 'w') as file:
+        json.dump(profile, file, sort_keys=True, indent=4)
+    tg.send_message(message)
 
 
 def delete_entry(tg):
@@ -177,7 +188,10 @@ def list_of_options():
     with open('data/entries.json', 'r') as json_file:
         sites = json.load(json_file)
     for site in sites.values():
-        fields.append(site['pretty_name'])
+        try:
+            fields.append(site['pretty_name'])
+        except KeyError:
+            continue
     return ", ".join(fields)
 
 
@@ -194,7 +208,7 @@ parameters = {
 arguments = {
     'text': [
         "^/(profile|me)$",
-        "^/(profile|me) (.*) (.*)$"
+        "^/(profile|me) ([^\s]+) (.*)$"
     ]
 }
 

@@ -1,9 +1,34 @@
 {
+  "misc":{
+    "phone": 32,
+    "email": 35,
+    "country": 24,
+    "bio": 120
+  },
+  "myanimelist": {
+    "pretty_name": "MyAnimeList",
+    "url": "http://www.myanimelist.net/profile/{}",
+    "aliases": [
+      "mal"
+    ]
+  },
+  "hummingbird": {
+    "pretty_name": "Hummingbird",
+    "url": "https://hummingbird.me/users/{}",
+    "aliases": [
+    ]
+  },
   "lastfm": {
     "pretty_name": "LastFM",
     "url": "http://www.lastfm.com/user/{}",
     "aliases": [
       "lfm"
+    ]
+  },
+  "anilist": {
+    "pretty_name": "AniList",
+    "url": "https://anilist.co/user/{}",
+    "aliases": [
     ]
   },
   "reddit": {
@@ -30,6 +55,13 @@
     "pretty_name": "Twitter",
     "url": "https://twitter.com/{}",
     "aliases": [
+    ]
+  },
+  "facebook": {
+    "pretty_name": "Facebook",
+    "url": "https://www.facebook.com/{}",
+    "aliases": [
+      "fb"
     ]
   }
 }
