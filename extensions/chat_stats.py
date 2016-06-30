@@ -5,21 +5,21 @@ types = ["audio", "document", "photo", "sticker", "video", "voice", "contact", "
 
 def main(update, database):
     cursor = database.cursor()
-    cursor.execute(
-        "CREATE TABLE IF NOT EXISTS users_list(user_id BIGINT UNIQUE NOT NULL, first_name VARCHAR(128) NOT NULL,"
-        "last_name VARCHAR(128), user_name VARCHAR(128)) CHARACTER SET utf8;")
-    cursor.execute(
-        "CREATE TABLE IF NOT EXISTS chats_list(chat_id BIGINT UNIQUE NOT NULL, chat_type VARCHAR(24) NOT NULL,"
-        "title VARCHAR(128), username VARCHAR(128), first_name VARCHAR(128), last_name VARCHAR(128)) "
-        "CHARACTER SET utf8;")
-    cursor.execute(
-        "CREATE TABLE IF NOT EXISTS chat_opt_status(chat_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL, "
-        "toggle_user BIGINT NOT NULL, toggle_date DATETIME NOT NULL);")
-
+    user_obj = None
+    chat_obj = None
+    init_db(cursor)
     if 'message' in update:
+        user_obj = update['message']['from']
+        chat_obj = update['message']['chat']
         add_message(update['message'], database, cursor)
+    elif 'inline_query' in update:
+        user_obj = update['inline_query']['from']
+    elif 'callback_query' in update:
+        user_obj = update['callback_query']['from']
+    if user_obj:
         cursor.execute("INSERT INTO users_list VALUES(%s, %s, %s, %s) ON DUPLICATE KEY UPDATE "
-                       "first_name=%s, last_name=%s, user_name=%s", add_user(update['message']['from']))
+                       "first_name=%s, last_name=%s, user_name=%s", add_user(user_obj))
+    if chat_obj:
         cursor.execute("INSERT INTO chats_list VALUES(%s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE "
                        "title=%s, username=%s, first_name=%s, last_name =%s", add_chat(update['message']['chat']))
     database.commit()
@@ -66,3 +66,16 @@ def add_chat(chat):
     last_name = chat['last_name'] if 'last_name' in chat else None
     entry = (chat_id, chat_type, title, username, first_name, last_name, title, username, first_name, last_name)
     return entry
+ 
+    
+def init_db(cursor):
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS users_list(user_id BIGINT UNIQUE NOT NULL, first_name VARCHAR(128) NOT NULL,"
+        "last_name VARCHAR(128), user_name VARCHAR(128)) CHARACTER SET utf8;")
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS chats_list(chat_id BIGINT UNIQUE NOT NULL, chat_type VARCHAR(24) NOT NULL,"
+        "title VARCHAR(128), username VARCHAR(128), first_name VARCHAR(128), last_name VARCHAR(128)) "
+        "CHARACTER SET utf8;")
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS chat_opt_status(chat_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL, "
+        "toggle_user BIGINT NOT NULL, toggle_date DATETIME NOT NULL);") 
