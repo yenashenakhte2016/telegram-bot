@@ -65,7 +65,11 @@ def return_profile(tg):
     stats = get_stats(tg) if tg.message else None
     if misc_details:
         for field, value in misc_details.items():
+            if field == 'bio':
+                continue
             message += "\n<b>{}:</b> {}".format(field.title(), value)
+        if "bio" in misc_details:
+            message += "\n<b>Bio:</b> {}".format(misc_details['bio'])
     if stats:
         message += "\n<b>Total Messages:</b> {:,} ({})".format(stats['user_total'], stats['percentage'])
     try:
@@ -161,6 +165,7 @@ def add_entry(tg):
 
 
 def delete_entry(tg):
+    message = "Invalid field"
     try:
         with open('data/profile/{}.json'.format(user_id)) as file:
             profile = json.load(file)
@@ -169,21 +174,27 @@ def delete_entry(tg):
             "You don't seem to have anything to delete :(\nAdd entries using <code>/profile website username</code>")
         return
     if tg.message['match'][1] == "del" or tg.message['match'][1] == "delete":
-        site = tg.message['match'][2].lower()
+        field = tg.message['match'][2].lower()
     else:
-        site = tg.message['match'][1].lower()
-    for key, value in entries.items():
-        if site.lower() == key or site.lower() in value['aliases']:
-            try:
-                del profile[key]
-            except KeyError:
-                tg.send_message("You haven't seemed to link a {}".format(value['pretty_name']))
-                return
-            tg.send_message("Successfully removed {}".format(value['pretty_name']))
-            with open('data/profile/{}.json'.format(user_id), 'w') as file:
-                json.dump(profile, file, sort_keys=True, indent=4)
-            return
-    tg.send_message("Invalid field")
+        field = tg.message['match'][1].lower()
+    if field.lower() in entries['misc']:
+        message = "Successfully removed your {}".format(field)
+        try:
+            del profile['misc'][field]
+        except KeyError:
+            message = "It seems you haven't added a {}".format(field)
+    else:
+        del entries['misc']
+        for key, value in entries.items():
+            if field.lower() == key or field.lower() in value['aliases']:
+                message = "Successfully removed {}".format(value['pretty_name'])
+                try:
+                    del profile[key]
+                except KeyError:
+                    message = "You haven't linked a {}".format(value['pretty_name'])
+    with open('data/profile/{}.json'.format(user_id), 'w') as file:
+        json.dump(profile, file, sort_keys=True, indent=4)
+    tg.send_message(message)
 
 
 def list_of_options():
