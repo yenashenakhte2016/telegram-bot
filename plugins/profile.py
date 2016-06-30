@@ -63,6 +63,7 @@ def return_profile(tg):
     misc_details = profile.pop('misc', None)
     keyboard = make_keyboard(profile)
     stats = get_stats(tg) if tg.message else None
+    print(misc_details)
     if misc_details:
         for field, value in misc_details.items():
             message += "\n<b>{}:</b> {}".format(field.title(), value)
@@ -140,7 +141,7 @@ def add_entry(tg):
         max_length = entries['misc'][field]
         if len(entry) <= max_length:
             message = "Successfully updated your {}".format(field)
-            profile.update({'misc': {field: entry}})
+            profile['misc'][field] = entry
         else:
             message = "Your {} can only be {} characters at most :(".format(field, max_length)
     else:
