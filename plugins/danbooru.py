@@ -18,7 +18,7 @@ def main(tg):
         concurrent.futures.wait(futures)
         offset = page + 1 if len(result) == 40 else ''
         response = [box.result() for box in futures]
-        tg.answer_inline_query([box for box in response if box], cache_time=0, next_offset=offset)
+        tg.answer_inline_query([box for box in response if box], cache_time=86400, next_offset=offset)
     else:
         tg.answer_inline_query([], cache_time=0)
 
@@ -52,7 +52,7 @@ def get_post(http, tags, page):
         except json.decoder.JSONDecodeError:
             return
     else:
-        return request.status
+        return
 
 
 def get_tags(http, query):
