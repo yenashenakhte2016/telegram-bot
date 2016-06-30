@@ -140,7 +140,10 @@ def add_entry(tg):
         max_length = entries['misc'][field]
         if len(entry) <= max_length:
             message = "Successfully updated your {}".format(field)
-            profile['misc'][field] = entry
+            try:
+                profile['misc'][field] = entry
+            except KeyError:
+                profile.update({'misc': {field:entry}})
         else:
             message = "Your {} can only be {} characters at most :(".format(field, max_length)
     else:
