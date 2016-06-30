@@ -63,7 +63,6 @@ def return_profile(tg):
     misc_details = profile.pop('misc', None)
     keyboard = make_keyboard(profile)
     stats = get_stats(tg) if tg.message else None
-    print(misc_details)
     if misc_details:
         for field, value in misc_details.items():
             message += "\n<b>{}:</b> {}".format(field.title(), value)
