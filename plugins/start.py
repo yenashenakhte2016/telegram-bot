@@ -8,7 +8,9 @@ def main(tg):
               "/help. You can also view my source code <a href='https://github.com/TopBakuhatsu/hitagibot'>here</a>" \
         .format(first_name)
     if 'new_chat_participant' in tg.message:
-        tg.send_message(message, disable_web_page_preview=True, reply_to_message_id=None)
+        tg.send_message(message,
+                        disable_web_page_preview=True,
+                        reply_to_message_id=None)
     else:
         tg.send_message(message, disable_web_page_preview=True)
 
@@ -19,8 +21,4 @@ parameters = {
     'permissions': True
 }
 
-arguments = {
-    'text': [
-        "^/start$"
-    ]
-}
+arguments = {'text': ["^/start$"]}

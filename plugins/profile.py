@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 import json
 import os
 
@@ -31,7 +30,8 @@ def main(tg):
     if tg.message:
         if tg.message['matched_regex'] == arguments['text'][0]:
             message, keyboard = return_profile(tg)
-            tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard))
+            tg.send_message(message,
+                            reply_markup=tg.inline_keyboard_markup(keyboard))
         elif tg.message['matched_regex'] == arguments['text'][1]:
             if "delete" in tg.message['match'] or "del" in tg.message['match']:
                 delete_entry(tg)
@@ -40,8 +40,10 @@ def main(tg):
     else:
         message, keyboard = return_profile(tg)
         message_contents = tg.input_text_message_content(message)
-        box = tg.inline_query_result_article("Share your profile!", message_contents,
-                                             reply_markup=tg.inline_keyboard_markup(keyboard))
+        box = tg.inline_query_result_article(
+            "Share your profile!",
+            message_contents,
+            reply_markup=tg.inline_keyboard_markup(keyboard))
         tg.answer_inline_query([box], is_personal=True, cache_time=60)
 
 
@@ -71,13 +73,15 @@ def return_profile(tg):
         if "bio" in misc_details:
             message += "\n<b>Bio:</b> {}".format(misc_details['bio'])
     if stats:
-        message += "\n<b>Total Messages:</b> {:,} ({})".format(stats['user_total'], stats['percentage'])
+        message += "\n<b>Total Messages:</b> {:,} ({})".format(
+            stats['user_total'], stats['percentage'])
     try:
         playing = last_fm(tg.http, profile, tg.config['LASTFM']['api_key'])
     except KeyError:
         playing = None
     if playing:
-        message += u"\n\U0001F3B6 {} - {}".format(playing['name'], playing['artist'])
+        message += u"\n\U0001F3B6 {} - {}".format(playing['name'],
+                                                  playing['artist'])
     if len(message.split('\n')) == 1 and not keyboard:
         message = "\nYour profile seems empty. You can add entries using:\n<code>/profile website username</code>"
     return message, keyboard
@@ -123,7 +127,8 @@ def get_stats(tg):
     chat_total = query.fetch_row()
     if chat_total[0][0] < 100:
         return
-    tg.database.query("SELECT COUNT(*) FROM `{}stats` WHERE user_id={}".format(chat_id, user_id))
+    tg.database.query("SELECT COUNT(*) FROM `{}stats` WHERE user_id={}".format(
+        chat_id, user_id))
     query = tg.database.store_result()
     user_total = query.fetch_row()
     percentage = "{:.2%}".format(user_total[0][0] / chat_total[0][0])
@@ -147,9 +152,10 @@ def add_entry(tg):
             try:
                 profile['misc'][field] = entry
             except KeyError:
-                profile.update({'misc': {field:entry}})
+                profile.update({'misc': {field: entry}})
         else:
-            message = "Your {} can only be {} characters at most :(".format(field, max_length)
+            message = "Your {} can only be {} characters at most :(".format(
+                field, max_length)
     else:
         del entries['misc']
         for key, value in entries.items():
@@ -157,7 +163,8 @@ def add_entry(tg):
                 if key in profile:
                     message = "Updated your {}!".format(value['pretty_name'])
                 else:
-                    message = "Successfully set your {}!".format(value['pretty_name'])
+                    message = "Successfully set your {}!".format(value[
+                        'pretty_name'])
                 profile.update({key: entry})
     with open('data/profile/{}.json'.format(user_id), 'w') as file:
         json.dump(profile, file, sort_keys=True, indent=4)
@@ -187,11 +194,13 @@ def delete_entry(tg):
         del entries['misc']
         for key, value in entries.items():
             if field.lower() == key or field.lower() in value['aliases']:
-                message = "Successfully removed {}".format(value['pretty_name'])
+                message = "Successfully removed {}".format(value[
+                    'pretty_name'])
                 try:
                     del profile[key]
                 except KeyError:
-                    message = "You haven't linked a {}".format(value['pretty_name'])
+                    message = "You haven't linked a {}".format(value[
+                        'pretty_name'])
     with open('data/profile/{}.json'.format(user_id), 'w') as file:
         json.dump(profile, file, sort_keys=True, indent=4)
     tg.send_message(message)
@@ -212,20 +221,14 @@ def list_of_options():
 parameters = {
     'name': "Profile",
     'short_description': "Display information about yourself",
-    'long_description': "The /profile command allows you to share your other online accounts from within a chat or "
-                        "inline mode. Type in <code>/profile &lt;website&gt; &lt;your_user_name&gt;</code> within a "
-                        "chat to add entry. To remove an entry replace <code>&lt;your_user_name&gt;</code> with delete."
-                        "\n\nSupported Sites: {}".format(list_of_options()),
+    'long_description':
+    "The /profile command allows you to share your other online accounts from within a chat or "
+    "inline mode. Type in <code>/profile &lt;website&gt; &lt;your_user_name&gt;</code> within a "
+    "chat to add entry. To remove an entry replace <code>&lt;your_user_name&gt;</code> with delete."
+    "\n\nSupported Sites: {}".format(list_of_options()),
     'permissions': True
 }
 
-arguments = {
-    'text': [
-        "^/(profile|me)$",
-        "^/(profile|me) ([^\s]+) (.*)$"
-    ]
-}
+arguments = {'text': ["^/(profile|me)$", "^/(profile|me) ([^\s]+) (.*)$"]}
 
-inline_arguments = [
-    "^/?(profile|me)$"
-]
+inline_arguments = ["^/?(profile|me)$"]

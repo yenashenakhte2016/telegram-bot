@@ -27,11 +27,4 @@ parameters = {
     'permissions': True
 }
 
-arguments = {
-    'new_chat_participant': [
-        "*"
-    ],
-    'left_chat_participant': [
-        "*"
-    ]
-}
+arguments = {'new_chat_participant': ["*"], 'left_chat_participant': ["*"]}

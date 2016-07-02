@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 from subprocess import Popen, PIPE
 
 
@@ -27,8 +26,4 @@ parameters = {
     'hidden': True
 }
 
-arguments = {
-    'text': [
-        "^/shell (.*)"
-    ]
-}
+arguments = {'text': ["^/shell (.*)"]}

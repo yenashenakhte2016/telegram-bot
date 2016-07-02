@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 
-
 from datetime import datetime
 
 import _mysql_exceptions
 
 chat_id = int
 
-types = ["audio", "document", "photo", "sticker", "video", "voice", "contact", "location", "venue", "text"]
-pretty_types = ["Audio", "Documents", "Photos", "Stickers", "Videos", "Voice", "Contacts", "Locations", "Venues",
-                "Text"]
+types = ["audio", "document", "photo", "sticker", "video", "voice", "contact",
+         "location", "venue", "text"]
+pretty_types = ["Audio", "Documents", "Photos", "Stickers", "Videos", "Voice",
+                "Contacts", "Locations", "Venues", "Text"]
 
 
 def main(tg):
@@ -28,9 +28,12 @@ def main(tg):
                 elif tg.message['matched_regex'] == arguments['text'][3]:
                     global_user_stats(tg)
             else:
-                keyboard = [[{'text': 'Enable Stats', 'callback_data': '%%toggle_on%%'}]]
+                keyboard = [[{'text': 'Enable Stats',
+                              'callback_data': '%%toggle_on%%'}]]
                 message = "You are not opted into stat collection. A moderator can opt-in by clicking this button."
-                tg.send_message(message, reply_markup=tg.inline_keyboard_markup(keyboard))
+                tg.send_message(
+                    message,
+                    reply_markup=tg.inline_keyboard_markup(keyboard))
     elif tg.callback_query:
         if tg.callback_query['data'] == '%%toggle_on%%':
             opt_in(tg)
@@ -44,13 +47,18 @@ def opt_in(tg):
     elif check_if_mod(tg):
         user_id = tg.callback_query['from']['id']
         try:
-            tg.cursor.execute("INSERT INTO chat_opt_status VALUES(%s, 1, %s, now())", (chat_id, user_id))
+            tg.cursor.execute(
+                "INSERT INTO chat_opt_status VALUES(%s, 1, %s, now())",
+                (chat_id, user_id))
         except _mysql_exceptions.IntegrityError:
-            tg.cursor.execute("UPDATE chat_opt_status SET status=1, toggle_user=%s, toggle_date=now()", (user_id,))
+            tg.cursor.execute(
+                "UPDATE chat_opt_status SET status=1, toggle_user=%s, toggle_date=now()",
+                (user_id, ))
         tg.answer_callback_query("You have opted in!")
-        tg.edit_message_text("You have successfully opted into stat collection."
-                             "You'll be able to see statistics shortly. Opt out at anytime using /chatstats opt-out",
-                             message_id=tg.callback_query['message']['message_id'])
+        tg.edit_message_text(
+            "You have successfully opted into stat collection."
+            "You'll be able to see statistics shortly. Opt out at anytime using /chatstats opt-out",
+            message_id=tg.callback_query['message']['message_id'])
     else:
         tg.answer_callback_query("Only moderators can enable chat stats!")
 
@@ -59,38 +67,48 @@ def opt_out(tg):
     if tg.callback_query:
         if check_if_mod(tg):
             tg.cursor.execute("DROP TABLE `{}stats`".format(chat_id))
-            tg.cursor.execute("UPDATE chat_opt_status SET status=FALSE AND toggle_user=%s AND toggle_date=now() WHERE "
-                              "chat_id=%s", (tg.callback_query['from']['id'], chat_id))
+            tg.cursor.execute(
+                "UPDATE chat_opt_status SET status=FALSE AND toggle_user=%s AND toggle_date=now() WHERE "
+                "chat_id=%s", (tg.callback_query['from']['id'], chat_id))
             tg.answer_callback_query()
-            tg.edit_message_text("You have successfully disabled statistics. All chat data has been deleted.",
-                                 message_id=tg.callback_query['message']['message_id'])
+            tg.edit_message_text(
+                "You have successfully disabled statistics. All chat data has been deleted.",
+                message_id=tg.callback_query['message']['message_id'])
         else:
             tg.answer_callback_query("Only mods can disable stats!")
     elif tg.message:
-        tg.database.query("SELECT status FROM chat_opt_status WHERE chat_id=%s AND status=TRUE".format(chat_id))
+        tg.database.query(
+            "SELECT status FROM chat_opt_status WHERE chat_id=%s AND status=TRUE".format(
+                chat_id))
         query = tg.database.store_result()
         rows = query.fetch_row()
         if rows:
-            keyboard = [[{'text': 'Disable & Remove Stats', 'callback_data': '%%toggle_off%%'}]]
-            tg.send_message("Are you sure you want to opt-out? All chat data is deleted, this is irreversible.",
-                            reply_markup=tg.inline_keyboard_markup(keyboard))
+            keyboard = [[{'text': 'Disable & Remove Stats',
+                          'callback_data': '%%toggle_off%%'}]]
+            tg.send_message(
+                "Are you sure you want to opt-out? All chat data is deleted, this is irreversible.",
+                reply_markup=tg.inline_keyboard_markup(keyboard))
         else:
             tg.send_message("You aren't currently opted in")
     return
 
 
 def chat_stats(tg):
-    total_messages, total_characters, average_chars, total_words = metrics(tg.database)
-    message = "<b>Global Chat Stats:</b>\n\n".format(tg.message['chat']['title'])
+    total_messages, total_characters, average_chars, total_words = metrics(
+        tg.database)
+    message = "<b>Global Chat Stats:</b>\n\n".format(tg.message['chat'][
+        'title'])
     message += "<b>Total Messages Sent:</b> {:,}".format(total_messages)
     message += "\n<b>Total Characters Sent:</b> {:,}".format(total_characters)
-    message += "\n<b>Average Characters Per Message:</b> {0:.1f}".format(average_chars)
+    message += "\n<b>Average Characters Per Message:</b> {0:.1f}".format(
+        average_chars)
 
     message += "\n\n<b>Types of Messages Sent</b>"
     message_types = types_breakdown(tg.database)
     for msg_type, total in message_types.items():
         try:
-            message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
+            message += "\n<b>{}:</b> {:,}".format(
+                pretty_types[types.index(msg_type)], total)
         except ValueError:
             continue
     message += hourly_time(total_messages, tg.database)
@@ -102,18 +120,21 @@ def user_stats(tg):
         tg.message['from']['id']
     first_name = tg.message['reply_to_message']['from']['first_name'] if 'reply_to_message' in tg.message else \
         tg.message['from']['first_name']
-    total_messages, total_characters, average_chars, total_words = metrics(tg.database, user_id)
+    total_messages, total_characters, average_chars, total_words = metrics(
+        tg.database, user_id)
 
     message = "<b>{}'s Chat Stats</b>\n\n".format(first_name)
     message += "<b>Total Messages Sent:</b> {:,}".format(total_messages)
     message += "\n<b>Total Characters Sent:</b> {:,}".format(total_characters)
-    message += "\n<b>Average Characters Per Message:</b> {0:.1f}".format(average_chars)
+    message += "\n<b>Average Characters Per Message:</b> {0:.1f}".format(
+        average_chars)
 
     message += "\n\n<b>Types of Messages Sent</b>"
     message_types = types_breakdown(tg.database, user_id)
     for msg_type, total in message_types.items():
         try:
-            message += "\n<b>{}:</b> {:,}".format(pretty_types[types.index(msg_type)], total)
+            message += "\n<b>{}:</b> {:,}".format(
+                pretty_types[types.index(msg_type)], total)
         except ValueError:
             continue
     message += hourly_time(total_messages, tg.database, user_id)
@@ -122,37 +143,44 @@ def user_stats(tg):
 
 
 def global_user_stats(tg):
-    tg.database.query("SELECT first_name, s.user_id, COUNT(*) as `message_count` FROM `{}stats` s "
-                      "LEFT JOIN users_list u ON s.user_id = u.user_id GROUP BY user_id "
-                      "ORDER BY message_count DESC;".format(chat_id))
+    tg.database.query(
+        "SELECT first_name, s.user_id, COUNT(*) as `message_count` FROM `{}stats` s "
+        "LEFT JOIN users_list u ON s.user_id = u.user_id GROUP BY user_id "
+        "ORDER BY message_count DESC;".format(chat_id))
     query = tg.database.store_result()
     results = query.fetch_row(maxrows=0)
     text = "Global User Stats For Chat: {}\r\nGenerated On: {}\r\n".format(
-        tg.message['chat']['title'], datetime.now().strftime("%A, %d. %B %Y %I:%M%p"))
+        tg.message['chat']['title'],
+        datetime.now().strftime("%A, %d. %B %Y %I:%M%p"))
     for rank, user in enumerate(results):
         first_name = user[0]
         if not user[0]:
             chat_member = tg.get_chat_member(chat_id, user[1], check_db=False)
             chat_member = chat_member['result'] if chat_member['ok'] else None
             if chat_member:
-                last_name = chat_member['last_name'] if 'last_name' in chat_member else None
-                user_name = chat_member['username'] if 'username' in chat_member else None
+                last_name = chat_member[
+                    'last_name'] if 'last_name' in chat_member else None
+                user_name = chat_member[
+                    'username'] if 'username' in chat_member else None
                 try:
-                    tg.cursor.execute("INSERT INTO users_list VALUES(%s, %s, %s, %s)",
-                                      (chat_member['id'], chat_member['first_name'], last_name, user_name))
+                    tg.cursor.execute(
+                        "INSERT INTO users_list VALUES(%s, %s, %s, %s)",
+                        (chat_member['id'], chat_member['first_name'],
+                         last_name, user_name))
                 except _mysql_exceptions.IntegrityError:
                     pass
                 first_name = chat_member['first_name']
             else:
                 try:
-                    tg.cursor.execute("INSERT INTO users_list(first_name, user_id) VALUES(%s, %s)",
-                                      ("Unknown", user[1]))
+                    tg.cursor.execute(
+                        "INSERT INTO users_list(first_name, user_id) VALUES(%s, %s)",
+                        ("Unknown", user[1]))
                 except _mysql_exceptions.IntegrityError:
                     pass
                 first_name = "Unknown"
         if first_name != "Unknown":
-            text += "\r\n{}. {} [{}] - {} messages".format(rank + 1, first_name, user[1], user[2]).replace(u"\u200F",
-                                                                                                           '')
+            text += "\r\n{}. {} [{}] - {} messages".format(
+                rank + 1, first_name, user[1], user[2]).replace(u"\u200F", '')
     tg.send_document(('stats.txt', text))
 
 
@@ -171,7 +199,8 @@ def types_breakdown(database, user_id=None):
 
 
 def metrics(database, user_id=None):
-    statement = "SELECT COUNT(*), SUM(char_length), AVG(char_length), SUM(word_count) FROM `{}stats`".format(chat_id)
+    statement = "SELECT COUNT(*), SUM(char_length), AVG(char_length), SUM(word_count) FROM `{}stats`".format(
+        chat_id)
     if user_id:
         statement += " WHERE user_id={}".format(user_id)
     database.query(statement)
@@ -182,18 +211,16 @@ def metrics(database, user_id=None):
 
 def hourly_time(total, database, user_id=None):
     if user_id:
-        database.query("SELECT hour(time_sent), Count(*) FROM `{}stats` WHERE user_id={} "
-                       "GROUP BY HOUR(time_sent);".format(chat_id, user_id))
+        database.query(
+            "SELECT hour(time_sent), Count(*) FROM `{}stats` WHERE user_id={} "
+            "GROUP BY HOUR(time_sent);".format(chat_id, user_id))
     else:
-        database.query("SELECT hour(time_sent), Count(*) FROM `{}stats` GROUP BY HOUR(time_sent);".format(chat_id))
+        database.query(
+            "SELECT hour(time_sent), Count(*) FROM `{}stats` GROUP BY HOUR(time_sent);".format(
+                chat_id))
     query = database.store_result()
     rows = query.fetch_row(maxrows=0)
-    times = {
-        '0to6': 0,
-        '6to12': 0,
-        '12to18': 0,
-        '18to0': 0
-    }
+    times = {'0to6': 0, '6to12': 0, '12to18': 0, '18to0': 0}
     for result in rows:
         if result[0] < 6:
             times['0to6'] += result[1]
@@ -209,15 +236,21 @@ def hourly_time(total, database, user_id=None):
 def parse_times(total, times):
     message = "<b>\n\nActivity By Time</b>"
     '12 AM - 6 AM: {}\n6 AM - 12 PM\n12 PM - 6 PM\n6 PM - 12 AM'
-    message += "\n<b>00:00 - 06:00:</b> {:.1f}%".format((times['0to6'] / total) * 100)
-    message += "\n<b>06:00 - 12:00:</b> {:.1f}%".format((times['6to12'] / total) * 100)
-    message += "\n<b>12:00 - 18:00:</b> {:.1f}%".format((times['12to18'] / total) * 100)
-    message += "\n<b>18:00 - 00:00:</b> {:.1f}%".format((times['18to0'] / total) * 100)
+    message += "\n<b>00:00 - 06:00:</b> {:.1f}%".format(
+        (times['0to6'] / total) * 100)
+    message += "\n<b>06:00 - 12:00:</b> {:.1f}%".format(
+        (times['6to12'] / total) * 100)
+    message += "\n<b>12:00 - 18:00:</b> {:.1f}%".format(
+        (times['12to18'] / total) * 100)
+    message += "\n<b>18:00 - 00:00:</b> {:.1f}%".format(
+        (times['18to0'] / total) * 100)
     return message
 
 
 def check_status(database):
-    database.query("SELECT status FROM chat_opt_status WHERE status=True and chat_id={}".format(chat_id))
+    database.query(
+        "SELECT status FROM chat_opt_status WHERE status=True and chat_id={}".format(
+            chat_id))
     query = database.store_result()
     rows = query.fetch_row()
     return True if rows else False
@@ -237,17 +270,15 @@ def check_if_mod(tg):
 parameters = {
     'name': "Stats",
     'short_description': "Chat and user message statistics",
-    'long_description': "View the most active users, activity breakdowns, and a variety of other metrics by opting into"
-                        " message collection. The actual contents of a message are not logged by the bot. You can opt-"
-                        "out and delete prior data using <code>/chatstats opt-out.</code>",
+    'long_description':
+    "View the most active users, activity breakdowns, and a variety of other metrics by opting into"
+    " message collection. The actual contents of a message are not logged by the bot. You can opt-"
+    "out and delete prior data using <code>/chatstats opt-out.</code>",
     'permissions': '10'
 }
 
 arguments = {
     'text': [
-        "^/chatstats$",
-        "^/chatstats opt-out$",
-        "^/stats$",
-        "^/userstats$"
+        "^/chatstats$", "^/chatstats opt-out$", "^/stats$", "^/userstats$"
     ]
 }

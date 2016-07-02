@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 import math
 import time
 
@@ -8,13 +7,15 @@ import time
 def main(tg):
     if str(tg.chat_data['from']['id']) in tg.config['BOT_CONFIG']['admins']:
         tg.send_chat_action('typing')
-        tg.database.query("SELECT chat_id FROM chat_opt_status WHERE status=1;")
+        tg.database.query(
+            "SELECT chat_id FROM chat_opt_status WHERE status=1;")
         query = tg.database.store_result()
         chat_list = query.fetch_row(maxrows=0)
         total_messages = 0
         opted_in_count = len(chat_list)
         for chat in chat_list:
-            tg.database.query("SELECT COUNT(*) FROM `{}stats`;".format(chat[0]))
+            tg.database.query("SELECT COUNT(*) FROM `{}stats`;".format(chat[
+                0]))
             query = tg.database.store_result()
             message_count = query.fetch_row(maxrows=0)
             total_messages += message_count[0][0]
@@ -31,8 +32,8 @@ def main(tg):
 
         message = "<code>Total Chats: {}".format(chat_total)
         message += "\nTotal Users: {}".format(user_total)
-        message += "\nMessages Tracked: {}".format(total_messages)
-        message += "\nOpted in Chats: {}".format(opted_in_count)
+        message += "\nTracked Chats: {}".format(opted_in_count)
+        message += "\nMessage Count: {}".format(total_messages)
         message += "\nUp for: {}</code>".format(parse_date(tg.get_me['date']))
 
         tg.send_message(message)
@@ -55,8 +56,4 @@ parameters = {
     'hidden': True
 }
 
-arguments = {
-    'text': [
-        "^/botstats$"
-    ]
-}
+arguments = {'text': ["^/botstats$" "^/topchats$"]}

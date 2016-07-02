@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-
 import json
 import time
 from multiprocessing import Process, Queue, Value
@@ -21,14 +20,17 @@ sleep_time = float(config['BOT_CONFIG']['sleep'])
 running = Value('i', True)
 workerProcess = list()
 
-http = urllib3.connection_from_url(base_url, cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
+http = urllib3.connection_from_url(base_url,
+                                   cert_reqs='CERT_REQUIRED',
+                                   ca_certs=certifi.where())
 http.timeout = urllib3.Timeout(connect=1.0)
 http.retries = 3
 
 token = config['BOT_CONFIG']['token']
 message_queue = Queue()
 
-get_me = http.request('GET', "https://api.telegram.org/bot{}/getMe".format(token)).data
+get_me = http.request(
+    'GET', "https://api.telegram.org/bot{}/getMe".format(token)).data
 get_me = json.loads(get_me.decode('UTF-8'))
 get_me.update({'date': int(time.time())})
 
@@ -37,7 +39,8 @@ def get_updates():
     update_id = 0
     while running.value:
         try:
-            update = http.request('GET', "{}bot{}/getUpdates?offset={}".format(base_url, token, update_id))
+            update = http.request('GET', "{}bot{}/getUpdates?offset={}".format(
+                base_url, token, update_id))
         except urllib3.exceptions.HTTPError:
             time.sleep(sleep_time)
             continue
@@ -55,21 +58,25 @@ def get_updates():
 
 
 def process_updates():
-    plugin_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
+    plugin_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',
+                                      ca_certs=certifi.where())
     plugin_http.timeout = urllib3.Timeout(connect=1.0)
     plugin_http.retries = 3
     update_router = RouteMessage(plugins, plugin_http, get_me, config)
     while running.value:
         update = message_queue.get()
         if update:
-            extension_thread = ThreadProcess(target=run_extensions, args=(update,))
+            extension_thread = ThreadProcess(target=run_extensions,
+                                             args=(update, ))
             extension_thread.start()
             if 'message' in update:
                 update_router.route_update(update['message'])
             elif 'callback_query' in update:
-                route_callback_query(plugins, get_me, config, plugin_http, update['callback_query'])
+                route_callback_query(plugins, get_me, config, plugin_http,
+                                     update['callback_query'])
             elif 'inline_query' in update:
-                route_inline_query(plugins, get_me, config, plugin_http, update['inline_query'])
+                route_inline_query(plugins, get_me, config, plugin_http,
+                                   update['inline_query'])
             extension_thread.join()
         time.sleep(sleep_time)
 
@@ -85,13 +92,15 @@ def run_extensions(update):
 def check_time_args():
     database = MySQLdb.connect(**config['DATABASE'])
     cursor = database.cursor()
-    time_arg_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
+    time_arg_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',
+                                        ca_certs=certifi.where())
     time_arg_http.timeout = urllib3.Timeout(connect=1.0)
     time_arg_http.retries = 3
 
     while running.value:
-        database.query("SELECT time_id, plugin_name,plugin_data,previous_message FROM flagged_time WHERE "
-                       "argument_time < from_unixtime({})".format(int(time.time())))
+        database.query(
+            "SELECT time_id, plugin_name,plugin_data,previous_message FROM flagged_time WHERE "
+            "argument_time < from_unixtime({})".format(int(time.time())))
 
         query = database.store_result()
         rows = query.fetch_row(how=1, maxrows=0)
@@ -101,8 +110,24 @@ def check_time_args():
             plugin_data = json.loads(result['plugin_data'])
             previous_message = json.loads(result['previous_message'])
             previous_message['time_id'] = time_id
-            cursor.execute('DELETE FROM `flagged_time` WHERE time_id=%s;', (time_id,))
-            tg = TelegramApi(database, get_me, plugin_name, config, time_arg_http, previous_message, plugin_data)
+            if 'message_id' in previous_message:
+                tg = TelegramApi(database,
+                                 get_me,
+                                 plugin_name,
+                                 config,
+                                 time_arg_http,
+                                 message=previous_message,
+                                 plugin_data=plugin_data)
+            else:
+                tg = TelegramApi(database,
+                                 get_me,
+                                 plugin_name,
+                                 config,
+                                 time_arg_http,
+                                 callback_query=previous_message,
+                                 plugin_data=plugin_data)
+            cursor.execute('DELETE FROM `flagged_time` WHERE time_id=%s;',
+                           (time_id, ))
             plugins[plugin_name].main(tg)
         database.commit()
         time.sleep(sleep_time)
