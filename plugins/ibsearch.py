@@ -61,9 +61,9 @@ def get_images(http, query, limit=50, page=1):
             return
     elif response.status == 429:
         time.sleep(0.1)
-        get_images(http, query)
+        return get_images(http, query)
     else:
-        return response.status
+        return
 
 
 parameters = {
