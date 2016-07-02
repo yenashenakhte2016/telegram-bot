@@ -7,6 +7,11 @@ image_path = "https://{}.ibsearch.xxx/{}"
 thumb_path = "https://{}.ibsearch.xxx/t{}"
 api_key = None
 
+try:
+    JSONDecodeError = json.JSONDecodeError
+except AttributeError:
+    JSONDecodeError = ValueError
+
 
 def main(tg):
     global api_key
@@ -64,7 +69,7 @@ def get_images(http, query, limit=50, page=1):
     if response.status == 200:
         try:
             return json.loads(response.data.decode('UTF-8'))
-        except json.decoder.JSONDecodeError:
+        except JSONDecodeError:
             return
     elif response.status == 429:
         time.sleep(0.1)
