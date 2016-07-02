@@ -34,6 +34,11 @@ get_me = http.request(
 get_me = json.loads(get_me.decode('UTF-8'))
 get_me.update({'date': int(time.time())})
 
+try:
+    JSONDecodeError = json.JSONDecodeError
+except AttributeError:
+    JSONDecodeError = ValueError
+
 
 def get_updates():
     update_id = 0
@@ -48,7 +53,7 @@ def get_updates():
         if update.status == 200:
             try:
                 update = json.loads(update.data.decode('UTF-8'))
-            except json.decoder.JSONDecodeError:
+            except JSONDecodeError:
                 update = {'ok': False}
             if update['ok'] and update['result']:
                 update_id = update['result'][-1]['update_id'] + 1

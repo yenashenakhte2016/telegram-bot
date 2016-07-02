@@ -13,6 +13,11 @@ client_secret = None
 token = None
 youtube = "https://www.youtube.com/watch?v={}"
 
+try:
+    JSONDecodeError = json.JSONDecodeError
+except AttributeError:
+    JSONDecodeError = ValueError
+
 
 def main(tg):
     global client_id, client_secret, token
@@ -316,7 +321,7 @@ def search(method, http, query):
     if post.status == 200:
         try:
             return json.loads(post.data.decode('UTF-8'))
-        except json.decoder.JSONDecodeError:
+        except JSONDecodeError:
             return
     return
 
@@ -327,7 +332,7 @@ def get_model(method, http, query_id):
     if post.status == 200:
         try:
             return json.loads(post.data.decode('UTF-8'))
-        except json.decoder.JSONDecodeError:
+        except JSONDecodeError:
             return
     return
 
@@ -354,7 +359,7 @@ def client_credentials(tg):
     post = tg.http.request_encode_body('POST', url, fields=headers)
     try:
         result = json.loads(post.data.decode('UTF-8'))
-    except json.decoder.JSONDecodeError:
+    except JSONDecodeError:
         return post.status
     tg.cursor.execute(
         'DELETE FROM anilist_tokens WHERE grant_type="client_credentials"')

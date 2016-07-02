@@ -4,6 +4,11 @@ import json
 base_url = "https://danbooru.donmai.us"
 api_key = None
 
+try:
+    JSONDecodeError = json.JSONDecodeError
+except AttributeError:
+    JSONDecodeError = ValueError
+
 
 def main(tg):
     global api_key
@@ -57,7 +62,7 @@ def get_post(http, tags, page):
     if request.status == 200:
         try:
             return json.loads(request.data.decode('UTF-8'))
-        except json.decoder.JSONDecodeError:
+        except JSONDecodeError:
             return
     else:
         return
@@ -73,7 +78,7 @@ def get_tags(http, query):
             if result:
                 return result[0]['name']
             return query
-        except json.decoder.JSONDecodeError:
+        except JSONDecodeError:
             return query
     else:
         return query
