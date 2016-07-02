@@ -56,4 +56,4 @@ parameters = {
     'hidden': True
 }
 
-arguments = {'text': ["^/botstats$" "^/topchats$"]}
+arguments = {'text': ["^/botstats$"]}
