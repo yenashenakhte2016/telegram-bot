@@ -149,7 +149,7 @@ def get_top_artists(local_http, user_name, limit, period='1month', page=1):
     artists = response['topartists']['artist']
     for artist in artists:
         info = {
-            'name': artist['name'],
+            'name': clean_up(artist['name']),
             'play_count': artist['playcount'],
             'url': artist['url'],
         }
@@ -167,9 +167,9 @@ def get_top_tracks(local_http, user_name, limit, period='1month', page=1):
     tracks = response['toptracks']['track']
     for track in tracks:
         song = {
-            'name': track['name'],
+            'name': clean_up(track['name']),
             'play_count': track['playcount'],
-            'artist': track['artist']['name'],
+            'artist': clean_up(track['artist']['name']),
             'song_url': track['url'],
             'artist_url': track['artist']['url']
         }
@@ -193,10 +193,10 @@ def get_recently_played(local_http, user_name, limit, page=1):
         else:
             now_playing = False
         song = {
-            'name': track['name'],
-            'artist': track['artist']['#text'],
+            'name': clean_up(track['name']),
+            'artist': clean_up(track['artist']['#text']),
             'song_url': track['url'],
-            'album': track['album']['#text'],
+            'album': clean_up(track['album']['#text']),
             'now_playing': now_playing,
             'image': track['image'][-1]['#text']
         }
@@ -309,6 +309,11 @@ def how_long(epoch_time):
             return "{} days ago".format(int(diff / 86400))
     else:
         return "Unknown time ago"
+
+
+def clean_up(text):
+    text = text.replace('<', '&lt;')
+    return text.replace('>', '&gt;')
 
 
 parameters = {
