@@ -177,10 +177,14 @@ def create_anime_box(tg, anime):
                                                     parse_mode="markdown")
     description = "{} - {}".format(anime['title_japanese'],
                                    anime['airing_status'].title())
+    if 'image_url_lge' in anime and anime['image_url_lge']:
+        thumb_url = anime['image_url_lge']
+    else:
+        thumb_url = "http://anilist.co/img/dir/anime/reg/noimg.jpg"
     box = tg.inline_query_result_article(anime['title_romaji'],
                                          message_content,
                                          reply_markup=message['reply_markup'],
-                                         thumb_url=anime['image_url_lge'],
+                                         thumb_url=thumb_url,
                                          description=description)
     return box
 
@@ -212,30 +216,46 @@ def create_manga_box(tg, manga):
 
 
 def anime_model(tg, anime_id):
-    anime = get_model('anime/{}', tg.http, anime_id)
+    anime = get_model('anime/{}/page', tg.http, anime_id)
     if anime:
-        message = "*{}* - {}".format(anime['title_romaji'],
-                                     anime['title_japanese'])
+        message = "*{}*".format(anime['title_romaji'])
+        if 'title_english' in anime and anime['title_english'] != anime[
+                'title_romaji']:
+            message += " ({})".format(anime['title_english'])
         if anime['airing_status'] == "currently airing":
             message += '\n*Airs in {}*'
 
         if 'image_url_banner' in anime and anime['image_url_banner']:
-            message += '[​]({})'.format(anime['image_url_banner'])
+            message += u'[\u200B]({})'.format(anime['image_url_banner'])
         elif 'image_url_lge' in anime and anime['image_url_lge']:
-            message += '[​]({})'.format(anime['image_url_lge'])
+            message += u'[\u200B]({})'.format(anime['image_url_lge'])
+        else:
+            message += u'[\u200B]({})'.format(
+                "http://anilist.co/img/dir/anime/reg/noimg.jpg")
 
         message += "\n\n*Type:* {}".format(anime['type'])
+        if 'studio' in anime:
+            message += "\n*Studio:* "
+            message += ", ".join(
+                [studio['studio_name'] for studio in anime['studio']])
         message += "\n*Status:* {}".format(anime['airing_status'].title())
         if anime['airing_status'] == "currently airing":
             episodes, hours = parse_date(anime)
             message = message.format(hours)
-            message += "\n*Episode Count:* {}/{}".format(
-                episodes - 1, anime['total_episodes'])
-        else:
+            if episodes > 1:
+                message += "\n*Episode Count:* {}".format(episodes - 1)
+                if anime['total_episodes']:
+                    message += "/{}".format(anime['total_episodes'])
+        elif anime['total_episodes']:
             message += "\n*Episode Count:* {}".format(anime['total_episodes'])
-        message += "\n*Score:* {}".format(anime['average_score'])
-        message += "\n*Genres:* {}".format(', '.join(anime['genres']))
 
+        if 'start_date' in anime and anime['start_date']:
+            message += "\n*Aired:* {}".format(determine_air_season(anime[
+                'start_date']))
+        if float(anime['average_score']):
+            message += "\n*Score:* {}".format(anime['average_score'])
+        if anime['genres']:
+            message += "\n*Genres:* {}".format(', '.join(anime['genres']))
         if anime['description']:
             message += "\n\n{}".format(clean_description(anime['description']))
 
@@ -394,6 +414,23 @@ def parse_date(anime):
     else:
         time_statement = "{} days".format(int(time_left / 86400))
     return next_episode, time_statement
+
+
+def determine_air_season(date):
+    date = date.split('-')
+    year = int(date[0])
+    month = int(date[1])
+    if month <= 3:
+        season = "Winter"
+    elif month <= 6:
+        season = "Spring"
+    elif month <= 9:
+        season = "Summer"
+    elif month <= 12:
+        season = "Fall"
+    else:
+        season = "Unknown"
+    return "{} {}".format(season, year)
 
 
 parameters = {
