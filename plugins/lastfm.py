@@ -212,7 +212,7 @@ def get_lastfm_username(user_id):
     try:
         with open('data/profile/{}.json'.format(int(user_id))) as json_file:
             profile = json.load(json_file)
-    except FileNotFoundError:
+    except ValueError, FileNotFoundError:
         return
     if 'lastfm' in profile:
         return profile['lastfm']
