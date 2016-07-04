@@ -15,6 +15,7 @@ def main(tg):
         if 'document' in tg.message['reply_to_message']:
             document = tg.message['reply_to_message']['document']
         elif 'photo' in tg.message['reply_to_message']:
+            caption = "Tip: Upload an uncompressed image for higher quality"
             photo_id = tg.message['reply_to_message']['photo'][-1]['file_id']
         else:
             tg.send_message("I can only upscale photos :(")
@@ -22,7 +23,7 @@ def main(tg):
     elif 'document' in tg.message:
         document = tg.message['document']
     elif 'photo' in tg.message:
-        caption = "Tip: Upload an uncompressed for higher quality"
+        caption = "Tip: Upload an uncompressed image for higher quality"
         photo_id = tg.message['photo'][-1]['file_id']
     else:
         tg.send_message(
@@ -45,10 +46,9 @@ def main(tg):
         name = "{}.PNG".format(photo_id)
         fields = {'file': (name, file.read()), 'noise': 2, 'scale': 2}
         x = tg.http.request('POST', post_url, fields=fields)
-        tg.send_document((name, x.data))
+        tg.send_document((name, x.data), caption=caption)
     else:
-        tg.send_message("This image is too big for me to waifu2x :(",
-                        caption=caption)
+        tg.send_message("This image is too big for me to waifu2x :(")
 
 
 def check_size(image):
