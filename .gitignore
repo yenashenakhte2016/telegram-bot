@@ -1,0 +1,7 @@
+__pycache__/
+plugins/__pycache__/
+extensions/__pycache__/
+*.py[cod]
+data/files/
+data/profile/
+
