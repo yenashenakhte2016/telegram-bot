@@ -109,7 +109,7 @@ def last_fm(http, profile, api_key):
         lastfm.api_key = api_key
         last_track = lastfm.get_recently_played(http, profile['lastfm'], 1)
         if last_track and last_track[0]['now_playing']:
-            last_track = last_track.pop()
+            last_track = last_track[0]
             return last_track
 
 
