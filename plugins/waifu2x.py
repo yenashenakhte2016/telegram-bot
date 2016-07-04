@@ -11,12 +11,18 @@ def main(tg):
     caption = ''
     document = None
     photo = None
-    if 'reply_to_message' in tg.message and 'document' in tg.message[
-            'reply_to_message']:
-        document = tg.message['reply_to_message']['document']
+    if 'reply_to_message' in tg.message:
+        if 'document' in tg.message['reply_to_message']:
+            document = tg.message['reply_to_message']['document']
+        elif 'photo' in tg.message['reply_to_message']:
+            photo_id = tg.message['reply_to_message']['photo'][-1]['file_id']
+        else:
+            tg.send_message("I can only upscale photos :(")
+            return
     elif 'document' in tg.message:
         document = tg.message['document']
     elif 'photo' in tg.message:
+        caption = "Tip: Upload an uncompressed for higher quality"
         photo_id = tg.message['photo'][-1]['file_id']
     else:
         tg.send_message(
