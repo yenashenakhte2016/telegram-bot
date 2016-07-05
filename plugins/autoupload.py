@@ -24,7 +24,7 @@ def resize_image(image):
         scale = 1600 / larger
         new_dimensions = (int(image.size[0] * scale),
                           int(image.size[1] * scale))
-        return image.resize(new_dimensions)
+        return image.resize(new_dimensions, Image.LANCZOS)
     return image
 
 

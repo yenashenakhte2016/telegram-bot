@@ -101,13 +101,9 @@ def main(tg):
                 tg.edit_message_text(
                     message,
                     reply_markup=tg.inline_keyboard_markup(keyboard))
-                if time == 60:
-                    time = '1:00:00'
-                else:
-                    time = '{}:00'.format(time)
                 tg.cursor.execute(
-                    "UPDATE `flagged_time` SET argument_time=ADDTIME(argument_time, %s) WHERE "
-                    "time_id=%s", (time, time_id))
+                    "UPDATE `flagged_time` SET argument_time=DATE_ADD(argument_time, INTERVAL %s MINUTE) WHERE "
+                    "time_id=%s", (int(time), time_id))
             else:
                 tg.answer_callback_query(
                     "You aren't the one who set the reminder!")

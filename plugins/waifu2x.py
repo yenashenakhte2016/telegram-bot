@@ -38,7 +38,11 @@ def main(tg):
         photo_id = document['file_id']
     tg.send_chat_action("upload_photo")
     document_obj = tg.get_file(photo_id)
-    file_path = tg.download_file(document_obj)
+    try:
+        file_path = tg.download_file(document_obj)
+    except OSError:
+        tg.send_message("I can't upscale this kind of file :(")
+        return
     file = Image.open(file_path)
     file = check_size(file)
     if file:
