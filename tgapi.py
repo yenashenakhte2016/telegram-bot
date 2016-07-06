@@ -114,7 +114,6 @@ class TelegramApi:
             'from_chat_id': from_chat_id,
             'disable_notification': disable_notification
         }
-        print(package)
         return self.method('forwardMessage', **package)
 
     def send_file(self, method, file, **kwargs):
