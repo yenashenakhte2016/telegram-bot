@@ -28,37 +28,37 @@ def init_database(cursor):
     cursor.execute(
         "CREATE TABLE plugins(plugin_name VARCHAR(16) NOT NULL UNIQUE, pretty_name VARCHAR(16) NOT NULL "
         "UNIQUE, short_description VARCHAR(100) NOT NULL, long_description TEXT, "
-        "permissions VARCHAR(2) NOT NULL, hidden TINYINT, inline_only TINYINT) CHARACTER SET utf8;")
+        "permissions VARCHAR(2) NOT NULL, hidden TINYINT, inline_only TINYINT) CHARACTER SET utf8mb4;")
 
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS flagged_messages(plugin_name VARCHAR(16) NOT NULL, message_id BIGINT "
         "UNSIGNED, chat_id BIGINT, user_id BIGINT UNSIGNED, currently_active BOOLEAN, single_use BOOLEAN, "
-        "plugin_data TEXT) CHARACTER SET utf8;")
+        "plugin_data TEXT) CHARACTER SET utf8mb4;")
 
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS flagged_time(time_id VARCHAR(248) NOT NULL UNIQUE, plugin_name "
         "VARCHAR(16) NOT NULL, argument_time DATETIME NOT NULL, previous_message TEXT NOT NULL, "
-        "plugin_data TEXT) CHARACTER SET utf8;")
+        "plugin_data TEXT) CHARACTER SET utf8mb4;")
 
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS pm_parameters(plugin_name VARCHAR(16) NOT NULL, parameter VARCHAR(164) "
-        "NOT NULL, PRIMARY KEY (plugin_name, parameter)) CHARACTER SET utf8;")
+        "NOT NULL, PRIMARY KEY (plugin_name, parameter)) CHARACTER SET utf8mb4;")
 
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS downloaded_files(file_id VARCHAR(62) NOT NULL, file_path VARCHAR(100),"
-        "file_hash VARCHAR(64)) CHARACTER SET utf8;")
+        "file_hash VARCHAR(64)) CHARACTER SET utf8mb4;")
 
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS uploaded_files(file_id VARCHAR(62) NOT NULL, file_hash VARCHAR(64),"
-        "file_type VARCHAR(16)) CHARACTER SET utf8;")
+        "file_type VARCHAR(16)) CHARACTER SET utf8mb4;")
 
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS inline_queries(plugin_name VARCHAR(16) NOT NULL, inline_id VARCHAR(64) "
-        "NOT NULL UNIQUE) CHARACTER SET utf8;")
+        "NOT NULL UNIQUE) CHARACTER SET utf8mb4;")
 
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS callback_queries(plugin_name VARCHAR(16) NOT NULL, "
-        "callback_data VARCHAR(120) NOT NULL, plugin_data TEXT) CHARACTER SET utf8;")
+        "callback_data VARCHAR(120) NOT NULL, plugin_data TEXT) CHARACTER SET utf8mb4;")
 
     try:
         cursor.execute(

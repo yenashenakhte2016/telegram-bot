@@ -239,24 +239,26 @@ def anime_model(tg, anime_id):
             message += ", ".join(
                 [studio['studio_name'] for studio in anime['studio']])
         message += "\n*Status:* {}".format(anime['airing_status'].title())
-        if anime['airing_status'] == "currently airing":
-            episodes, hours = parse_date(anime)
-            message = message.format(hours)
-            if episodes > 1:
-                message += "\n*Episode Count:* {}".format(episodes - 1)
-                if anime['total_episodes']:
-                    message += "/{}".format(anime['total_episodes'])
-        elif anime['total_episodes']:
+        if 'airing_status' in anime:
+            if anime['airing_status'] == "currently airing":
+                episodes, hours = parse_date(anime)
+                message = message.format(hours)
+                if episodes > 1:
+                    message += "\n*Episode Count:* {}".format(episodes - 1)
+                    if anime['total_episodes']:
+                        message += "/{}".format(anime['total_episodes'])
+        elif 'total_episodes' in anime and anime['total_episodes']:
             message += "\n*Episode Count:* {}".format(anime['total_episodes'])
 
         if 'start_date' in anime and anime['start_date']:
-            message += "\n*Aired:* {}".format(determine_air_season(anime[
-                'start_date']))
-        if float(anime['average_score']):
+            air_season = determine_air_season(anime['start_date'])
+            if air_season:
+                message += "\n*Aired:* {}".format(air_season)
+        if 'average_score' in anime and float(anime['average_score']):
             message += "\n*Score:* {}".format(anime['average_score'])
-        if anime['genres']:
+        if 'genres' in anime and anime['genres']:
             message += "\n*Genres:* {}".format(', '.join(anime['genres']))
-        if anime['description']:
+        if 'description' in anime and anime['description']:
             message += "\n\n{}".format(clean_description(anime['description']))
 
         anime_url = "https://www.anilist.co/anime/{}".format(anime['id'])
@@ -418,8 +420,11 @@ def parse_date(anime):
 
 def determine_air_season(date):
     date = date.split('-')
-    year = int(date[0])
-    month = int(date[1])
+    try:
+        year = int(date[0])
+        month = int(date[1])
+    except IndexError:
+        return None
     if month <= 3:
         season = "Winter"
     elif month <= 6:

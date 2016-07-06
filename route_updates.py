@@ -156,8 +156,6 @@ class RouteMessage:
                 for key1, value1 in value.items():
                     if self.check_argument(key1, value1, incremented_message):
                         return True
-        else:
-            return False
 
     def check_match(self, key, values, incremented_message):
         self.message['matched_argument'] = key
@@ -170,7 +168,6 @@ class RouteMessage:
                 self.message['matched_regex'] = regex
                 self.message['match'] = match[0]
                 return True
-        return False
 
     def check_pm_parameters(self):
         match = re.findall("^/start (.*)", self.message['text'])
@@ -186,7 +183,6 @@ class RouteMessage:
                                  self.config, self.http, self.message)
                 self.plugins[plugin[0]].main(tg)
             return True if result else False
-        return False
 
     def add_plugin(self, plugin_name):
         chat_name = "{}blacklist".format(self.message['chat']['id'])

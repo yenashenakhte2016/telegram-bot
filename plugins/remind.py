@@ -11,7 +11,7 @@ prefixes = ['to', 'that']
 def main(tg):
     tg.cursor.execute(
         "CREATE TABLE IF NOT EXISTS remind_plugin(time_id VARCHAR(128), user_id BIGINT NOT NULL, "
-        "chat_id BIGINT NOT NULL, message_id BIGINT NOT NULL) CHARACTER SET utf8;")
+        "chat_id BIGINT NOT NULL, message_id BIGINT NOT NULL) CHARACTER SET utf8mb4;")
     if tg.message:
         if tg.plugin_data:
             statement = 'SELECT message_id FROM remind_plugin WHERE time_id="{}"'.format(
