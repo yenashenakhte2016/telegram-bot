@@ -99,13 +99,23 @@ class TelegramApi:
                 self.flag_message(message_id, flag_message)
         return response
 
-    def forward_message(self, message_id, **kwargs):
-        package = kwargs
-        package.update({'message_id': message_id})
-        if 'chat_id' not in package:
-            chat_id = self.chat_data['chat']['id']
-            package.update({'chat_id': chat_id})
-        return self.method('sendMessage', **package)
+    def forward_message(self,
+                        chat_id,
+                        message_id=None,
+                        from_chat_id=None,
+                        disable_notification=False):
+        if not message_id:
+            message_id = self.message['message_id']
+        if not from_chat_id:
+            from_chat_id = self.message['chat']['id']
+        package = {
+            'chat_id': chat_id,
+            'message_id': message_id,
+            'from_chat_id': from_chat_id,
+            'disable_notification': disable_notification
+        }
+        print(package)
+        return self.method('forwardMessage', **package)
 
     def send_file(self, method, file, **kwargs):
         database = MySQLdb.connect(**self.config['DATABASE'])

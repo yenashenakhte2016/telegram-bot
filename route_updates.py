@@ -131,21 +131,22 @@ class RouteMessage:
         if hasattr(plugin_module, 'arguments'):
             for key, value in plugin_module.arguments.items():
                 if self.check_argument(key, value, self.message):
+                    database = MySQLdb.connect(**self.config['DATABASE'])
                     chat_id = self.message['chat']['id']
                     statement = 'SELECT plugin_status FROM `{}blacklist` WHERE plugin_name="{}";'.format(
                         chat_id, plugin_name)
-                    self.database.query(statement)
-                    query = self.database.store_result()
+                    database.query(statement)
+                    query = database.store_result()
                     result = query.fetch_row(how=1)
                     enabled = result[0][
                         'plugin_status'] if result else self.add_plugin(
-                            plugin_name)
+                            plugin_name, database)
                     if enabled:
-                        tg = TelegramApi(self.database, self.get_me,
-                                         plugin_name, self.config, self.http,
-                                         self.message)
+                        tg = TelegramApi(database, self.get_me, plugin_name,
+                                         self.config, self.http, self.message)
                         plugin_module.main(tg)
-                        self.database.commit()
+                        database.commit()
+                        database.close()
                         return True
 
     def check_argument(self, key, value, incremented_message):
@@ -186,17 +187,19 @@ class RouteMessage:
                 self.plugins[plugin[0]].main(tg)
             return True if result else False
 
-    def add_plugin(self, plugin_name):
+    def add_plugin(self, plugin_name, database):
+        cursor = database.cursor()
         chat_name = "{}blacklist".format(self.message['chat']['id'])
         perms = self.plugins[plugin_name].parameters['permissions']
         if self.message['chat']['type'] == 'private':
             enabled = int(perms[1])
         else:
             enabled = int(perms[0])
-        self.cursor.execute(
+        cursor.execute(
             "INSERT INTO `{}` VALUES(%s, %s, 0000)".format(chat_name),
             (plugin_name, enabled))
-        self.database.commit()
+        cursor.close()
+        database.commit()
         return enabled
 
     def create_default_table(self):
