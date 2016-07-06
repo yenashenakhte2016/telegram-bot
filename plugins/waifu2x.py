@@ -10,8 +10,7 @@ post_url = "http://waifu2x.udp.jp/api"
 def main(tg):
     caption = ''
     document = None
-    photo = None
-    if 'reply_to_message' in tg.message:
+    if 'reply_to_message' in tg.message and not tg.message['flagged_message']:
         if 'document' in tg.message['reply_to_message']:
             document = tg.message['reply_to_message']['document']
         elif 'photo' in tg.message['reply_to_message']:
@@ -25,9 +24,13 @@ def main(tg):
     elif 'photo' in tg.message:
         caption = "Tip: Upload an uncompressed image for higher quality"
         photo_id = tg.message['photo'][-1]['file_id']
+    elif tg.message['flagged_message']:
+        tg.send_message("I can only upscale photos :(")
+        return
     else:
         tg.send_message(
-            "Reply to an image with /waifu2x or use it as a caption to upscale")
+            "Send me the image you would like to upscale or reply to an image with /waifu2x",
+            flag_message=True)
         return
     if document:
         mime_type = document['mime_type']
@@ -63,7 +66,7 @@ def check_size(image):
     else:
         largest = image.size[0] if image.size[0] > image.size[
             1] else image.size[1]
-        scale = 1279 / largest
+        scale = 1280 / largest
         new_dimensions = (int(image.size[0] * scale),
                           int(image.size[1] * scale))
         return image.resize(new_dimensions, Image.LANCZOS)

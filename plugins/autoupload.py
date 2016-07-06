@@ -42,4 +42,4 @@ parameters = {
     'permissions': "11"
 }
 
-arguments = {'document': {'mime_type': ['image']}, 'text': ['^/upload$']}
+arguments = {'document': {'mime_type': ['image']}}

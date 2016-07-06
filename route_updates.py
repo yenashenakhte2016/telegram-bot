@@ -48,6 +48,8 @@ class RouteMessage:
             self.check_db_pm()
         else:
             self.handle_plugins()
+        self.database.commit()
+        self.database.close()
 
     def check_db_reply(self):
         chat_id = self.message['chat']['id']
@@ -202,7 +204,7 @@ class RouteMessage:
         chat_name = "{}blacklist".format(self.message['chat']['id'])
         self.cursor.execute(
             "CREATE TABLE `{}`(plugin_name VARCHAR(16) NOT NULL UNIQUE, "
-            "plugin_status BOOLEAN, set_by BIGINT) CHARACTER SET utf8;".format(
+            "plugin_status BOOLEAN, set_by BIGINT) CHARACTER SET utf8mb4;".format(
                 chat_name))
         for plugin_name, module in self.plugins.items():
             perms = module.parameters['permissions']

@@ -36,7 +36,7 @@ def init_database(cursor):
         "plugin_data TEXT) CHARACTER SET utf8mb4;")
 
     cursor.execute(
-        "CREATE TABLE IF NOT EXISTS flagged_time(time_id VARCHAR(248) NOT NULL UNIQUE, plugin_name "
+        "CREATE TABLE IF NOT EXISTS flagged_time(time_id VARCHAR(190) NOT NULL UNIQUE, plugin_name "
         "VARCHAR(16) NOT NULL, argument_time DATETIME NOT NULL, previous_message TEXT NOT NULL, "
         "plugin_data TEXT) CHARACTER SET utf8mb4;")
 
