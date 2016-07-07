@@ -99,7 +99,6 @@ def init_plugins(cursor):
             inline_only = 0 if hasattr(plugin, 'arguments') else 1
             values.append((plugin_name, pretty_name, short_description,
                            long_description, permissions, hidden, inline_only))
-            print(values)
             modules.update({plugin_name: plugin})
             print("Plugin {} Loaded".format(plugin_name))
 
