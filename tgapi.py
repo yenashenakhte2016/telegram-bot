@@ -23,7 +23,6 @@ class TelegramApi:
                  plugin_data=None,
                  callback_query=None):
         self.database = database
-        self.database.autocommit(True)
         self.cursor = self.database.cursor()
         self.get_me = get_me
         self.inline_query = None
