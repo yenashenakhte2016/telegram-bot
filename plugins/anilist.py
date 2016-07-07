@@ -219,9 +219,9 @@ def anime_model(tg, anime_id):
     anime = get_model('anime/{}/page', tg.http, anime_id)
     if anime:
         message = "*{}*".format(anime['title_romaji'])
-        if 'title_english' in anime and anime['title_english'] != anime[
-                'title_romaji']:
-            message += " ({})".format(anime['title_english'])
+        if 'title_english' in anime:
+            if anime['title_english'].lower() != anime['title_romaji'].lower():
+                message += " ({})".format(anime['title_english'])
         if anime['airing_status'] == "currently airing":
             message += '\n*Airs in {}*'
 

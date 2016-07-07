@@ -76,12 +76,20 @@ def init_plugins(cursor):
     for plugin_name in plugin_list:
         plugin = getattr(plugins, plugin_name)
         if hasattr(plugin, 'parameters'):
-            pretty_name = plugin.parameters['name']
-            short_description = plugin.parameters['short_description']
-            long_description = plugin.parameters['long_description'] if 'long_description' in plugin.parameters \
-                else "An extended description is not available :("
-            hidden = plugin.parameters[
-                'hidden'] if 'hidden' in plugin.parameters else 0
+            pretty_name = None
+            short_description = None
+            long_description = None
+            hidden = None
+            if 'name' in plugin.parameters:
+                pretty_name = plugin.parameters['name']
+            if 'short_description' in plugin.parameters:
+                short_description = plugin.parameters['short_description']
+            if 'long_description' in plugin.parameters:
+                long_description = plugin.parameters['long_description']
+            else:
+                long_description = "An extended description is not available :("
+            if 'hidden' in plugin.parameters:
+                hidden = plugin.parameters['hidden']
             if 'permissions' in plugin.parameters:
                 plugin.parameters[
                     'permissions'] = permissions = numerate_permissions(

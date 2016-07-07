@@ -113,7 +113,7 @@ class TelegramApi:
             'from_chat_id': from_chat_id,
             'disable_notification': disable_notification
         }
-        return self.method('forwardMessage', **package)
+        return self.method('forwardMessage', check_content=False, **package)
 
     def send_file(self, method, file, **kwargs):
         database = MySQLdb.connect(**self.config['DATABASE'])

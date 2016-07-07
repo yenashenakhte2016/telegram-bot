@@ -81,7 +81,7 @@ def process_updates():
                                      update['callback_query'])
             elif 'inline_query' in update:
                 route_inline_query(plugins, get_me, config, plugin_http,
-                                    update['inline_query'])
+                                   update['inline_query'])
             extension_thread.join()
         time.sleep(sleep_time)
 
