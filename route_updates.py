@@ -22,7 +22,7 @@ class RouteMessage:
         self.message = None
         self.database = None
         self.cursor = None
-        self.executor = ThreadPoolExecutor(max_workers=3)
+        self.executor = ThreadPoolExecutor(max_workers=4)
 
     def route_update(self, message):
         self.message = message
