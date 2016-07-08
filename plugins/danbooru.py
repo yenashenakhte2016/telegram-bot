@@ -29,7 +29,7 @@ def main(tg):
             offset = page + 1 if len(result) == 40 else ''
             response = [box.result() for box in futures]
             tg.answer_inline_query([box for box in response if box],
-                                   cache_time=0,
+                                   cache_time=86400,
                                    next_offset=offset)
         else:
             tg.answer_inline_query([], cache_time=0)
