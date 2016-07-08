@@ -17,9 +17,11 @@ def main(tg):
     global api_key
     if tg.inline_query:
         api_key = tg.config['DANBOORU']['api_key']
-        page = int(tg.inline_query['offset']) if tg.inline_query['offset'] else 1
-        query = "rating:s" if tg.inline_query['matched_regex'] == inline_arguments[
-            0] else tg.inline_query['match'][1]
+        page = int(tg.inline_query['offset']) if tg.inline_query[
+            'offset'] else 1
+        query = "rating:s" if tg.inline_query[
+            'matched_regex'] == inline_arguments[0] else tg.inline_query[
+                'match'][1]
         query = query.split(',')
         result = get_post(tg.http, query, page)
         if result:
@@ -47,7 +49,8 @@ def main(tg):
     elif tg.message:
         keyboard = [[{'text': "Go Inline", 'switch_inline_query': "pic "}]]
         message_text = "Searching for anime pictures is an inline only feature."
-        tg.send_message(message_text, reply_markup=tg.inline_keyboard_markup(keyboard))
+        tg.send_message(message_text,
+                        reply_markup=tg.inline_keyboard_markup(keyboard))
 
 
 def create_box(tg, pic):
@@ -104,7 +107,8 @@ def get_tags(http, query):
             return query
     else:
         return query
-        
+
+
 def return_photo(http, id):
     file_path = "data/files/danbooru/{}.png".format(id)
     try:
@@ -126,6 +130,7 @@ def return_photo(http, id):
                 os.makedirs('data/files/danbooru')
             return Image
 
+
 def download_photo(http, url):
     request = http.request('GET', base_url + url)
     if request.status == 200:
@@ -143,10 +148,7 @@ parameters = {
     'inline_only': True
 }
 
-arguments = {
-    'text': [
-        "^/pic$"
-    ]
-}
+arguments = {'text': ["^/pic$"]}
 
-inline_arguments = ['^/?(danbooru|animepic|pic)$', '^/?(danbooru|animepic) (.*)']
+inline_arguments = ['^/?(danbooru|animepic|pic)$',
+                    '^/?(danbooru|animepic) (.*)']

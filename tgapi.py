@@ -389,11 +389,11 @@ class TelegramApi:
                            check_content=False,
                            user_id=user_id,
                            chat_id=chat_id)
-                           
+
     def pm_parameter(self, parameter):
         try:
             self.cursor.execute("INSERT INTO pm_parameters VALUES(%s, %s);",
-                           (self.plugin_name, parameter))
+                                (self.plugin_name, parameter))
         except _mysql_exceptions.IntegrityError:
             pass
         url = "https://telegram.me/{}?start={}"

@@ -254,7 +254,7 @@ class TelegramInlineAPI:
         cursor.close()
         database.commit()
         database.close()
-        
+
     def pm_parameter(self, parameter):
         database = MySQLdb.connect(**self.config['DATABASE'])
         cursor = database.cursor()

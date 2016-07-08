@@ -136,7 +136,8 @@ class RouteMessage:
                             plugin_name)
                     if enabled:
                         message = copy.copy(self.message)
-                        run_plugin(plugin_name, plugin_module, message)
+                        self.executor.submit(self.run_plugin, plugin_name,
+                                             plugin_module, message)
                         return True
 
     def check_argument(self, key, value, incremented_message):
