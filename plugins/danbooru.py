@@ -36,6 +36,7 @@ def main(tg):
         else:
             tg.answer_inline_query([], cache_time=0)
     elif tg.message['pm_parameter']:
+        tg.send_chat_action("upload_photo")
         id = tg.message['pm_parameter'].replace('danbooru', '')
         photo = return_photo(tg.http, id)
         if photo:
@@ -122,20 +123,20 @@ def return_photo(http, id):
             result = json.loads(request.data.decode('UTF-8'))
         except JSONDecodeError:
             return
-        image = download_photo(http, result['large_file_url'])
-        if image:
-            try:
-                image.save(file_path)
-            except FileNotFoundError:
-                os.makedirs('data/files/danbooru')
-            return Image
+        return download_photo(http, result['large_file_url'], file_path)
 
 
-def download_photo(http, url):
+def download_photo(http, url, file_path):
     request = http.request('GET', base_url + url)
     if request.status == 200:
         image_obj = io.BytesIO(request.data)
-        return Image.open(image_obj)
+        image = Image.open(image_obj)
+        try:
+            image.save(file_path)
+        except FileNotFoundError:
+            os.makedirs('data/files/danbooru')
+            image.save(file_path)
+        return Image.open(file_path)
 
 
 parameters = {

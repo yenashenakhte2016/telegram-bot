@@ -53,6 +53,7 @@ def main(tg):
         name = "{}.PNG".format(photo_id)
         fields = {'file': (name, file.read()), 'noise': 2, 'scale': 2}
         x = tg.http.request('POST', post_url, fields=fields)
+        tg.send_chat_action("upload_photo")
         tg.send_document((name, x.data), caption=caption)
     else:
         tg.send_message("This image is too big for me to waifu2x :(")
