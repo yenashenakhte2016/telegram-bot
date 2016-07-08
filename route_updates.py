@@ -216,6 +216,7 @@ class RouteMessage:
         tg = TelegramApi(database, self.get_me, plugin_name, self.config,
                          self.http, message)
         plugin_module.main(tg)
+        database.commit()
         database.close()
 
     def init_message(self):
