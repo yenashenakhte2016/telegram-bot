@@ -80,6 +80,7 @@ def init_plugins(cursor):
             short_description = None
             long_description = None
             hidden = 0
+            inline_only = 0 if hasattr(plugin, 'arguments') else 1
             if 'name' in plugin.parameters:
                 pretty_name = plugin.parameters['name']
             if 'short_description' in plugin.parameters:
@@ -96,7 +97,8 @@ def init_plugins(cursor):
                         plugin.parameters['permissions'])
             else:
                 plugin.parameters['permissions'] = permissions = '11'
-            inline_only = 0 if hasattr(plugin, 'arguments') else 1
+            if 'inline_only' in plugin.parameters:
+                inline_only = plugin.parameters['inline_only']
             values.append((plugin_name, pretty_name, short_description,
                            long_description, permissions, hidden, inline_only))
             modules.update({plugin_name: plugin})
