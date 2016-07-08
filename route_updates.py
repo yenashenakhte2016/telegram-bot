@@ -136,8 +136,7 @@ class RouteMessage:
                             plugin_name)
                     if enabled:
                         message = copy.copy(self.message)
-                        self.executor.submit(self.run_plugin, plugin_name,
-                                             plugin_module, message)
+                        run_plugin(plugin_name, plugin_module, message)
                         return True
 
     def check_argument(self, key, value, incremented_message):
@@ -168,7 +167,7 @@ class RouteMessage:
             return
         match = re.findall("^/start (.*)", self.message['text'])
         if match:
-            self.message['pm_parameter'] = True
+            self.message['pm_parameter'] = match[0]
             self.database.query(
                 'SELECT plugin_name FROM pm_parameters WHERE parameter="{}"'.format(
                     match[0]))

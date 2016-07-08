@@ -1,5 +1,8 @@
 import concurrent.futures
 import json
+from PIL import Image
+import io
+import os
 
 base_url = "https://danbooru.donmai.us"
 api_key = None
@@ -26,10 +29,21 @@ def main(tg):
             offset = page + 1 if len(result) == 40 else ''
             response = [box.result() for box in futures]
             tg.answer_inline_query([box for box in response if box],
-                                   cache_time=86400,
+                                   cache_time=0,
                                    next_offset=offset)
         else:
             tg.answer_inline_query([], cache_time=0)
+    elif tg.message['pm_parameter']:
+        id = tg.message['pm_parameter'].replace('danbooru', '')
+        photo = return_photo(tg.http, id)
+        if photo:
+            photo_name = "{}.png".format(id)
+            file_obj = io.BytesIO()
+            photo.save(file_obj, format='PNG')
+            file_obj.seek(0)
+            tg.send_document((photo_name, file_obj.read()))
+        else:
+            tg.send_message("Sorry I was unable to retrieve this photo :(")
     elif tg.message:
         keyboard = [[{'text': "Go Inline", 'switch_inline_query': "pic "}]]
         message_text = "Searching for anime pictures is an inline only feature."
@@ -42,8 +56,11 @@ def create_box(tg, pic):
     except KeyError:
         return
     thumb_url = base_url + pic['preview_file_url']
-    keyboard = [[{'text': 'Full Resolution',
-                  'url': base_url + pic['large_file_url']}]]
+    keyboard = [[]]
+    if 'source' in pic:
+        keyboard[0].append({'text': "Source", 'url': pic['source']})
+    pm_parameter = tg.pm_parameter("danbooru" + str(pic['id']))
+    keyboard[0].append({'text': "Download", 'url': pm_parameter})
     width = pic['image_width']
     height = pic['image_height']
     return tg.inline_query_result_photo(
@@ -87,6 +104,33 @@ def get_tags(http, query):
             return query
     else:
         return query
+        
+def return_photo(http, id):
+    file_path = "data/files/danbooru/{}.png".format(id)
+    try:
+        return Image.open(file_path)
+    except FileNotFoundError:
+        pass
+    url = base_url + "/posts/{}.json"
+    request = http.request('GET', url.format(id))
+    if request.status == 200:
+        try:
+            result = json.loads(request.data.decode('UTF-8'))
+        except JSONDecodeError:
+            return
+        image = download_photo(http, result['large_file_url'])
+        if image:
+            try:
+                image.save(file_path)
+            except FileNotFoundError:
+                os.makedirs('data/files/danbooru')
+            return Image
+
+def download_photo(http, url):
+    request = http.request('GET', base_url + url)
+    if request.status == 200:
+        image_obj = io.BytesIO(request.data)
+        return Image.open(image_obj)
 
 
 parameters = {

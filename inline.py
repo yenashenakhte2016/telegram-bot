@@ -254,6 +254,21 @@ class TelegramInlineAPI:
         cursor.close()
         database.commit()
         database.close()
+        
+    def pm_parameter(self, parameter):
+        database = MySQLdb.connect(**self.config['DATABASE'])
+        cursor = database.cursor()
+        try:
+            cursor.execute("INSERT INTO pm_parameters VALUES(%s, %s);",
+                           (self.plugin_name, parameter))
+        except _mysql_exceptions.IntegrityError:
+            pass
+        url = "https://telegram.me/{}?start={}"
+        bot_name = self.get_me['result']['username']
+        cursor.close()
+        database.commit()
+        database.close()
+        return url.format(bot_name, parameter)
 
 
 def input_location_message_content(latitude, longitude):
