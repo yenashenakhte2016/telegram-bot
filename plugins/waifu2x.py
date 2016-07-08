@@ -2,7 +2,7 @@
 
 from PIL import Image
 import io
-import re
+from urllib3.exceptions import MaxRetryError
 
 post_url = "http://waifu2x.udp.jp/api"
 
@@ -52,7 +52,11 @@ def main(tg):
         file = create_image_obj(file)
         name = "{}.PNG".format(photo_id)
         fields = {'file': (name, file.read()), 'noise': 2, 'scale': 2}
-        x = tg.http.request('POST', post_url, fields=fields)
+        try:
+            x = tg.http.request('POST', post_url, fields=fields)
+        except MaxRetryError:
+            tg.send_message("It seems waifu2x.udp.jp is down :(")
+            return
         tg.send_chat_action("upload_photo")
         tg.send_document((name, x.data), caption=caption)
     else:
