@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+"""
+Retrieves updates and routes them to appropriate classes/methods utilizing a system
+of workers.
+"""
 
 import json
 import time
@@ -14,62 +18,74 @@ import bot_init
 from route_updates import RouteMessage, route_callback_query, route_inline_query
 from tgapi import TelegramApi
 
-base_url = 'https://api.telegram.org/'
-config, plugins, extensions = bot_init.master_mind()
-sleep_time = float(config['BOT_CONFIG']['sleep'])
-running = Value('i', True)
-workerProcess = list()
+BASE_URL = 'https://api.telegram.org/'
+CONFIG, PLUGINS, EXTENSIONS = bot_init.master_mind()
+SLEEP_TIME = float(CONFIG['BOT_CONFIG']['sleep'])
+RUNNING = Value('i', True)  ## If this is False workers shutdown safely
 
-http = urllib3.connection_from_url(base_url,
+HTTP = urllib3.connection_from_url(BASE_URL,
                                    cert_reqs='CERT_REQUIRED',
                                    ca_certs=certifi.where())
-http.timeout = urllib3.Timeout(connect=1.0)
-http.retries = 3
+HTTP.timeout = urllib3.Timeout(connect=1.0)
+HTTP.retries = 3
 
-token = config['BOT_CONFIG']['token']
-message_queue = Queue()
+API_TOKEN = CONFIG['BOT_CONFIG']['token']
+MESSAGE_QUEUE = Queue()
+## Stores all updates for workers to grab
 
-get_me = http.request(
-    'GET', "https://api.telegram.org/bot{}/getMe".format(token)).data
-get_me = json.loads(get_me.decode('UTF-8'))
-get_me.update({'date': int(time.time())})
+GET_ME = HTTP.request(
+    'GET', "https://api.telegram.org/bot{}/getMe".format(API_TOKEN)).data
+GET_ME = json.loads(GET_ME.decode('UTF-8'))
+GET_ME.update({'date': int(time.time())})
+## https://core.telegram.org/bots/api#getme
 
 try:
     JSONDecodeError = json.JSONDecodeError
 except AttributeError:
     JSONDecodeError = ValueError
+## Python 3.4 compatibility
 
 
 def get_updates():
-    update_id = 0
-    while running.value:
+    """
+    Grabs updates from the telegram server and places each update in MESSAGE_QUEUE.
+    https://core.telegram.org/bots/api#getupdates
+    """
+    offset = 0
+    url = "{}bot{}/getUpdates".format(BASE_URL, API_TOKEN)
+    while RUNNING.value:
+        fields = {'offset': offset, 'limit': 100, 'timeout': 10}
         try:
-            update = http.request('GET', "{}bot{}/getUpdates?offset={}".format(
-                base_url, token, update_id))
+            update = HTTP.request('GET', url, fields)
         except urllib3.exceptions.HTTPError:
-            time.sleep(sleep_time)
+            time.sleep(SLEEP_TIME)
             continue
 
         if update.status == 200:
             try:
                 update = json.loads(update.data.decode('UTF-8'))
             except JSONDecodeError:
-                update = {'ok': False}
+                time.sleep(SLEEP_TIME)
+                continue
             if update['ok'] and update['result']:
-                update_id = update['result'][-1]['update_id'] + 1
+                offset = update['result'][-1]['update_id'] + 1
                 for update in update['result']:
-                    message_queue.put(update)
-        time.sleep(sleep_time)
+                    MESSAGE_QUEUE.put(update)
+        time.sleep(SLEEP_TIME)
 
 
 def process_updates():
+    """
+    Decides which type the update is and routes it to the appropriate route_updates
+    method and launches a thread for the run_extensions method.
+    """
     plugin_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',
                                       ca_certs=certifi.where())
     plugin_http.timeout = urllib3.Timeout(connect=1.0)
     plugin_http.retries = 3
-    update_router = RouteMessage(plugins, plugin_http, get_me, config)
-    while running.value:
-        update = message_queue.get()
+    update_router = RouteMessage(PLUGINS, plugin_http, GET_ME, CONFIG)
+    while RUNNING.value:
+        update = MESSAGE_QUEUE.get()
         if update:
             extension_thread = ThreadProcess(target=run_extensions,
                                              args=(update, ))
@@ -77,35 +93,41 @@ def process_updates():
             if 'message' in update:
                 update_router.route_update(update['message'])
             elif 'callback_query' in update:
-                route_callback_query(plugins, get_me, config, plugin_http,
+                route_callback_query(PLUGINS, GET_ME, CONFIG, plugin_http,
                                      update['callback_query'])
             elif 'inline_query' in update:
-                route_inline_query(plugins, get_me, config, plugin_http,
+                route_inline_query(PLUGINS, GET_ME, CONFIG, plugin_http,
                                    update['inline_query'])
             extension_thread.join()
-        time.sleep(sleep_time)
+        time.sleep(SLEEP_TIME)
 
 
 def run_extensions(update):
-    db = MySQLdb.connect(**config['DATABASE'])
-    for module in extensions:
-        module.main(update, db)
-        db.commit()
-    db.close()
+    """Runs all extensions with the given update"""
+    extension_database = MySQLdb.connect(**CONFIG['DATABASE'])
+    for module in EXTENSIONS:
+        module.main(update, extension_database)
+        extension_database.commit()
+    extension_database.close()
 
 
 def check_time_args():
-    database = MySQLdb.connect(**config['DATABASE'])
+    """
+Continuously checks the MySQL database for time arguments and runs the relevant
+plugin. Creates a different api_object depending on whether it was initialized
+with a standard message or callback query.
+    """
+    database = MySQLdb.connect(**CONFIG['DATABASE'])
     cursor = database.cursor()
-    time_arg_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',
-                                        ca_certs=certifi.where())
-    time_arg_http.timeout = urllib3.Timeout(connect=1.0)
-    time_arg_http.retries = 3
+    flagged_time_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',
+                                            ca_certs=certifi.where())
+    flagged_time_http.timeout = urllib3.Timeout(connect=1.0)
+    flagged_time_http.retries = 3
 
-    while running.value:
+    while RUNNING.value:
         database.query(
             "SELECT time_id, plugin_name,plugin_data,previous_message FROM flagged_time WHERE "
-            "argument_time < from_unixtime({})".format(int(time.time())))
+            "argument_time <= from_unixtime({})".format(int(time.time())))
 
         query = database.store_result()
         rows = query.fetch_row(how=1, maxrows=0)
@@ -116,45 +138,57 @@ def check_time_args():
             previous_message = json.loads(result['previous_message'])
             previous_message['time_id'] = time_id
             if 'message_id' in previous_message:
-                tg = TelegramApi(database,
-                                 get_me,
-                                 plugin_name,
-                                 config,
-                                 time_arg_http,
-                                 message=previous_message,
-                                 plugin_data=plugin_data)
+                api_object = TelegramApi(database,
+                                         GET_ME,
+                                         plugin_name,
+                                         CONFIG,
+                                         flagged_time_http,
+                                         message=previous_message,
+                                         plugin_data=plugin_data)
             else:
-                tg = TelegramApi(database,
-                                 get_me,
-                                 plugin_name,
-                                 config,
-                                 time_arg_http,
-                                 callback_query=previous_message,
-                                 plugin_data=plugin_data)
+                api_object = TelegramApi(database,
+                                         GET_ME,
+                                         plugin_name,
+                                         CONFIG,
+                                         flagged_time_http,
+                                         callback_query=previous_message,
+                                         plugin_data=plugin_data)
             cursor.execute('DELETE FROM `flagged_time` WHERE time_id=%s;',
                            (time_id, ))
-            plugins[plugin_name].main(tg)
+            try:
+                PLUGINS[plugin_name].main(api_object)
+            except KeyError:
+                continue
         database.commit()
-        time.sleep(sleep_time)
+        time.sleep(SLEEP_TIME)
     database.close()
 
 
-if __name__ == '__main__':
-    getUpdatesProcess = Process(target=get_updates)
-    getUpdatesProcess.start()
-    for i in range(0, int(config['BOT_CONFIG']['workers'])):
-        workerProcess.append(Process(target=process_updates))
-        workerProcess[-1].start()
-    timeArgProcess = Process(target=check_time_args)
-    timeArgProcess.start()
-    while running.value:
-        time.sleep(5)
-        for index, worker in enumerate(workerProcess):
+def run_bot():
+    """
+    Creates instances of the above methods and occassionally checks for crashed
+    worker processes & relaunches.
+    """
+    worker_process = list()
+    get_update_process = Process(target=get_updates)
+    get_update_process.start()
+    for i in range(0, int(CONFIG['BOT_CONFIG']['workers'])):
+        worker_process.append(Process(target=process_updates))
+        worker_process[i].start()
+    time_worker = Process(target=check_time_args)
+    time_worker.start()
+    while RUNNING.value:
+        time.sleep(30)
+        for index, worker in enumerate(worker_process):
             if not worker.is_alive():
-                del workerProcess[index]
-                workerProcess.append(Process(target=process_updates))
-                workerProcess[-1].start()
-    getUpdatesProcess.join()
-    timeArgProcess.join()
-    for worker in workerProcess:
+                del worker_process[index]
+                worker_process.append(Process(target=process_updates))
+                worker_process[-1].start()
+    get_update_process.join()
+    time_worker.join()
+    for worker in worker_process:
         worker.join()
+
+
+if __name__ == '__main__':
+    run_bot()

@@ -152,4 +152,4 @@ parameters = {
 arguments = {'text': ["^/pic$"]}
 
 inline_arguments = ['^/?(danbooru|animepic|pic)$',
-                    '^/?(danbooru|animepic) (.*)']
+                    '^/?(danbooru|animepic|pic) (.*)']
