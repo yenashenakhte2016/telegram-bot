@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-API Objects for inline queries and callback queries from an inline message
+API Objects for inline and callback queries from an inline message
 """
 
 import json
