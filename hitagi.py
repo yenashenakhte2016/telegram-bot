@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+# !/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 Retrieves updates and routes them to appropriate classes/methods utilizing a system
@@ -21,7 +21,7 @@ from tgapi import TelegramApi
 BASE_URL = 'https://api.telegram.org/'
 CONFIG, PLUGINS, EXTENSIONS = bot_init.master_mind()
 SLEEP_TIME = float(CONFIG['BOT_CONFIG']['sleep'])
-RUNNING = Value('i', True)  ## If this is False workers shutdown safely
+RUNNING = Value('i', True)  # If this is False workers shutdown safely
 
 HTTP = urllib3.connection_from_url(BASE_URL,
                                    cert_reqs='CERT_REQUIRED',
@@ -31,19 +31,19 @@ HTTP.retries = 3
 
 API_TOKEN = CONFIG['BOT_CONFIG']['token']
 MESSAGE_QUEUE = Queue()
-## Stores all updates for workers to grab
+# Stores all updates for workers to grab
 
 GET_ME = HTTP.request(
     'GET', "https://api.telegram.org/bot{}/getMe".format(API_TOKEN)).data
 GET_ME = json.loads(GET_ME.decode('UTF-8'))
 GET_ME.update({'date': int(time.time())})
-## https://core.telegram.org/bots/api#getme
+# https://core.telegram.org/bots/api#getme
 
 try:
     JSONDecodeError = json.JSONDecodeError
 except AttributeError:
     JSONDecodeError = ValueError
-## Python 3.4 compatibility
+# Python 3.4 compatibility
 
 
 def get_updates():
@@ -54,7 +54,7 @@ def get_updates():
     offset = 0
     url = "{}bot{}/getUpdates".format(BASE_URL, API_TOKEN)
     while RUNNING.value:
-        fields = {'offset': offset, 'limit': 100, 'timeout': 10}
+        fields = {'offset': offset, 'limit': 100, 'timeout': 30}
         try:
             update = HTTP.request('GET', url, fields)
         except urllib3.exceptions.HTTPError:
@@ -71,7 +71,6 @@ def get_updates():
                 offset = update['result'][-1]['update_id'] + 1
                 for update in update['result']:
                     MESSAGE_QUEUE.put(update)
-        time.sleep(SLEEP_TIME)
 
 
 def process_updates():
@@ -113,9 +112,9 @@ def run_extensions(update):
 
 def check_time_args():
     """
-Continuously checks the MySQL database for time arguments and runs the relevant
-plugin. Creates a different api_object depending on whether it was initialized
-with a standard message or callback query.
+    Continuously checks the MySQL database for time arguments and runs the relevant
+    plugin. Creates a different api_object depending on whether it was initialized
+    with a standard message or callback query.
     """
     database = MySQLdb.connect(**CONFIG['DATABASE'])
     cursor = database.cursor()

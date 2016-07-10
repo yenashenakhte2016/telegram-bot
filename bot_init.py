@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 
-import configparser
+"""
+Loads plugins, extensions, and initializes the database.
+"""
+
 import os
 import warnings
+import configparser
 
 import MySQLdb
 import _mysql_exceptions
 
 
 def master_mind():
+    """Checks file path, inits config, and return plugins/extensions"""
     warnings.filterwarnings('ignore')
     if not os.path.exists('data/files'):
         os.makedirs('data/files')
@@ -23,6 +28,7 @@ def master_mind():
 
 
 def init_database(cursor):
+    """Creates various tables in the database specified in the config."""
     cursor.execute("DROP TABLE IF EXISTS plugins;")
 
     cursor.execute(
@@ -68,6 +74,10 @@ def init_database(cursor):
 
 
 def init_plugins(cursor):
+    """
+    Loads plugins given by the file_lists method. Plugins must have the parameters attribute to load. Plugins
+    with no arguments dictionary are marked inline_only. All plugin info is then batch inserted into mysql.
+    """
     modules = dict()
     plugin_list = file_lists('plugins')
     plugins = __import__('plugins', fromlist=plugin_list)
@@ -92,9 +102,8 @@ def init_plugins(cursor):
             if 'hidden' in plugin.parameters:
                 hidden = plugin.parameters['hidden']
             if 'permissions' in plugin.parameters:
-                plugin.parameters[
-                    'permissions'] = permissions = numerate_permissions(
-                        plugin.parameters['permissions'])
+                permissions = numerate_permissions(plugin.parameters['permissions'])
+                plugin.parameters['permissions'] = permissions
             else:
                 plugin.parameters['permissions'] = permissions = '11'
             if 'inline_only' in plugin.parameters:
@@ -112,32 +121,38 @@ def init_plugins(cursor):
 
 
 def init_extensions():
+    """Simply loads up the extensions given by the file_lists method which have the attribute main()."""
     modules = []
     extensions_list = file_lists('extensions')
     extensions = __import__('extensions', fromlist=extensions_list)
 
     for extension_name in extensions_list:
         extension = getattr(extensions, extension_name)
-        modules.append(extension)
-        print("Extension {} Loaded".format(extension_name))
+        if hasattr(extensions, 'main'):
+            modules.append(extension)
+            print("Extension {} Loaded".format(extension_name))
 
     return modules
 
 
 def file_lists(directory):
+    """Returns a list of files in a directory which end in .py (ignoring __init__.py)"""
     module_list = []
 
-    for file in os.listdir(directory):
-        if file == '__init__.py':
+    for module in os.listdir(directory):
+        if module == '__init__.py':
             continue
-        elif '.py' == file[-3:]:
-            module_list.append(file.replace('.py', ''))
+        elif module[-3:] == '.py':
+            module_list.append(module.replace('.py', ''))
     return module_list
 
 
 def numerate_permissions(permission):
+    """Turns argument into standard 2 digit char"""
     if permission is True:
         permission = '11'
     elif permission is False:
         permission = '00'
+    if isinstance(permission, int):
+        permission = char(permission)
     return permission

@@ -12,7 +12,7 @@ import MySQLdb
 import _mysql_exceptions
 
 
-class TelegramApi:
+class TelegramApi(object):
     def __init__(self,
                  database,
                  get_me,

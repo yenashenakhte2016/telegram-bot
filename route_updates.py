@@ -16,7 +16,7 @@ from inline import TelegramInlineAPI
 from tgapi import TelegramApi
 
 
-class RouteMessage:
+class RouteMessage(object):
     """
     Routes standard telegram messages.
     https://core.telegram.org/bots/api#message
