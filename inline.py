@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 API Objects for inline queries and callback queries from an inline message
 """
@@ -9,6 +8,7 @@ import uuid
 
 import MySQLdb
 import _mysql_exceptions
+import urllib3.exceptions
 
 
 class TelegramInlineAPI(object):
@@ -16,6 +16,7 @@ class TelegramInlineAPI(object):
     API Object for inline_queries
     https://core.telegram.org/bots/api#inlinequery
     """
+
     def __init__(self, database, get_me, plugin_name, config, http,
                  inline_query):
         self.database = database
@@ -56,7 +57,9 @@ class TelegramInlineAPI(object):
             except _mysql_exceptions.IntegrityError:
                 pass
             database.close()
-        post = self.http.request_encode_body('POST', url.format(self.token), fields=package).data
+        post = self.http.request_encode_body('POST',
+                                             url.format(self.token),
+                                             fields=package).data
         return json.loads(post.decode('UTF-8'))
 
     def inline_query_result_article(self, title, input_message_content,
@@ -87,10 +90,7 @@ class TelegramInlineAPI(object):
         When passing a photo url its suggested you pass a thumb_url to reduce loading times though not required.
         https://core.telegram.org/bots/api#inlinequeryresultphoto
         """
-        package = {
-            'type': "photo",
-            'id': str(uuid.uuid4())
-        }
+        package = {'type': "photo", 'id': str(uuid.uuid4())}
         if cached:
             package['photo_file_id'] = photo
         else:
@@ -131,10 +131,7 @@ class TelegramInlineAPI(object):
         If passing an mpeg4 url a thumb_url is required. Set cached to True if passing a file_id.
         https://core.telegram.org/bots/api#inlinequeryresultmpeg4gif
         """
-        package = {
-            'type': "mpeg4_gif",
-            'id': str(uuid.uuid4())
-        }
+        package = {'type': "mpeg4_gif", 'id': str(uuid.uuid4())}
         if cached:
             package['mpeg4_file_id'] = mpeg4
         else:
@@ -408,6 +405,7 @@ class InlineCallbackQuery(object):
     """
     Represents an Inline Callback query API object.
     """
+
     def __init__(self, database, config, http, callback_query):
         self.config = config
         self.token = self.config['BOT_CONFIG']['token']
@@ -416,12 +414,24 @@ class InlineCallbackQuery(object):
         self.database = database
         self.message = self.inline_query = None
 
+    def method(self, method, **kwargs):
+        """
+        Sends an http request to telegram. Returns the json loaded response if a success and None otherwise
+        """
+        url = "https://api.telegram.org/bot{}/{}".format(self.token, method)
+        try:
+            post = self.http.request_encode_body('POST', url, fields=kwargs)
+        except urllib3.exceptions.HTTPError:
+            return
+        if post.status == 200:
+            return json.loads(post.data.decode('UTF-8'))
+
     def answer_callback_query(self,
                               text=None,
                               callback_query_id=None,
                               show_alert=False):
         """
-        Answers a callback query. Optional arguments are text, callback_query_id and show_alert.
+        answerCallbackQuery. Optional arguments are text, callback_query_id and show_alert.
         https://core.telegram.org/bots/api#answercallbackquery
         """
         arguments = locals()
@@ -434,8 +444,39 @@ class InlineCallbackQuery(object):
                 return "Callback query ID not found!"
         if text is None:
             del arguments['text']
-        url = "https://api.telegram.org/bot{}/{}".format(self.token,
-                                                         'answerCallbackQuery')
-        post = self.http.request_encode_body('POST',
-                                             url, fields=arguments).data
-        return json.loads(post.decode('UTF-8'))
+        return self.method('answerCallbackQuery', **arguments)
+
+    def edit_message_text(self, text, **kwargs):
+        """
+        editMessageText. Requires text.
+        https://core.telegram.org/bots/api#editmessagetext
+        """
+        package = {
+            'inline_message_id': int(self.callback_query['id']),
+            'text': text,
+            'parse_mode': self.config['MESSAGE_OPTIONS']['PARSE_MODE']
+        }
+        package.update(kwargs)
+        return self.method('editMessageText', **package)
+
+    def edit_message_caption(self, caption=None, **kwargs):
+        """
+        editMessageCaption. Use with no arguments to remove a caption.
+        https://core.telegram.org/bots/api#editmessagecaption
+        """
+        package = {'inline_message_id': int(self.callback_query['id'])}
+        if caption:
+            package['caption'] = caption
+        package.update(kwargs)
+        return self.method('editMessageCaption', **package)
+
+    def edit_message_reply_markup(self, reply_markup=None, **kwargs):
+        """
+        editMessageReplyMarkup. Use with no arguments to remove all reply_markup.
+        https://core.telegram.org/bots/api#editmessagereplymarkup
+        """
+        package = {'inline_message_id': int(self.callback_query['id'])}
+        if reply_markup:
+            package['reply_markup'] = reply_markup
+        package.update(kwargs)
+        return self.method('editMessageReplyMarkup', **package)

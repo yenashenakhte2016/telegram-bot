@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 Loads plugins, extensions, and initializes the database.
 """
@@ -102,7 +101,8 @@ def init_plugins(cursor):
             if 'hidden' in plugin.parameters:
                 hidden = plugin.parameters['hidden']
             if 'permissions' in plugin.parameters:
-                permissions = numerate_permissions(plugin.parameters['permissions'])
+                permissions = numerate_permissions(plugin.parameters[
+                    'permissions'])
                 plugin.parameters['permissions'] = permissions
             else:
                 plugin.parameters['permissions'] = permissions = '11'
