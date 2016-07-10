@@ -10,6 +10,7 @@ import time
 
 import copy
 import MySQLdb
+import _mysql_exceptions
 
 from inline import InlineCallbackQuery
 from inline import TelegramInlineAPI
@@ -126,21 +127,12 @@ class RouteMessage(object):
 
     def handle_plugins(self):
         """
-        Checks if there is a black list for the chat and creates it if it does
-        not exist. It then loops through the plugin arguments looking for a match
+        Loops through the plugin arguments looking for a match
         and checks for pm_parameters. If a plugin is activated True is returned.
         """
         plugin_triggered = False
         if time.time() - self.message['date'] >= 180:
             return False
-        chat_id = self.message['chat']['id']
-        query = 'SELECT TABLE_NAME FROM information_schema.tables'
-        'WHERE TABLE_NAME="{}blacklist"'.format(chat_id)
-        self.database.query(query)
-        query = self.database.store_result()
-        result = query.fetch_row()
-        if not result:
-            self.create_default_table()
         for plugin_name, plugin_module in self.plugins.items():
             if self.plugin_check(plugin_name, plugin_module):
                 plugin_triggered = True
@@ -160,7 +152,11 @@ class RouteMessage(object):
                 if self.check_argument(key, value, self.message):
                     chat_id = self.message['chat']['id']
                     statement = 'SELECT plugin_status FROM `{}blacklist` WHERE plugin_name="{}";'
-                    self.database.query(statement.format(chat_id, plugin_name))
+                    try:
+                        self.database.query(statement.format(chat_id, plugin_name))
+                    except _mysql_exceptions.ProgrammingError:
+                        self.create_default_table()
+                        self.database.query(statement.format(chat_id, plugin_name))
                     query = self.database.store_result()
                     result = query.fetch_row(how=1)
                     enabled = result[0][
