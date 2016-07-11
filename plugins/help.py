@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
+"""
+Helps a user learn about the bots functions.
+Arguments:
+    /help
+    /help plugin-name
+"""
 
 
 def main(tg):
+    """
+    Returns a message with plugin pretty names as buttons or routes the message to grab_plugin.
+    """
     if tg.message and tg.message['matched_regex'] == arguments['text'][0]:
-        if not tg.message['cleaned_message'] and tg.message['chat'][
-                'type'] != "private":
-            return
         tg.send_chat_action('typing')
         tg.database.query(
             "SELECT pretty_name FROM `plugins` p LEFT JOIN `{}blacklist` b ON p.plugin_name=b.plugin_name"
@@ -33,6 +39,9 @@ def main(tg):
 
 
 def grab_plugin(tg):
+    """
+    Returns a plugins description.
+    """
     if tg.callback_query:
         plugin = tg.callback_query['data'].replace('%%help%%', '').lower()
     else:
@@ -46,7 +55,9 @@ def grab_plugin(tg):
     if row:
         row = row[0]
         if tg.callback_query:
-            tg.answer_callback_query(row['short_description'])
+            response = "{} - {}".format(row['pretty_name'],
+                                        row['short_description'])
+            tg.answer_callback_query(response)
         else:
             tg.send_message(row['long_description'])
     else:
