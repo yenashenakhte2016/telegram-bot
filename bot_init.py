@@ -128,7 +128,7 @@ def init_extensions():
 
     for extension_name in extensions_list:
         extension = getattr(extensions, extension_name)
-        if hasattr(extensions, 'main'):
+        if 'main' in dir(extension):
             modules.append(extension)
             print("Extension {} Loaded".format(extension_name))
 

@@ -31,6 +31,7 @@ class RouteMessage(object):
         self.get_me = get_me
         self.config = config
         self.executor = ThreadPoolExecutor(max_workers=4)
+        self.futures = list()
         self.message = None
         self.database = None
         self.cursor = None
@@ -60,7 +61,10 @@ class RouteMessage(object):
                 'type'] == 'private':
             self.check_db_pm()
         self.executor.shutdown(wait=True)
+        for future in self.futures:
+            future.result()
         self.executor = ThreadPoolExecutor(max_workers=3)
+        self.futures = list()
         self.database.commit()
         self.database.close()
 
@@ -153,10 +157,12 @@ class RouteMessage(object):
                     chat_id = self.message['chat']['id']
                     statement = 'SELECT plugin_status FROM `{}blacklist` WHERE plugin_name="{}";'
                     try:
-                        self.database.query(statement.format(chat_id, plugin_name))
+                        self.database.query(statement.format(chat_id,
+                                                             plugin_name))
                     except _mysql_exceptions.ProgrammingError:
                         self.create_default_table()
-                        self.database.query(statement.format(chat_id, plugin_name))
+                        self.database.query(statement.format(chat_id,
+                                                             plugin_name))
                     query = self.database.store_result()
                     result = query.fetch_row(how=1)
                     enabled = result[0][
@@ -164,8 +170,9 @@ class RouteMessage(object):
                             plugin_name)
                     if enabled:
                         message = copy.copy(self.message)
-                        self.executor.submit(self.run_plugin, plugin_name,
-                                             plugin_module, message)
+                        self.futures.append(self.executor.submit(
+                            self.run_plugin, plugin_name, plugin_module,
+                            message))
                         return True
 
     def check_argument(self, key, value, incremented_message):

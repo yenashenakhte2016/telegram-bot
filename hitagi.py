@@ -163,7 +163,7 @@ def check_time_args():
     database.close()
 
 
-def run_bot():
+def main():
     """
     Creates instances of the above methods and occassionally checks for crashed
     worker processes & relaunches.
@@ -190,4 +190,4 @@ def run_bot():
 
 
 if __name__ == '__main__':
-    run_bot()
+    main()
