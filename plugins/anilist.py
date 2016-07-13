@@ -360,18 +360,13 @@ def get_model(method, http, query_id):
 
 
 def client_credentials(tg):
-    try:
-        tg.database.query(
-            'SELECT access_token FROM anilist_tokens WHERE grant_type="client_credentials" '
-            'AND expires > FROM_UNIXTIME({})'.format(int(time.time() - 60, )))
-        query = tg.database.store_result()
-        rows = query.fetch_row()
-        if rows:
-            return rows[0][0]
-    except _mysql_exceptions.ProgrammingError:
-        tg.cursor.execute(
-            "CREATE TABLE anilist_tokens(access_token VARCHAR(64) NOT NULL, token_type VARCHAR(64), "
-            "expires DATETIME, refresh_token VARCHAR(64), grant_type VARCHAR(64), user_id BIGINT)")
+    tg.database.query(
+        'SELECT access_token FROM anilist_tokens WHERE grant_type="client_credentials" '
+        'AND expires > FROM_UNIXTIME({})'.format(int(time.time() - 60, )))
+    query = tg.database.store_result()
+    rows = query.fetch_row()
+    if rows:
+        return rows[0][0]
     url = base_url + "auth/access_token"
     headers = {
         'grant_type': "client_credentials",
@@ -436,6 +431,14 @@ def determine_air_season(date):
     else:
         season = "Unknown"
     return "{} {}".format(season, year)
+
+
+def init_db(database):
+    cursor = database.cursor()
+    cursor.execute(
+        "CREATE TABLE anilist_tokens(access_token VARCHAR(64) NOT NULL, token_type VARCHAR(64), expires "
+        "DATETIME, refresh_token VARCHAR(64), grant_type VARCHAR(64), user_id BIGINT)")
+    cursor.close()
 
 
 parameters = {

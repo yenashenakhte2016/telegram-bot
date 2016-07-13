@@ -23,6 +23,9 @@ def master_mind():
     plugins = init_plugins(database.cursor())
     extensions = init_extensions()
     database.commit()
+    post_init(plugins.values(), database)
+    post_init(extensions, database)
+    database.close()
     return config, plugins, extensions
 
 
@@ -133,6 +136,15 @@ def init_extensions():
             print("Extension {} Loaded".format(extension_name))
 
     return modules
+
+
+def post_init(modules, database):
+    """
+    Runs code for modules such as creating databases or fetching tokens.
+    """
+    for module in modules:
+        if 'init_db' in dir(module):
+            module.init_db(database)
 
 
 def file_lists(directory):

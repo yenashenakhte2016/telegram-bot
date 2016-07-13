@@ -72,7 +72,6 @@ class TelegramApi(object):
                     kwargs['reply_to_message_id'] = self.chat_data[
                         'message_id']
             elif eval(self.config['MESSAGE_OPTIONS']['reply_in_private']):
-                print(self.config['MESSAGE_OPTIONS']['reply_in_private'])
                 kwargs['reply_to_message_id'] = self.chat_data['message_id']
             if 'chat_id' not in kwargs:
                 kwargs['chat_id'] = self.chat_data['chat']['id']

@@ -15,7 +15,6 @@ def main(tg):
     """
     Routes api_object to appropriate method.
     """
-    init_db(tg.database)
     if tg.message:
         tg.send_chat_action('typing')
         if tg.plugin_data:
@@ -24,7 +23,6 @@ def main(tg):
             reminder_time = added_time(tg.message['match'][0],
                                        tg.message['match'][1])
             if reminder_time:
-                print(reminder_time)
                 set_reminder(tg, reminder_time + tg.message['date'])
             else:
                 tg.send_message("Invalid Time :(")
