@@ -436,8 +436,8 @@ def determine_air_season(date):
 def init_db(database):
     cursor = database.cursor()
     cursor.execute(
-        "CREATE TABLE anilist_tokens(access_token VARCHAR(64) NOT NULL, token_type VARCHAR(64), expires "
-        "DATETIME, refresh_token VARCHAR(64), grant_type VARCHAR(64), user_id BIGINT)")
+        "CREATE TABLE IF NOT EXISTS anilist_tokens(access_token VARCHAR(64) NOT NULL, token_type VARCHAR(64)"
+        ", expires DATETIME, refresh_token VARCHAR(64), grant_type VARCHAR(64), user_id BIGINT)")
     cursor.close()
 
 

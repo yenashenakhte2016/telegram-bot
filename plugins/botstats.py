@@ -2,6 +2,7 @@
 
 import math
 import time
+import _mysql_exceptions
 
 
 def main(tg):
@@ -14,8 +15,10 @@ def main(tg):
         total_messages = 0
         opted_in_count = len(chat_list)
         for chat in chat_list:
-            tg.database.query("SELECT COUNT(*) FROM `{}stats`;".format(chat[
-                0]))
+            try:
+                tg.database.query("SELECT COUNT(*) FROM `{}stats`;".format(chat[0]))
+            except _mysql_exceptions.ProgrammingError:
+                continue
             query = tg.database.store_result()
             message_count = query.fetch_row(maxrows=0)
             total_messages += message_count[0][0]
