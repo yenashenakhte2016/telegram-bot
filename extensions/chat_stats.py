@@ -8,7 +8,6 @@ def main(update, database):
     cursor = database.cursor()
     user_obj = None
     chat_obj = None
-    init_db(cursor)
     if 'message' in update:
         user_obj = update['message']['from']
         chat_obj = update['message']['chat']
@@ -79,7 +78,8 @@ def add_chat(chat):
     return entry
 
 
-def init_db(cursor):
+def init_db(database):
+    cursor = database.cursor()
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS users_list(user_id BIGINT UNIQUE NOT NULL, first_name VARCHAR(128) NOT NULL,"
         "last_name VARCHAR(128), user_name VARCHAR(128)) CHARACTER SET utf8mb4;")
@@ -90,3 +90,4 @@ def init_db(cursor):
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS chat_opt_status(chat_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL, "
         "toggle_user BIGINT NOT NULL, toggle_date DATETIME NOT NULL) CHARACTER SET utf8mb4;")
+    cursor.close()
