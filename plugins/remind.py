@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+Reminds users at a time they specify.
+"""
 
 import random
 
@@ -9,107 +12,118 @@ prefixes = ['to', 'that']
 
 
 def main(tg):
-    tg.cursor.execute(
-        "CREATE TABLE IF NOT EXISTS remind_plugin(time_id VARCHAR(128), user_id BIGINT NOT NULL, "
-        "chat_id BIGINT NOT NULL, message_id BIGINT NOT NULL) CHARACTER SET utf8mb4;")
+    """
+    Routes api_object to appropriate method.
+    """
+    init_db(tg.database)
     if tg.message:
+        tg.send_chat_action('typing')
         if tg.plugin_data:
-            statement = 'SELECT message_id FROM remind_plugin WHERE time_id="{}"'.format(
-                tg.message['time_id'])
-            tg.database.query(statement)
-            query = tg.database.store_result()
-            result = query.fetch_row(maxrows=0)
-            message_id = result[0][0]
-            tg.edit_message_reply_markup(message_id=message_id,
-                                         chat_id=tg.message['chat']['id'])
-            tg.send_message("Reminder:\n{}".format(tg.plugin_data))
+            answer_reminder(tg)
         else:
-            tg.send_chat_action('typing')
-            reminder_time = added_time(
-                tg.message['match'][0],
-                tg.message['match'][1]) + tg.message['date']
+            reminder_time = added_time(tg.message['match'][0],
+                                       tg.message['match'][1])
             if reminder_time:
-                reminder_message = remove_prefix(tg.message['match'][2])
-                time_id = tg.flag_time(reminder_time, reminder_message)
-
-                message = create_message(tg.message)
-                keyboard = [[{'text': "Cancel",
-                              'callback_data': 'cancel{}'.format(time_id)},
-                             {'text': "Add Time",
-                              'callback_data': 'add{}'.format(time_id)}]]
-                message = tg.send_message(
-                    message,
-                    reply_markup=tg.inline_keyboard_markup(keyboard))
-                if message['ok']:
-                    message_id = message['result']['message_id']
-                    user_id = tg.message['from']['id']
-                    chat_id = tg.message['chat']['id']
-                    tg.cursor.execute(
-                        "INSERT INTO remind_plugin VALUES(%s, %s, %s, %s)",
-                        (time_id, user_id, chat_id, message_id))
+                print(reminder_time)
+                set_reminder(tg, reminder_time + tg.message['date'])
             else:
                 tg.send_message("Invalid Time :(")
     else:
+        time_id = tg.callback_query['data'].replace('add', '')
+        chat_id = tg.callback_query['message']['chat']['id']
+        user_id = tg.callback_query['from']['id']
         if 'add' in tg.callback_query['data']:
             time_id = tg.callback_query['data'].replace('add', '')
-            permission = check_user(
-                time_id, tg.callback_query['message']['chat']['id'],
-                tg.callback_query['from']['id'], tg.database)
-            if permission:
-                tg.answer_callback_query()
-                keyboard = [[{'text': "+5",
-                              'callback_data': '+05{}'.format(time_id)},
-                             {'text': "+15",
-                              'callback_data': '+15{}'.format(time_id)},
-                             {'text': "+30",
-                              'callback_data': '+30{}'.format(time_id)},
-                             {'text': "+60",
-                              'callback_data': '+60{}'.format(time_id)}]]
-                tg.edit_message_reply_markup(
-                    reply_markup=tg.inline_keyboard_markup(keyboard))
-            else:
-                tg.answer_callback_query(
-                    "You aren't the one who set the reminder!")
+            if check_user(time_id, chat_id, user_id, tg.database):
+                return add_time_keyboard(tg, time_id)
         elif 'cancel' in tg.callback_query['data']:
             time_id = tg.callback_query['data'].replace('cancel', '')
-            permission = check_user(
-                time_id, tg.callback_query['message']['chat']['id'],
-                tg.callback_query['from']['id'], tg.database)
-            if permission:
-                tg.answer_callback_query("Successfully Cancelled")
-                tg.edit_message_text("Cancelled Reminder")
-                tg.cursor.execute(
-                    "DELETE FROM `flagged_time` WHERE time_id=%s", (time_id, ))
-            else:
-                tg.answer_callback_query(
-                    "You aren't the one who set the reminder!")
+            if check_user(time_id, chat_id, user_id, tg.database):
+                return cancel_reminder(tg, time_id)
         elif '+' in tg.callback_query['data']:
             time_id = tg.callback_query['data'][3:]
-            permission = check_user(
-                time_id, tg.callback_query['message']['chat']['id'],
-                tg.callback_query['from']['id'], tg.database)
-            if permission:
-                time = int(tg.callback_query['data'][1:3])
-                tg.answer_callback_query(
-                    "Delayed the reminder by {} minutes!".format(time))
-                keyboard = [[{'text': "Cancel",
-                              'callback_data': 'cancel{}'.format(time_id)},
-                             {'text': "Add Time",
-                              'callback_data': 'add{}'.format(time_id)}]]
-                message = modify_message(tg.callback_query['message']['text'],
-                                         time)
-                tg.edit_message_text(
-                    message,
-                    reply_markup=tg.inline_keyboard_markup(keyboard))
-                tg.cursor.execute(
-                    "UPDATE `flagged_time` SET argument_time=DATE_ADD(argument_time, INTERVAL %s MINUTE) WHERE "
-                    "time_id=%s", (int(time), time_id))
-            else:
-                tg.answer_callback_query(
-                    "You aren't the one who set the reminder!")
+            if check_user(time_id, chat_id, user_id, tg.database):
+                return add_time(tg, time_id)
+        tg.answer_callback_query("You are not the one who set the reminder")
+
+
+def answer_reminder(tg):
+    """
+    Removes markup from reminder confirmation message and answers the reminder.
+    Tries to send a message in both the chat and in pm.
+    """
+    user_id = tg.message['from']['id']
+    statement = 'SELECT message_id FROM remind_plugin WHERE time_id="{}"'.format(
+        tg.message['time_id'])
+    tg.database.query(statement)
+    query = tg.database.store_result()
+    result = query.fetch_row(maxrows=0)
+    message_id = result[0][0]
+    tg.edit_message_reply_markup(message_id=message_id,
+                                 chat_id=tg.message['chat']['id'])
+    response = tg.send_message("Reminder:\n{}".format(tg.plugin_data))
+    if response and not response['ok']:
+        tg.send_message("Reminder:\n{}".format(tg.plugin_data),
+                        reply_to_message_id=None)
+    if tg.message['from']['id'] != tg.message['chat']['id']:
+        tg.send_message("Reminder:\n{}".format(tg.plugin_data),
+                        chat_id=user_id)
+
+
+def set_reminder(tg, reminder_time):
+    """
+    Flags the reminder time and sends a confirmation
+    """
+    reminder_message = remove_prefix(tg.message['match'][2])
+    time_id = tg.flag_time(reminder_time, reminder_message)
+
+    message = create_message(tg.message)
+    keyboard = [[{'text': "Cancel",
+                  'callback_data': 'cancel{}'.format(time_id)},
+                 {'text': "Add Time",
+                  'callback_data': 'add{}'.format(time_id)}]]
+    keyboard = tg.inline_keyboard_markup(keyboard)
+    message = tg.send_message(message, reply_markup=keyboard)
+    if message['ok']:
+        message_id = message['result']['message_id']
+        user_id = tg.message['from']['id']
+        chat_id = tg.message['chat']['id']
+        tg.cursor.execute("INSERT INTO remind_plugin VALUES(%s, %s, %s, %s)",
+                          (time_id, user_id, chat_id, message_id))
+
+
+def add_time_keyboard(tg, time_id):
+    """
+    Switches the keyboard for the user to add time
+    """
+    if 'add' in tg.callback_query['data']:
+        tg.answer_callback_query()
+        keyboard = [[{'text': "+5",
+                      'callback_data': '+05{}'.format(time_id)},
+                     {'text': "+15",
+                      'callback_data': '+15{}'.format(time_id)},
+                     {'text': "+30",
+                      'callback_data': '+30{}'.format(time_id)},
+                     {'text': "+60",
+                      'callback_data': '+60{}'.format(time_id)}]]
+        keyboard = tg.inline_keyboard_markup(keyboard)
+        tg.edit_message_reply_markup(keyboard)
+
+
+def cancel_reminder(tg, time_id):
+    """
+    Cancels a previous reminder
+    """
+    tg.answer_callback_query("Successfully Cancelled")
+    tg.edit_message_text("Cancelled Reminder")
+    tg.cursor.execute("DELETE FROM `flagged_time` WHERE time_id=%s",
+                      (time_id, ))
 
 
 def check_user(time_id, chat_id, user_id, database):
+    """
+    Checks if the user who made the callback query is the one who set the reminder
+    """
     statement = 'SELECT user_id FROM `remind_plugin` WHERE time_id="{}" AND chat_id={}'.format(
         time_id, chat_id)
     database.query(statement)
@@ -121,19 +135,45 @@ def check_user(time_id, chat_id, user_id, database):
         return False
 
 
+def add_time(tg, time_id):
+    """
+    Sets the keyboard back to default and adds time
+    """
+    time_id = tg.callback_query['data'][3:]
+    time = int(tg.callback_query['data'][1:3])
+    tg.answer_callback_query("Delayed the reminder by {} minutes!".format(
+        time))
+    keyboard = [[{'text': "Cancel",
+                  'callback_data': 'cancel{}'.format(time_id)},
+                 {'text': "Add Time",
+                  'callback_data': 'add{}'.format(time_id)}]]
+    message = modify_message(tg.callback_query['message']['text'], time)
+    tg.edit_message_text(message,
+                         reply_markup=tg.inline_keyboard_markup(keyboard))
+    tg.cursor.execute(
+        "UPDATE `flagged_time` SET argument_time=DATE_ADD(argument_time, INTERVAL %s MINUTE) WHERE "
+        "time_id=%s", (int(time), time_id))
+
+
 def added_time(time, unit):
-    if "second" in unit:
-        multiplier = 1
-    elif "min" in unit:
+    """
+    Returns time to be added in seconds
+    """
+    time = float(time)
+    if "min" in unit:
         multiplier = 60
     elif "hour" in unit:
         multiplier = 3600
     elif "day" in unit:
         multiplier = 86400
-    return (int(time) * multiplier) if int(time) > 0 else None
+    if time:
+        return int(time * multiplier)
 
 
 def remove_prefix(message):
+    """
+    Removes prepositions from reminders
+    """
     for prefix in prefixes:
         if message[:len(prefix) + 1] == prefix + ' ':
             return message[len(prefix) + 1:]
@@ -141,11 +181,13 @@ def remove_prefix(message):
 
 
 def create_message(message):
-    time = int(message['match'][0])
+    """
+    Creates a message which confirm a reminder has been set
+    """
+    time = float(message['match'][0])
+    time = int(time) if time.is_integer() else time
     unit = None
-    if message['match'][1] == 's' or "second" in message['match'][1]:
-        unit = "second"
-    elif message['match'][1] == 'm' or "min" in message['match'][1]:
+    if message['match'][1] == 'm' or "min" in message['match'][1]:
         unit = "minute"
     elif message['match'][1] == 'h' or "hour" in message['match'][1]:
         unit = "hour"
@@ -156,11 +198,22 @@ def create_message(message):
 
 
 def modify_message(message, time):
+    """
+    Returns edited version of previous message with latest added time.
+    """
     if '\n' not in message:
         message += '\n'
     else:
         message += ', '
     return message + "+{}".format(time)
+
+
+def init_db(database):
+    cursor = database.cursor()
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS remind_plugin(time_id VARCHAR(128), user_id BIGINT NOT NULL, "
+        "chat_id BIGINT NOT NULL, message_id BIGINT NOT NULL) CHARACTER SET utf8mb4;")
+    cursor.close()
 
 
 parameters = {
@@ -175,7 +228,7 @@ parameters = {
 
 arguments = {
     'text': [
-        "(?i)remind .* (\d+)([smhd]) (.*)",
-        "(?i)remind .* (\d+) (seconds?|minutes?|mins?|hours?|days?) (.*)",
+        r"(?i)remind .* (\d+\.\d|\d+) ?([mhd]) (.*)",
+        r"(?i)remind .* (\d+\.\d|\d+) (minutes?|mins?|hours?|days?) (.*)",
     ]
 }

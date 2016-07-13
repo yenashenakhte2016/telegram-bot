@@ -10,6 +10,7 @@ from functools import partial
 
 import MySQLdb
 import _mysql_exceptions
+import urllib3.exceptions
 
 
 class TelegramApi(object):
@@ -66,15 +67,23 @@ class TelegramApi(object):
         if check_content:
             if self.chat_data['chat']['type'] != 'private' and eval(
                     self.config['MESSAGE_OPTIONS']['reply_in_groups']):
-                kwargs['reply_to_message_id'] = self.chat_data['message_id']
+                if 'chat_id' in kwargs and kwargs['chat_id'] != self.message[
+                        'from']['id']:
+                    kwargs['reply_to_message_id'] = self.chat_data[
+                        'message_id']
             elif eval(self.config['MESSAGE_OPTIONS']['reply_in_private']):
                 print(self.config['MESSAGE_OPTIONS']['reply_in_private'])
                 kwargs['reply_to_message_id'] = self.chat_data['message_id']
             if 'chat_id' not in kwargs:
                 kwargs['chat_id'] = self.chat_data['chat']['id']
-
-        post = self.http.request_encode_body('POST', url, fields=kwargs).data
-        return json.loads(post.decode('UTF-8'))
+        fields = {param: val
+                  for param, val in kwargs.items() if val is not None}
+        try:
+            post = self.http.request_encode_body('POST', url, fields=fields)
+        except urllib3.exceptions.HTTPError:
+            return
+        if post.status == 200:
+            return json.loads(post.data.decode('UTF-8'))
 
     def get_something(self, method, chat_id=None):
         chat_id = chat_id or self.chat_data['chat']['id']
