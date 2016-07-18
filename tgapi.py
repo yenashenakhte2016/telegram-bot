@@ -118,7 +118,7 @@ class TelegramApi(object):
         arguments = {'text': text, 'parse_mode': default_parse_mode}
         arguments.update(kwargs)
         response = self.method('sendMessage', **arguments)
-        if response['ok']:
+        if response and response['ok']:
             self.last_sent = {
                 'message_id': response['result']['message_id'],
                 'chat_id': response['result']['chat']['id']

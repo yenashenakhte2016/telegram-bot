@@ -183,6 +183,12 @@ def main():
                 del worker_process[index]
                 worker_process.append(Process(target=process_updates))
                 worker_process[-1].start()
+        if not time_worker.is_alive():
+            time_worker = Process(target=check_time_args)
+            time_worker.start()
+        if not get_update_process.is_alive():
+            get_update_process = Process(target=get_updates)
+            get_update_process.start()
     get_update_process.join()
     time_worker.join()
     for worker in worker_process:
