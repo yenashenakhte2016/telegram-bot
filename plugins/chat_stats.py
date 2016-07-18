@@ -78,7 +78,7 @@ def opt_out(tg):
             tg.answer_callback_query("Only mods can disable stats!")
     elif tg.message:
         tg.database.query(
-            "SELECT status FROM chat_opt_status WHERE chat_id=%s AND status=TRUE".format(
+            "SELECT status FROM chat_opt_status WHERE chat_id={} AND status=TRUE".format(
                 chat_id))
         query = tg.database.store_result()
         rows = query.fetch_row()
@@ -96,8 +96,7 @@ def opt_out(tg):
 def chat_stats(tg):
     total_messages, total_characters, average_chars, total_words = metrics(
         tg.database)
-    message = "<b>Global Chat Stats:</b>\n\n".format(tg.message['chat'][
-        'title'])
+    message = "<b>Global Chat Statistics:</b>\n\n"
     message += "<b>Total Messages Sent:</b> {:,}".format(total_messages)
     message += "\n<b>Total Characters Sent:</b> {:,}".format(total_characters)
     message += "\n<b>Average Characters Per Message:</b> {0:.1f}".format(
@@ -154,33 +153,41 @@ def global_user_stats(tg):
         datetime.now().strftime("%A, %d. %B %Y %I:%M%p"))
     for rank, user in enumerate(results):
         first_name = user[0]
-        if not user[0]:
-            chat_member = tg.get_chat_member(chat_id, user[1], check_db=False)
-            chat_member = chat_member['result'] if chat_member['ok'] else None
+        if not first_name:
+            chat_member = tg.get_chat_member(chat_id, user[1])
+            chat_member = chat_member['result'] if chat_member and chat_member[
+                'ok'] else None
             if chat_member:
-                last_name = chat_member[
-                    'last_name'] if 'last_name' in chat_member else None
-                user_name = chat_member[
-                    'username'] if 'username' in chat_member else None
+                first_name = None
+                last_name = None
+                user_name = None
+                user_id = None
+                if 'first_name' in chat_member:
+                    first_name = chat_member['first_name']
+                if 'last_name' in chat_member:
+                    last_name = chat_member['last_name']
+                if 'username' in chat_member:
+                    user_name = chat_member['username']
+                if 'id' in chat_member:
+                    user_id = chat_member['id']
                 try:
                     tg.cursor.execute(
                         "INSERT INTO users_list VALUES(%s, %s, %s, %s)",
-                        (chat_member['id'], chat_member['first_name'],
-                         last_name, user_name))
+                        (user_id, first_name, last_name, user_name))
                 except _mysql_exceptions.IntegrityError:
                     pass
-                first_name = chat_member['first_name']
             else:
+                first_name = "Unknown"
                 try:
                     tg.cursor.execute(
                         "INSERT INTO users_list(first_name, user_id) VALUES(%s, %s)",
-                        ("Unknown", user[1]))
+                        (first_name, user[1]))
                 except _mysql_exceptions.IntegrityError:
                     pass
-                first_name = "Unknown"
         if first_name != "Unknown":
-            text += "\r\n{}. {} [{}] - {} messages".format(
-                rank + 1, first_name, user[1], user[2]).replace(u"\u200F", '')
+            line = "\r\n{}. {} [{}] - {} messages".format(rank + 1, first_name,
+                                                          user[1], user[2])
+            text += line.replace(u"\u200F", '')
     tg.send_document(('stats.txt', text))
 
 

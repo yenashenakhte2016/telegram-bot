@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+"""
+Contains API Object for standard Telegram messages
+https://core.telegram.org/bots/api#available-methods
+"""
 
 import _io
 import hashlib
@@ -6,6 +10,7 @@ import json
 import os
 import re
 import time
+from ast import literal_eval
 from functools import partial
 
 import MySQLdb
@@ -14,6 +19,10 @@ import urllib3.exceptions
 
 
 class TelegramApi(object):
+    """
+    API Object for standard telegram messages
+    """
+
     def __init__(self,
                  database,
                  get_me,
@@ -59,22 +68,31 @@ class TelegramApi(object):
             self.chat_data = self.callback_query['message']
 
     def method(self, method_name, check_content=True, **kwargs):
+        """
+        Template for sending methods. Automatically replies and adds chat id.
+        """
         content = dict()
         content['data'] = dict()
         url = "https://api.telegram.org/bot{}/{}".format(self.token,
                                                          method_name)
+        reply_in_groups = literal_eval(self.config['MESSAGE_OPTIONS'][
+            'reply_in_groups'])
+        reply_in_private = literal_eval(self.config['MESSAGE_OPTIONS'][
+            'reply_in_private'])
 
         if check_content:
-            if self.chat_data['chat']['type'] != 'private' and eval(
-                    self.config['MESSAGE_OPTIONS']['reply_in_groups']):
-                if 'chat_id' in kwargs and kwargs['chat_id'] != self.message[
-                        'from']['id']:
-                    kwargs['reply_to_message_id'] = self.chat_data[
-                        'message_id']
-            elif eval(self.config['MESSAGE_OPTIONS']['reply_in_private']):
-                kwargs['reply_to_message_id'] = self.chat_data['message_id']
             if 'chat_id' not in kwargs:
                 kwargs['chat_id'] = self.chat_data['chat']['id']
+            if 'reply_to_message_id' not in kwargs and kwargs[
+                    'chat_id'] == self.chat_data['chat']['id']:
+                if self.chat_data['chat']['type'] == 'private':
+                    if reply_in_private:
+                        kwargs['reply_to_message_id'] = self.chat_data[
+                            'message_id']
+                elif reply_in_groups:
+                    kwargs['reply_to_message_id'] = self.chat_data[
+                        'message_id']
+
         fields = {param: val
                   for param, val in kwargs.items() if val is not None}
         try:
@@ -85,13 +103,19 @@ class TelegramApi(object):
             return json.loads(post.data.decode('UTF-8'))
 
     def get_something(self, method, chat_id=None):
+        """
+        Template for get_chat, get_chat_administrators, and get_chat_members_count
+        """
         chat_id = chat_id or self.chat_data['chat']['id']
         return self.method(method, check_content=False, chat_id=chat_id)
 
     def send_message(self, text, flag_message=None, **kwargs):
-        arguments = {'text': text,
-                     'parse_mode':
-                     self.config['MESSAGE_OPTIONS']['PARSE_MODE']}
+        """
+        Send a message, requires just text.
+        https://core.telegram.org/bots/api#sendmessage
+        """
+        default_parse_mode = self.config['MESSAGE_OPTIONS']['PARSE_MODE']
+        arguments = {'text': text, 'parse_mode': default_parse_mode}
         arguments.update(kwargs)
         response = self.method('sendMessage', **arguments)
         if response['ok']:
@@ -101,7 +125,7 @@ class TelegramApi(object):
             }
             if flag_message:
                 message_id = response['result']['message_id']
-                if type(flag_message) is not dict:
+                if not isinstance(flag_message, dict):
                     flag_message = dict()
                 self.flag_message(message_id, flag_message)
         return response
@@ -111,6 +135,10 @@ class TelegramApi(object):
                         message_id=None,
                         from_chat_id=None,
                         disable_notification=False):
+        """
+        Forward a message. Requires chat_id to forward to.
+        https://core.telegram.org/bots/api#forwardmessage
+        """
         if not message_id:
             message_id = self.message['message_id']
         if not from_chat_id:
@@ -124,22 +152,26 @@ class TelegramApi(object):
         return self.method('forwardMessage', check_content=False, **package)
 
     def send_file(self, method, file, **kwargs):
+        """
+        Template for sending files. Checks if the file has been sent before and
+        if so sends a file_id instead.
+        """
         database = MySQLdb.connect(**self.config['DATABASE'])
         arguments = kwargs
         file_type = method.replace('send', '').lower()
-        if type(file) is str:
+        if isinstance(file, str):
             arguments.update({file_type: file})
             return self.method(method, **arguments)
-        elif type(file) != tuple:
+        elif not isinstance(file, tuple):
             file_name = os.path.basename(file.name)
-            if type(file) is _io.BufferedReader:
+            if isinstance(file, _io.BufferedReader):
                 file = file.read()
             file = (file_name, file)
         try:
             md5 = hashlib.md5(file[1]).hexdigest()
             database.query(
-                'SELECT file_id FROM uploaded_files WHERE file_hash="{}" '
-                'AND file_type = "{}"'.format(md5, file_type))
+                'SELECT file_id FROM uploaded_files WHERE file_hash="{}"'
+                ' AND file_type = "{}"'.format(md5, file_type))
             query = database.store_result()
             row = query.fetch_row(how=1)
             if row:
@@ -163,30 +195,50 @@ class TelegramApi(object):
         return result
 
     def send_location(self, latitude, longitude, **kwargs):
+        """
+        Send a location on a map. Requires latitude and longitude
+        https://core.telegram.org/bots/api#sendlocation
+        """
         arguments = locals()
         del arguments['self']
         arguments.update(arguments.pop('kwargs'))
         return self.method('sendLocation', **arguments)
 
-    def send_venue(self, latitude, longitude, title, address, **kwargs):
+    def send_venue(self, title, latitude, longitude, address, **kwargs):
+        """
+        Send a venue. Requires a title, latitude, longitude, and address
+        https://core.telegram.org/bots/api#sendvenue
+        """
         arguments = locals()
         del arguments['self']
         arguments.update(arguments.pop('kwargs'))
         return self.method('sendVenue', **arguments)
 
-    def send_contact(self, phone_number, first_name):
+    def send_contact(self, phone_number, first_name, **kwargs):
+        """
+        Send a contact. Requires a phone_number and first_name.
+        https://core.telegram.org/bots/api#sendcontact
+        """
         arguments = locals()
         del arguments['self']
         arguments.update(arguments.pop('kwargs'))
         return self.method('sendContact', **arguments)
 
     def send_chat_action(self, action, **kwargs):
+        """
+        Send a chat action. Requires an action
+        https://core.telegram.org/bots/api#sendchataction
+        """
         arguments = locals()
         del arguments['self']
         arguments.update(arguments.pop('kwargs'))
         return self.method('sendChatAction', **arguments)
 
     def get_user_profile_photos(self, user_id, offset=0, limit=0):
+        """
+        Fetches a users profile photos. Requires a user_id
+        https://core.telegram.org/bots/api#getuserprofilephotos
+        """
         arguments = locals()
         del arguments['self']
         return self.method('getUserProfilePhotos',
@@ -194,9 +246,17 @@ class TelegramApi(object):
                            **arguments)
 
     def get_file(self, file_id):
+        """
+        Grab basic info about a file. Requires a file_id
+        https://core.telegram.org/bots/api#getfile
+        """
         return self.method('getFile', check_content=False, file_id=file_id)
 
     def kick_chat_member(self, user_id, chat_id=None):
+        """
+        Kick a chat member. Requires a user_id
+        https://core.telegram.org/bots/api#kickchatmember
+        """
         arguments = locals()
         del arguments['self']
         if not arguments['chat_id']:
@@ -204,16 +264,34 @@ class TelegramApi(object):
         return self.method('kickChatMember', **arguments)
 
     def unban_chat_member(self, user_id, chat_id=None):
+        """
+        Unban a chat member. Requires a user_id
+        https://core.telegram.org/bots/api#unbanchatmember
+        """
         arguments = locals()
         del arguments['self']
         if not arguments['chat_id']:
             del arguments['chat_id']
         return self.method('unbanChatMember', **arguments)
 
+    def leave_chat(self, chat_id=None):
+        """
+        Leave a chat, optional chat_id argument
+        https://core.telegram.org/bots/api#leavechat
+        """
+        if not chat_id:
+            chat_id = self.chat_data['chat']['id']
+        argument = {'chat_id': chat_id}
+        return self.method('leaveChat', **argument)
+
     def answer_callback_query(self,
                               text=None,
                               callback_query_id=None,
                               show_alert=False):
+        """
+        Answer a call back query, has optional text, callback_query_id, and show_alert arguments.
+        https://core.telegram.org/bots/api#answercallbackquery
+        """
         arguments = locals()
         del arguments['self']
         if not callback_query_id:
@@ -229,6 +307,10 @@ class TelegramApi(object):
                            **arguments)
 
     def edit_message_text(self, text, **kwargs):
+        """
+        Edit message text. Requires replacement text.
+        https://core.telegram.org/bots/api#editmessagetext
+        """
         message_id, chat_id = self.get_edit_parameters()
         package = {
             'chat_id': chat_id,
@@ -240,6 +322,10 @@ class TelegramApi(object):
         return self.method('editMessageText', check_content=False, **package)
 
     def edit_message_caption(self, caption=None, **kwargs):
+        """
+        Edit a message caption. Pass with no arguments to remove a caption
+        https://core.telegram.org/bots/api#editmessagecaption
+        """
         message_id, chat_id = self.get_edit_parameters()
         package = {'chat_id': chat_id, 'message_id': message_id}
         if caption:
@@ -250,6 +336,10 @@ class TelegramApi(object):
                            **package)
 
     def edit_message_reply_markup(self, reply_markup=None, **kwargs):
+        """
+        Edit message reply markup. Pass with no arguments to remove reply markup
+        https://core.telegram.org/bots/api#editmessagereplymarkup
+        """
         message_id, chat_id = self.get_edit_parameters()
         package = {'chat_id': chat_id, 'message_id': message_id}
         if reply_markup:
@@ -260,6 +350,9 @@ class TelegramApi(object):
                            **package)
 
     def get_edit_parameters(self):
+        """
+        Grabs message id and chat id for the edit message parameter.
+        """
         if self.last_sent:
             message_id = self.last_sent['message_id']
             chat_id = self.last_sent['chat_id']
@@ -275,6 +368,11 @@ class TelegramApi(object):
         return message_id, chat_id
 
     def flag_message(self, message_id, parameters):
+        """
+        Flags a message. Flagged message will retrigger plugins on interaction.
+        Useful for multistep commands. Pass flag_message=True with the send_message
+        method to take utilitize
+        """
         database = MySQLdb.connect(**self.config['DATABASE'])
         cursor = database.cursor()
         plugin_name = parameters[
@@ -301,6 +399,10 @@ class TelegramApi(object):
         database.close()
 
     def flag_time(self, reminder_time, plugin_data=None, plugin_name=None):
+        """
+        Flag a specified time. Requires a unix time argument. At the specified time
+        the plugin is reactivated with this same message.
+        """
         if self.message:
             reminder_id = "{}-{}-{}".format(self.message['message_id'],
                                             self.message['chat']['id'],
@@ -324,6 +426,10 @@ class TelegramApi(object):
         return reminder_id
 
     def download_file(self, file_object):
+        """
+        Download a file. Requires a file object and returns a file path.
+        Previously downloaded files are cached
+        """
         database = MySQLdb.connect(**self.config['DATABASE'])
         file_id = file_object['result']["file_id"]
         file_path = file_object['result']['file_path']
@@ -358,6 +464,11 @@ class TelegramApi(object):
     def inline_keyboard_markup(self,
                                list_of_list_of_buttons,
                                plugin_data=None):
+        """
+        Creates properly formatted inline keyboard markup. Requires a list of list of buttons.
+        Callback data will
+        https://core.telegram.org/bots/api#inlinekeyboardmarkup
+        """
         database = MySQLdb.connect(**self.config['DATABASE'])
         cursor = database.cursor()
         plugin_data = json.dumps(plugin_data)
@@ -379,6 +490,10 @@ class TelegramApi(object):
         return json.dumps(package)
 
     def get_chat_member(self, user_id, chat_id=None, check_db=True):
+        """
+        Returns a getChatMember object. Requires a user_id.
+        https://core.telegram.org/bots/api#getchatmember
+        """
         if check_db:
             database = MySQLdb.connect(**self.config['DATABASE'])
             database.query(
@@ -399,6 +514,9 @@ class TelegramApi(object):
                            chat_id=chat_id)
 
     def pm_parameter(self, parameter):
+        """
+        Returns a pm parameter url. Requires a parameter. Upon activation retriggers this plugin.
+        """
         try:
             self.cursor.execute("INSERT INTO pm_parameters VALUES(%s, %s);",
                                 (self.plugin_name, parameter))
@@ -413,6 +531,10 @@ def reply_keyboard_markup(list_of_list_of_buttons,
                           resize_keyboard=False,
                           one_time_keyboard=False,
                           selective=False):
+    """
+    Returns json serialized ReplyKeyboardMarkup object. Requires a list of list of buttons.
+    https://core.telegram.org/bots/api#replykeyboardhide
+    """
     for button_list in list_of_list_of_buttons:
         for button in button_list:
             if 'text' not in button:
@@ -427,16 +549,27 @@ def reply_keyboard_markup(list_of_list_of_buttons,
 
 
 def reply_keyboard_hide(hide_keyboard=True, selective=False):
+    """
+    Returns json serialized ReplyKeyboardHide object.
+    https://core.telegram.org/bots/api#replykeyboardhide
+    """
     package = {'hide_keyboard': hide_keyboard, 'selective': selective}
     return json.dumps(package)
 
 
 def force_reply(forced_reply=True, selective=False):
+    """
+    Returns json serialized ForceReply object
+    https://core.telegram.org/bots/api#forcereply
+    """
     package = {'force_reply': forced_reply, 'selective': selective}
     return json.dumps(package)
 
 
 def name_file(file_id, file_name):
+    """
+    Extracts extension from file_name and appends to file_id
+    """
     if file_name:
         match = re.findall('(\.[0-9a-zA-Z]+$)', file_name)
         if match:

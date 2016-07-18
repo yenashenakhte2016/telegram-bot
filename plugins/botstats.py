@@ -16,7 +16,8 @@ def main(tg):
         opted_in_count = len(chat_list)
         for chat in chat_list:
             try:
-                tg.database.query("SELECT COUNT(*) FROM `{}stats`;".format(chat[0]))
+                tg.database.query("SELECT COUNT(*) FROM `{}stats`;".format(
+                    chat[0]))
             except _mysql_exceptions.ProgrammingError:
                 continue
             query = tg.database.store_result()
