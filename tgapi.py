@@ -149,28 +149,20 @@ class TelegramApi(object):
         database = MySQLdb.connect(**self.config['DATABASE'])
         arguments = kwargs
         file_type = method.replace('send', '').lower()
-        if isinstance(file, str):
-            arguments.update({file_type: file})
-            return self.method(method, **arguments)
-        elif not isinstance(file, tuple):
-            file_name = os.path.basename(file.name)
-            if isinstance(file, _io.BufferedReader):
-                file = file.read()
-            file = (file_name, file)
-        try:
-            md5 = hashlib.md5(file[1]).hexdigest()
+        cached = False
+
+        md5, file = format_file(file)
+        arguments.update({file_type: file})
+        if md5:
             database.query('SELECT file_id FROM uploaded_files WHERE file_hash="{}"'
                            ' AND file_type = "{}"'.format(md5, file_type))
             query = database.store_result()
             row = query.fetch_row(how=1)
             if row:
+                cached = True
                 arguments.update({file_type: row[0]['file_id']})
-                return self.method(method, **arguments)
-        except TypeError:
-            md5 = None
-        arguments.update({file_type: file})
         result = self.method(method, **arguments)
-        if result['ok']:
+        if result['ok'] and not cached:
             try:
                 file_id = result['result'][file_type]['file_id']
             except TypeError:
@@ -533,7 +525,22 @@ def name_file(file_id, file_name):
     Extracts extension from file_name and appends to file_id
     """
     if file_name:
-        match = re.findall('(\.[0-9a-zA-Z]+$)', file_name)
+        match = re.findall(r'(\.[0-9a-zA-Z]+$)', file_name)
         if match:
             return file_id + match[0]
     return str(file_id)
+
+
+def format_file(file):
+    """
+    Returns file tuple for urllib3
+    """
+    if not isinstance(file, tuple):
+        file_name = os.path.basename(file.name)
+        file = (file_name, file)
+    if isinstance(file[1], str):
+        file = (file[0], file[1].encode('UTF-8'))
+    elif not isinstance(file[1], bytes):
+        file = (file[0], file[1].read())
+    md5 = hashlib.md5(file[1]).hexdigest()
+    return md5, file
