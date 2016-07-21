@@ -52,10 +52,8 @@ class TelegramApi(object):
         self.send_video = partial(self.send_file, 'sendVideo')
         self.send_voice = partial(self.send_file, 'sendVoice')
         self.get_chat = partial(self.get_something, 'getChat')
-        self.get_chat_administrators = partial(self.get_something,
-                                               'getChatAdministrators')
-        self.get_chat_members_count = partial(self.get_something,
-                                              'getChatMembersCount')
+        self.get_chat_administrators = partial(self.get_something, 'getChatAdministrators')
+        self.get_chat_members_count = partial(self.get_something, 'getChatMembersCount')
 
         self.reply_keyboard_hide = reply_keyboard_hide
         self.reply_keyboard_markup = reply_keyboard_markup
@@ -75,12 +73,9 @@ class TelegramApi(object):
         """
         content = dict()
         content['data'] = dict()
-        url = "https://api.telegram.org/bot{}/{}".format(self.token,
-                                                         method_name)
-        reply_in_groups = literal_eval(self.config['MESSAGE_OPTIONS'][
-            'reply_in_groups'])
-        reply_in_private = literal_eval(self.config['MESSAGE_OPTIONS'][
-            'reply_in_private'])
+        url = "https://api.telegram.org/bot{}/{}".format(self.token, method_name)
+        reply_in_groups = literal_eval(self.config['MESSAGE_OPTIONS']['reply_in_groups'])
+        reply_in_private = literal_eval(self.config['MESSAGE_OPTIONS']['reply_in_private'])
 
         if check_content and self.chat_data:
             if 'chat_id' not in kwargs:
@@ -92,8 +87,7 @@ class TelegramApi(object):
                 elif reply_in_groups:
                     kwargs['reply_to_message_id'] = self.chat_data['message_id']
 
-        fields = {param: val
-                  for param, val in kwargs.items() if val is not None}
+        fields = {param: val for param, val in kwargs.items() if val is not None}
         try:
             post = self.http.request_encode_body('POST', url, fields=fields)
         except urllib3.exceptions.HTTPError:
@@ -130,11 +124,7 @@ class TelegramApi(object):
                 self.flag_message(message_id, flag_message)
         return response
 
-    def forward_message(self,
-                        chat_id,
-                        message_id=None,
-                        from_chat_id=None,
-                        disable_notification=False):
+    def forward_message(self, chat_id, message_id=None, from_chat_id=None, disable_notification=False):
         """
         Forward a message. Requires chat_id to forward to.
         https://core.telegram.org/bots/api#forwardmessage
@@ -169,9 +159,8 @@ class TelegramApi(object):
             file = (file_name, file)
         try:
             md5 = hashlib.md5(file[1]).hexdigest()
-            database.query(
-                'SELECT file_id FROM uploaded_files WHERE file_hash="{}"'
-                ' AND file_type = "{}"'.format(md5, file_type))
+            database.query('SELECT file_id FROM uploaded_files WHERE file_hash="{}"'
+                           ' AND file_type = "{}"'.format(md5, file_type))
             query = database.store_result()
             row = query.fetch_row(how=1)
             if row:
@@ -188,8 +177,7 @@ class TelegramApi(object):
                 file_id = result['result'][file_type][-1]['file_id']
             if md5:
                 cursor = database.cursor()
-                cursor.execute("INSERT INTO uploaded_files VALUES(%s, %s, %s)",
-                               (file_id, md5, file_type))
+                cursor.execute("INSERT INTO uploaded_files VALUES(%s, %s, %s)", (file_id, md5, file_type))
         database.commit()
         database.close()
         return result
@@ -241,9 +229,7 @@ class TelegramApi(object):
         """
         arguments = locals()
         del arguments['self']
-        return self.method('getUserProfilePhotos',
-                           check_content=False,
-                           **arguments)
+        return self.method('getUserProfilePhotos', check_content=False, **arguments)
 
     def get_file(self, file_id):
         """
@@ -284,10 +270,7 @@ class TelegramApi(object):
         argument = {'chat_id': chat_id}
         return self.method('leaveChat', **argument)
 
-    def answer_callback_query(self,
-                              text=None,
-                              callback_query_id=None,
-                              show_alert=False):
+    def answer_callback_query(self, text=None, callback_query_id=None, show_alert=False):
         """
         Answer a call back query, has optional text, callback_query_id, and show_alert arguments.
         https://core.telegram.org/bots/api#answercallbackquery
@@ -296,15 +279,12 @@ class TelegramApi(object):
         del arguments['self']
         if not callback_query_id:
             try:
-                arguments.update(
-                    {'callback_query_id': int(self.callback_query['id'])})
+                arguments.update({'callback_query_id': int(self.callback_query['id'])})
             except KeyError:
                 return "Callback query ID not found!"
         if text is None:
             del arguments['text']
-        return self.method('answerCallbackQuery',
-                           check_content=False,
-                           **arguments)
+        return self.method('answerCallbackQuery', check_content=False, **arguments)
 
     def edit_message_text(self, text, **kwargs):
         """
@@ -331,9 +311,7 @@ class TelegramApi(object):
         if caption:
             package['caption'] = caption
         package.update(kwargs)
-        return self.method('editMessageCaption',
-                           check_content=False,
-                           **package)
+        return self.method('editMessageCaption', check_content=False, **package)
 
     def edit_message_reply_markup(self, reply_markup=None, **kwargs):
         """
@@ -345,9 +323,7 @@ class TelegramApi(object):
         if reply_markup:
             package['reply_markup'] = reply_markup
         package.update(kwargs)
-        return self.method('editMessageReplyMarkup',
-                           check_content=False,
-                           **package)
+        return self.method('editMessageReplyMarkup', check_content=False, **package)
 
     def get_edit_parameters(self):
         """
@@ -399,13 +375,9 @@ class TelegramApi(object):
         if 'plugin_data' in parameters:
             plugin_data = json.dumps(parameters['plugin_data'])
 
-        cursor.execute(
-            "UPDATE flagged_messages SET currently_active=0 WHERE chat_id=%s",
-            (chat_id, ))
-        cursor.execute(
-            "INSERT INTO flagged_messages VALUES(%s, %s, %s, %s, %s, %s, %s)",
-            (plugin_name, message_id, chat_id, user_id, currently_active,
-             single_use, plugin_data))
+        cursor.execute("UPDATE flagged_messages SET currently_active=0 WHERE chat_id=%s", (chat_id, ))
+        cursor.execute("INSERT INTO flagged_messages VALUES(%s, %s, %s, %s, %s, %s, %s)",
+                       (plugin_name, message_id, chat_id, user_id, currently_active, single_use, plugin_data))
         database.commit()
         database.close()
 
@@ -415,13 +387,9 @@ class TelegramApi(object):
         the plugin is reactivated with this same message.
         """
         if self.message:
-            reminder_id = "{}-{}-{}".format(self.message['message_id'],
-                                            self.message['chat']['id'],
-                                            time.time())
+            reminder_id = "{}-{}-{}".format(self.message['message_id'], self.message['chat']['id'], time.time())
         else:
-            reminder_id = "{}-{}-{}".format(self.callback_query['id'],
-                                            self.callback_query['from']['id'],
-                                            time.time())
+            reminder_id = "{}-{}-{}".format(self.callback_query['id'], self.callback_query['from']['id'], time.time())
         database = MySQLdb.connect(**self.config['DATABASE'])
         cursor = database.cursor()
         plugin_name = plugin_name or self.plugin_name
@@ -431,10 +399,8 @@ class TelegramApi(object):
             previous_message = json.dumps(self.chat_data)
         else:
             previous_message = None
-        cursor.execute(
-            "INSERT INTO flagged_time VALUES(%s, %s, FROM_UNIXTIME(%s), %s, %s)",
-            (reminder_id, plugin_name, reminder_time, previous_message,
-             plugin_data))
+        cursor.execute("INSERT INTO flagged_time VALUES(%s, %s, FROM_UNIXTIME(%s), %s, %s)",
+                       (reminder_id, plugin_name, reminder_time, previous_message, plugin_data))
         database.commit()
         database.close()
         return reminder_id
@@ -447,9 +413,7 @@ class TelegramApi(object):
         database = MySQLdb.connect(**self.config['DATABASE'])
         file_id = file_object['result']["file_id"]
         file_path = file_object['result']['file_path']
-        database.query(
-            'SELECT file_path FROM downloaded_files WHERE file_id="{}";'.format(
-                file_id))
+        database.query('SELECT file_path FROM downloaded_files WHERE file_id="{}";'.format(file_id))
         query = database.store_result()
         row = query.fetch_row(how=1)
         if row:
@@ -457,8 +421,7 @@ class TelegramApi(object):
             return row[0]['file_path']
         else:
             cursor = database.cursor()
-            url = "https://api.telegram.org/file/bot{}/{}".format(self.token,
-                                                                  file_path)
+            url = "https://api.telegram.org/file/bot{}/{}".format(self.token, file_path)
             try:
                 name = file_path
             except KeyError:
@@ -469,15 +432,12 @@ class TelegramApi(object):
             with open(path, 'wb') as output:
                 file_hash = hashlib.md5(request.data).hexdigest()
                 output.write(request.data)
-            cursor.execute("INSERT INTO downloaded_files VALUES(%s, %s, %s)",
-                           (file_id, path, file_hash))
+            cursor.execute("INSERT INTO downloaded_files VALUES(%s, %s, %s)", (file_id, path, file_hash))
             database.commit()
             database.close()
             return path
 
-    def inline_keyboard_markup(self,
-                               list_of_list_of_buttons,
-                               plugin_data=None):
+    def inline_keyboard_markup(self, list_of_list_of_buttons, plugin_data=None):
         """
         Creates properly formatted inline keyboard markup. Requires a list of list of buttons.
         Callback data will
@@ -492,10 +452,8 @@ class TelegramApi(object):
                     return "Error: Text not found in button object"
                 if 'callback_data' in button:
                     try:
-                        cursor.execute(
-                            "INSERT INTO callback_queries VALUES(%s, %s, %s)",
-                            (self.plugin_name, button['callback_data'],
-                             plugin_data))
+                        cursor.execute("INSERT INTO callback_queries VALUES(%s, %s, %s)",
+                                       (self.plugin_name, button['callback_data'], plugin_data))
                     except _mysql_exceptions.IntegrityError:
                         continue
         package = {'inline_keyboard': list_of_list_of_buttons}
@@ -510,31 +468,23 @@ class TelegramApi(object):
         """
         if check_db:
             database = MySQLdb.connect(**self.config['DATABASE'])
-            database.query(
-                "SELECT first_name, last_name, user_name FROM users_list WHERE user_id={}".format(
-                    user_id))
+            database.query("SELECT first_name, last_name, user_name FROM users_list WHERE user_id={}".format(user_id))
             query = database.store_result()
             result = query.fetch_row(how=1)
             if result:
                 user_obj = {'id': user_id}
                 user_obj.update(result[0])
-                return {'result': {'status': 'from_db',
-                                   'user': user_obj},
-                        'ok': True}
+                return {'result': {'status': 'from_db', 'user': user_obj}, 'ok': True}
         if not chat_id and self.chat_data:
             chat_id = self.chat_data['chat']['id']
-        return self.method('getChatMember',
-                           check_content=False,
-                           user_id=user_id,
-                           chat_id=chat_id)
+        return self.method('getChatMember', check_content=False, user_id=user_id, chat_id=chat_id)
 
     def pm_parameter(self, parameter):
         """
         Returns a pm parameter url. Requires a parameter. Upon activation retriggers this plugin.
         """
         try:
-            self.cursor.execute("INSERT INTO pm_parameters VALUES(%s, %s);",
-                                (self.plugin_name, parameter))
+            self.cursor.execute("INSERT INTO pm_parameters VALUES(%s, %s);", (self.plugin_name, parameter))
         except _mysql_exceptions.IntegrityError:
             pass
         url = "https://telegram.me/{}?start={}"
@@ -542,10 +492,7 @@ class TelegramApi(object):
         return url.format(bot_name, parameter)
 
 
-def reply_keyboard_markup(list_of_list_of_buttons,
-                          resize_keyboard=False,
-                          one_time_keyboard=False,
-                          selective=False):
+def reply_keyboard_markup(list_of_list_of_buttons, resize_keyboard=False, one_time_keyboard=False, selective=False):
     """
     Returns json serialized ReplyKeyboardMarkup object. Requires a list of list of buttons.
     https://core.telegram.org/bots/api#replykeyboardhide

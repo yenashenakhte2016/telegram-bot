@@ -28,9 +28,8 @@ def main(tg):
         tg.send_message("I can only upscale photos :(")
         return
     else:
-        tg.send_message(
-            "Send me the image you would like to upscale or reply to an image with /waifu2x",
-            flag_message=True)
+        tg.send_message("Send me the image you would like to upscale or reply to an image with /waifu2x",
+                        flag_message=True)
         return
     if document:
         mime_type = document['mime_type']
@@ -69,11 +68,9 @@ def check_size(image):
     if image.size[0] > 2560 or image.size[1] > 2560:
         return None
     else:
-        largest = image.size[0] if image.size[0] > image.size[
-            1] else image.size[1]
+        largest = image.size[0] if image.size[0] > image.size[1] else image.size[1]
         scale = 1280 / largest
-        new_dimensions = (int(image.size[0] * scale),
-                          int(image.size[1] * scale))
+        new_dimensions = (int(image.size[0] * scale), int(image.size[1] * scale))
         return image.resize(new_dimensions, Image.LANCZOS)
 
 
@@ -84,10 +81,6 @@ def create_image_obj(image):
     return compressed_image
 
 
-parameters = {
-    'name': "Waifu2x",
-    'short_description': "Upscale images!",
-    'permissions': '11'
-}
+parameters = {'name': "Waifu2x", 'short_description': "Upscale images!", 'permissions': '11'}
 
 arguments = {'text': ["^/waifu2x"], 'caption': ["^/waifu2x"]}

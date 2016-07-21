@@ -56,10 +56,9 @@ def handle_message(tg, api_key):
             else:
                 top_artists(tg, api_key, first_name, lastfm_name)
         else:
-            tg.send_message(
-                "It seems {} LastFM hasn't been linked\n"
-                "Reply with your LastFM to link it!".format(determiner),
-                flag_message=True)
+            tg.send_message("It seems {} LastFM hasn't been linked\n"
+                            "Reply with your LastFM to link it!".format(determiner),
+                            flag_message=True)
 
 
 def handle_inline_query(tg, api_key):
@@ -75,12 +74,10 @@ def handle_inline_query(tg, api_key):
         page = int(tg.inline_query['offset']) if tg.inline_query['offset'] else 1
         track_list = get_recently_played(tg.http, api_key, lastfm_name, 14, page=page)
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
-        futures = [executor.submit(create_track_result, tg, track, lastfm_name,
-                                   first_name) for track in track_list]
+        futures = [executor.submit(create_track_result, tg, track, lastfm_name, first_name) for track in track_list]
         concurrent.futures.wait(futures)
         offset = page + 1 if len(track_list) == 14 else ''
-        is_personal = False if '(.*)' in tg.inline_query[
-            'matched_regex'] else True
+        is_personal = False if '(.*)' in tg.inline_query['matched_regex'] else True
         tg.answer_inline_query([box.result() for box in futures],
                                is_personal=is_personal,
                                cache_time=15,
@@ -101,13 +98,12 @@ def create_track_result(tg, track, lastfm_name, first_name):
     keyboard = create_keyboard(lastfm_name, track['song_url'])
     message_contents = tg.input_text_message_content(message)
     description = "{}\n{}".format(track['artist'], time_played)
-    return tg.inline_query_result_article(
-        track['name'],
-        message_contents,
-        description=description,
-        reply_markup=tg.inline_keyboard_markup(keyboard),
-        thumb_url=track['image'],
-        parse_mode="None")
+    return tg.inline_query_result_article(track['name'],
+                                          message_contents,
+                                          description=description,
+                                          reply_markup=tg.inline_keyboard_markup(keyboard),
+                                          thumb_url=track['image'],
+                                          parse_mode="None")
 
 
 def last_played(http, api_key, first_name, lastfm_name):
@@ -130,15 +126,14 @@ def top_tracks(tg, api_key, first_name, lastfm_name):
     """
     Sends a users top tracks
     """
-    limit = int(tg.message['match'][1]) if tg.message[
-        'matched_regex'] in arguments['text'][3] else 8
+    limit = int(tg.message['match'][1]) if tg.message['matched_regex'] in arguments['text'][3] else 8
     limit = 25 if limit > 25 else limit
     track_list = get_top_tracks(tg.http, api_key, lastfm_name, limit)
     if track_list:
         message = "<b>{}'s Top Tracks</b>\n".format(first_name)
         for track in track_list:
-            message += '\n<a href="{}">{}</a>  -  <code>{} plays</code>'.format(
-                track['song_url'], track['name'], track['play_count'])
+            message += '\n<a href="{}">{}</a>  -  <code>{} plays</code>'.format(track['song_url'], track['name'],
+                                                                                track['play_count'])
         tg.send_message(message, disable_web_page_preview=True)
 
 
@@ -146,15 +141,14 @@ def top_artists(tg, api_key, first_name, lastfm_name):
     """
     Sends a users top artists
     """
-    limit = int(tg.message['match'][1]) if tg.message[
-        'matched_regex'] in arguments['text'][6] else 8
+    limit = int(tg.message['match'][1]) if tg.message['matched_regex'] in arguments['text'][6] else 8
     limit = 25 if limit > 25 else limit
     artists = get_top_artists(tg.http, api_key, lastfm_name, limit)
     if artists:
         message = "<b>{}'s Top Artists</b>\n".format(first_name)
         for artist in artists:
-            message += '\n<a href="{}">{}</a>  -  <code>{} plays</code>'.format(
-                artist['url'], artist['name'], artist['play_count'])
+            message += '\n<a href="{}">{}</a>  -  <code>{} plays</code>'.format(artist['url'], artist['name'],
+                                                                                artist['play_count'])
         tg.send_message(message, disable_web_page_preview=True)
 
 
@@ -164,8 +158,7 @@ def get_top_artists(local_http, api_key, user_name, limit, period='1month', page
     """
     artist_list = list()
     method = 'user.getTopArtists'
-    url = (base_url + '&user={}&limit={}&period={}&page={}').format(
-        method, api_key, user_name, limit, period, page)
+    url = (base_url + '&user={}&limit={}&period={}&page={}').format(method, api_key, user_name, limit, period, page)
     result = local_http.request('GET', url).data
     response = json.loads(result.decode('UTF-8'))
     artists = response['topartists']['artist']
@@ -185,8 +178,7 @@ def get_top_tracks(local_http, api_key, user_name, limit, period='1month', page=
     """
     track_list = list()
     method = 'user.getTopTracks'
-    url = (base_url + '&user={}&limit={}&period={}&page={}').format(
-        method, api_key, user_name, limit, period, page)
+    url = (base_url + '&user={}&limit={}&period={}&page={}').format(method, api_key, user_name, limit, period, page)
     result = local_http.request('GET', url).data
     response = json.loads(result.decode('UTF-8'))
     tracks = response['toptracks']['track']
@@ -207,8 +199,7 @@ def get_recently_played(local_http, api_key, user_name, limit, page=1):
     getRecentTracks method. Returns a users recently played tracks.
     """
     method = 'user.getRecentTracks'
-    url = (base_url + '&user={}&limit={}&page={}').format(
-        method, api_key, user_name, limit, page)
+    url = (base_url + '&user={}&limit={}&page={}').format(method, api_key, user_name, limit, page)
     result = local_http.request('GET', url).data
     response = json.loads(result.decode('UTF-8'))
     if 'error' in response:
@@ -258,30 +249,24 @@ def determine_names(tg):
         determiner = None
         name = tg.message['match'] if tg.message else tg.inline_query['match']
         if name[0] == '@':
-            tg.database.query(
-                'SELECT user_id FROM users_list WHERE user_name="{}"'.format(
-                    name.replace('@', '')))
+            tg.database.query('SELECT user_id FROM users_list WHERE user_name="{}"'.format(name.replace('@', '')))
             query = tg.database.store_result()
             result = query.fetch_row(how=1, maxrows=0)
             if result:
                 return name, get_lastfm_username(result[0]['user_id']), "this"
             else:
                 return False
-        lastfm_name = first_name = tg.message[
-            'match'] if tg.message else tg.inline_query['match']
+        lastfm_name = first_name = tg.message['match'] if tg.message else tg.inline_query['match']
     elif tg.message and 'reply_to_message' in tg.message:
         user_id = tg.message['reply_to_message']['from']['id']
         determiner = "this"
         lastfm_name = get_lastfm_username(user_id)
         first_name = tg.message['reply_to_message']['from']['first_name']
     else:
-        user_id = tg.message['from']['id'] if tg.message else tg.inline_query[
-            'from']['id']
+        user_id = tg.message['from']['id'] if tg.message else tg.inline_query['from']['id']
         determiner = "your"
         lastfm_name = get_lastfm_username(user_id)
-        first_name = tg.message['from'][
-            'first_name'] if tg.message else tg.inline_query['from'][
-                'first_name']
+        first_name = tg.message['from']['first_name'] if tg.message else tg.inline_query['from']['first_name']
     return first_name, lastfm_name, determiner
 
 
@@ -312,10 +297,8 @@ def link_profile(tg, api_key):
                 message += "\n\nYou are currently listening to:"
             else:
                 message += "\n\nYou have last listened to:"
-            message += "\n{} - {}".format(track_list['name'],
-                                          track_list['artist'])
-            keyboard = create_keyboard(profile['lastfm'],
-                                       track_list['song_url'])
+            message += "\n{} - {}".format(track_list['name'], track_list['artist'])
+            keyboard = create_keyboard(profile['lastfm'], track_list['song_url'])
         keyboard = tg.inline_keyboard_markup(keyboard)
         tg.send_message(message, reply_markup=keyboard)
     else:
@@ -370,9 +353,8 @@ parameters = {
 
 arguments = {
     'text': [
-        "^/lastfm (.*)", "^/lastfm$", "^/toptracks$",
-        r"^/toptracks (--|\u2014)(\d+)$", "^/toptracks (.*)", "^/topartists$",
-        r"^/topartists (--|\u2014)(\d+)$", "^/topartists (.*)"
+        "^/lastfm (.*)", "^/lastfm$", "^/toptracks$", r"^/toptracks (--|\u2014)(\d+)$", "^/toptracks (.*)",
+        "^/topartists$", r"^/topartists (--|\u2014)(\d+)$", "^/topartists (.*)"
     ]
 }
 

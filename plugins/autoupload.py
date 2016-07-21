@@ -19,9 +19,7 @@ def main(tg):
     photo = resize_image(photo)
     photo = compress_image(photo)
     name = document_obj['result']['file_id'] + ".jpg"
-    tg.send_photo((name, photo.read()),
-                  disable_notification=True,
-                  reply_to_message_id=tg.message['message_id'])
+    tg.send_photo((name, photo.read()), disable_notification=True, reply_to_message_id=tg.message['message_id'])
 
 
 def resize_image(image):
@@ -29,11 +27,9 @@ def resize_image(image):
     Resizes an image if its height or width > 1600. Uses lanczos downscaling.
     """
     if image.size[0] > 1600 or image.size[1] > 1600:
-        larger = image.size[0] if image.size[0] > image.size[
-            1] else image.size[1]
+        larger = image.size[0] if image.size[0] > image.size[1] else image.size[1]
         scale = 1600 / larger
-        new_dimensions = (int(image.size[0] * scale),
-                          int(image.size[1] * scale))
+        new_dimensions = (int(image.size[0] * scale), int(image.size[1] * scale))
         return image.resize(new_dimensions, Image.LANCZOS)
     return image
 

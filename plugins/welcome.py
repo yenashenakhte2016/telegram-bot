@@ -21,10 +21,6 @@ def main(tg):
             tg.send_message("Bye {} :(".format(name))
 
 
-parameters = {
-    'name': "Welcome",
-    'short_description': "Greet new members!",
-    'permissions': True
-}
+parameters = {'name': "Welcome", 'short_description': "Greet new members!", 'permissions': True}
 
 arguments = {'new_chat_participant': ["*"], 'left_chat_participant': ["*"]}

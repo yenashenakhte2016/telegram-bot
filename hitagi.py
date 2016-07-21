@@ -23,9 +23,7 @@ CONFIG, PLUGINS, EXTENSIONS = bot_init.master_mind()
 SLEEP_TIME = float(CONFIG['BOT_CONFIG']['sleep'])
 RUNNING = Value('i', True)  # If this is False workers shutdown safely
 
-HTTP = urllib3.connection_from_url(BASE_URL,
-                                   cert_reqs='CERT_REQUIRED',
-                                   ca_certs=certifi.where())
+HTTP = urllib3.connection_from_url(BASE_URL, cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
 HTTP.timeout = urllib3.Timeout(connect=1.0)
 HTTP.retries = 3
 
@@ -33,8 +31,7 @@ API_TOKEN = CONFIG['BOT_CONFIG']['token']
 MESSAGE_QUEUE = Queue()
 # Stores all updates for workers to grab
 
-GET_ME = HTTP.request(
-    'GET', "https://api.telegram.org/bot{}/getMe".format(API_TOKEN)).data
+GET_ME = HTTP.request('GET', "https://api.telegram.org/bot{}/getMe".format(API_TOKEN)).data
 GET_ME = json.loads(GET_ME.decode('UTF-8'))
 GET_ME.update({'date': int(time.time())})
 # https://core.telegram.org/bots/api#getme
@@ -78,25 +75,21 @@ def process_updates():
     Decides which type the update is and routes it to the appropriate route_updates
     method and launches a thread for the run_extensions method.
     """
-    plugin_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',
-                                      ca_certs=certifi.where())
+    plugin_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
     plugin_http.timeout = urllib3.Timeout(connect=1.0)
     plugin_http.retries = 3
     update_router = RouteMessage(PLUGINS, plugin_http, GET_ME, CONFIG)
     while RUNNING.value:
         update = MESSAGE_QUEUE.get()
         if update:
-            extension_thread = ThreadProcess(target=run_extensions,
-                                             args=(update, ))
+            extension_thread = ThreadProcess(target=run_extensions, args=(update, ))
             extension_thread.start()
             if 'message' in update:
                 update_router.route_update(update['message'])
             elif 'callback_query' in update:
-                route_callback_query(PLUGINS, GET_ME, CONFIG, plugin_http,
-                                     update['callback_query'])
+                route_callback_query(PLUGINS, GET_ME, CONFIG, plugin_http, update['callback_query'])
             elif 'inline_query' in update:
-                route_inline_query(PLUGINS, GET_ME, CONFIG, plugin_http,
-                                   update['inline_query'])
+                route_inline_query(PLUGINS, GET_ME, CONFIG, plugin_http, update['inline_query'])
             extension_thread.join()
         time.sleep(SLEEP_TIME)
 
@@ -118,15 +111,13 @@ def check_time_args():
     """
     database = MySQLdb.connect(**CONFIG['DATABASE'])
     cursor = database.cursor()
-    flagged_time_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED',
-                                            ca_certs=certifi.where())
+    flagged_time_http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
     flagged_time_http.timeout = urllib3.Timeout(connect=1.0)
     flagged_time_http.retries = 3
 
     while RUNNING.value:
-        database.query(
-            "SELECT time_id, plugin_name,plugin_data,previous_message FROM flagged_time WHERE "
-            "argument_time <= from_unixtime({})".format(int(time.time())))
+        database.query("SELECT time_id, plugin_name,plugin_data,previous_message FROM flagged_time WHERE "
+                       "argument_time <= from_unixtime({})".format(int(time.time())))
 
         query = database.store_result()
         rows = query.fetch_row(how=1, maxrows=0)
@@ -152,8 +143,7 @@ def check_time_args():
                                          flagged_time_http,
                                          callback_query=previous_message,
                                          plugin_data=plugin_data)
-            cursor.execute('DELETE FROM `flagged_time` WHERE time_id=%s;',
-                           (time_id, ))
+            cursor.execute('DELETE FROM `flagged_time` WHERE time_id=%s;', (time_id, ))
             try:
                 PLUGINS[plugin_name].main(api_object)
             except KeyError:

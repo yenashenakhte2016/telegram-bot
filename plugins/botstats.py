@@ -8,16 +8,14 @@ import _mysql_exceptions
 def main(tg):
     if str(tg.chat_data['from']['id']) in tg.config['BOT_CONFIG']['admins']:
         tg.send_chat_action('typing')
-        tg.database.query(
-            "SELECT chat_id FROM chat_opt_status WHERE status=1;")
+        tg.database.query("SELECT chat_id FROM chat_opt_status WHERE status=1;")
         query = tg.database.store_result()
         chat_list = query.fetch_row(maxrows=0)
         total_messages = 0
         opted_in_count = len(chat_list)
         for chat in chat_list:
             try:
-                tg.database.query("SELECT COUNT(*) FROM `{}stats`;".format(
-                    chat[0]))
+                tg.database.query("SELECT COUNT(*) FROM `{}stats`;".format(chat[0]))
             except _mysql_exceptions.ProgrammingError:
                 continue
             query = tg.database.store_result()
@@ -53,11 +51,6 @@ def parse_date(start_time):
     return "{0:02.0f}:{1:02.0f}".format(hours, minutes)
 
 
-parameters = {
-    'name': "Bot Statistics",
-    'short_description': "View bot statistics",
-    'permissions': "11",
-    'hidden': True
-}
+parameters = {'name': "Bot Statistics", 'short_description': "View bot statistics", 'permissions': "11", 'hidden': True}
 
 arguments = {'text': ["^/botstats$"]}
