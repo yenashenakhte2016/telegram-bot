@@ -66,6 +66,8 @@ class TelegramApi(object):
             self.chat_data = self.message
         elif self.callback_query:
             self.chat_data = self.callback_query['message']
+        else:
+            self.chat_data = None
 
     def method(self, method_name, check_content=True, **kwargs):
         """
@@ -80,18 +82,15 @@ class TelegramApi(object):
         reply_in_private = literal_eval(self.config['MESSAGE_OPTIONS'][
             'reply_in_private'])
 
-        if check_content:
+        if check_content and self.chat_data:
             if 'chat_id' not in kwargs:
                 kwargs['chat_id'] = self.chat_data['chat']['id']
-            if 'reply_to_message_id' not in kwargs and kwargs[
-                    'chat_id'] == self.chat_data['chat']['id']:
+            if 'reply_to_message_id' not in kwargs and kwargs['chat_id'] == self.chat_data['chat']['id']:
                 if self.chat_data['chat']['type'] == 'private':
                     if reply_in_private:
-                        kwargs['reply_to_message_id'] = self.chat_data[
-                            'message_id']
+                        kwargs['reply_to_message_id'] = self.chat_data['message_id']
                 elif reply_in_groups:
-                    kwargs['reply_to_message_id'] = self.chat_data[
-                        'message_id']
+                    kwargs['reply_to_message_id'] = self.chat_data['message_id']
 
         fields = {param: val
                   for param, val in kwargs.items() if val is not None}
@@ -106,7 +105,8 @@ class TelegramApi(object):
         """
         Template for get_chat, get_chat_administrators, and get_chat_members_count
         """
-        chat_id = chat_id or self.chat_data['chat']['id']
+        if not chat_id and self.chat_data:
+            chat_id = self.chat_data['chat']['id']
         return self.method(method, check_content=False, chat_id=chat_id)
 
     def send_message(self, text, flag_message=None, **kwargs):
@@ -279,7 +279,7 @@ class TelegramApi(object):
         Leave a chat, optional chat_id argument
         https://core.telegram.org/bots/api#leavechat
         """
-        if not chat_id:
+        if not chat_id and self.chat_data:
             chat_id = self.chat_data['chat']['id']
         argument = {'chat_id': chat_id}
         return self.method('leaveChat', **argument)
@@ -375,19 +375,30 @@ class TelegramApi(object):
         """
         database = MySQLdb.connect(**self.config['DATABASE'])
         cursor = database.cursor()
-        plugin_name = parameters[
-            'plugin_name'] if 'plugin_name' in parameters else self.plugin_name
-        message_id = message_id
-        chat_id = parameters[
-            'chat_id'] if 'chat_id' in parameters else self.chat_data['chat'][
-                'id']
-        user_id = parameters['user_id'] if 'user_id' in parameters else None
-        currently_active = parameters[
-            'currently_active'] if 'currently_active' in parameters else True
-        single_use = parameters[
-            'single_use'] if 'single_use' in parameters else 0
-        plugin_data = json.dumps(parameters[
-            'plugin_data']) if 'plugin_data' in parameters else None
+
+        chat_id = None
+        user_id = None
+        currently_active = True
+        single_use = 0
+        plugin_data = None
+
+        if 'plugin_name' in parameters:
+            plugin_name = parameters['plugin_name']
+        else:
+            plugin_name = self.plugin_name
+        if 'chat_id' in parameters:
+            chat_id = parameters['chat_id']
+        elif self.chat_data:
+            chat_id = self.chat_data['chat']['id']
+        if 'user_id' in parameters:
+            user_id = parameters['user_id']
+        if 'currently_active' in parameters:
+            currently_active = parameters['currently_active']
+        if 'single_use' in parameters:
+            single_use = parameters['single_use']
+        if 'plugin_data' in parameters:
+            plugin_data = json.dumps(parameters['plugin_data'])
+
         cursor.execute(
             "UPDATE flagged_messages SET currently_active=0 WHERE chat_id=%s",
             (chat_id, ))
@@ -415,8 +426,11 @@ class TelegramApi(object):
         cursor = database.cursor()
         plugin_name = plugin_name or self.plugin_name
         plugin_data = json.dumps(plugin_data) if plugin_data else None
-        self.chat_data.update({'reminder_id': reminder_id})
-        previous_message = json.dumps(self.chat_data)
+        if self.chat_data:
+            self.chat_data.update({'reminder_id': reminder_id})
+            previous_message = json.dumps(self.chat_data)
+        else:
+            previous_message = None
         cursor.execute(
             "INSERT INTO flagged_time VALUES(%s, %s, FROM_UNIXTIME(%s), %s, %s)",
             (reminder_id, plugin_name, reminder_time, previous_message,
@@ -507,7 +521,8 @@ class TelegramApi(object):
                 return {'result': {'status': 'from_db',
                                    'user': user_obj},
                         'ok': True}
-        chat_id = chat_id or self.chat_data['chat']['id']
+        if not chat_id and self.chat_data:
+            chat_id = self.chat_data['chat']['id']
         return self.method('getChatMember',
                            check_content=False,
                            user_id=user_id,

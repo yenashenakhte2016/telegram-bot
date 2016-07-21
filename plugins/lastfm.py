@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
+"""
+The LastFM plugin allows you to share currently/recently played,
+top artists, and top tracks
+"""
 
 import concurrent.futures
 import json
 import os
 import time
 
-base_url = "http://ws.audioscrobbler.com/2.0/?method={}&api_key={}&format=json"
-api_key = None
+base_url = "https://ws.audioscrobbler.com/2.0/?method={}&api_key={}&format=json"
 try:
     JSONDecodeError = json.JSONDecodeError
 except AttributeError:
@@ -14,20 +17,25 @@ except AttributeError:
 
 
 def main(tg):
-    global api_key
+    """
+    Determines if theres an api key in the config then routes the message
+    """
     api_key = tg.config['LASTFM']['api_key']
     if not api_key:
         return
     if tg.message:
-        handle_message(tg)
+        tg.send_chat_action('typing')
+        handle_message(tg, api_key)
     elif tg.inline_query:
-        handle_inline_query(tg)
+        handle_inline_query(tg, api_key)
 
 
-def handle_message(tg):
-    tg.send_chat_action('typing')
+def handle_message(tg, api_key):
+    """
+    Sends song or asks to link/links a users lastfm account
+    """
     if tg.message['flagged_message']:
-        link_profile(tg)
+        link_profile(tg, api_key)
     else:
         try:
             first_name, lastfm_name, determiner = determine_names(tg)
@@ -36,7 +44,7 @@ def handle_message(tg):
             return
         if lastfm_name:
             if tg.message['matched_regex'] in arguments['text'][:2]:
-                response = last_played(tg.http, first_name, lastfm_name)
+                response = last_played(tg.http, api_key, first_name, lastfm_name)
                 if response:
                     message = response['text']
                     keyboard = tg.inline_keyboard_markup(response['keyboard'])
@@ -44,9 +52,9 @@ def handle_message(tg):
                 else:
                     tg.send_message("No recently played tracks :(")
             elif tg.message['matched_regex'] in arguments['text'][:5]:
-                top_tracks(tg, first_name, lastfm_name)
+                top_tracks(tg, api_key, first_name, lastfm_name)
             else:
-                top_artists(tg, first_name, lastfm_name)
+                top_artists(tg, api_key, first_name, lastfm_name)
         else:
             tg.send_message(
                 "It seems {} LastFM hasn't been linked\n"
@@ -54,16 +62,18 @@ def handle_message(tg):
                 flag_message=True)
 
 
-def handle_inline_query(tg):
+def handle_inline_query(tg, api_key):
+    """
+    Sends a users lastfm songs or nothing if the account isn't linked
+    """
     try:
         first_name, lastfm_name, determiner = determine_names(tg)
     except TypeError:
         tg.answer_inline_query([])
         return
     if lastfm_name:
-        page = int(tg.inline_query['offset']) if tg.inline_query[
-            'offset'] else 1
-        track_list = get_recently_played(tg.http, lastfm_name, 14, page=page)
+        page = int(tg.inline_query['offset']) if tg.inline_query['offset'] else 1
+        track_list = get_recently_played(tg.http, api_key, lastfm_name, 14, page=page)
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
         futures = [executor.submit(create_track_result, tg, track, lastfm_name,
                                    first_name) for track in track_list]
@@ -78,6 +88,9 @@ def handle_inline_query(tg):
 
 
 def create_track_result(tg, track, lastfm_name, first_name):
+    """
+    Creates a track result for inline mode
+    """
     if track['now_playing']:
         time_played = "Currently Playing!"
         message = "{} is currently listening to:\n".format(first_name)
@@ -97,8 +110,11 @@ def create_track_result(tg, track, lastfm_name, first_name):
         parse_mode="None")
 
 
-def last_played(http, first_name, lastfm_name):
-    track_list = get_recently_played(http, lastfm_name, 1)
+def last_played(http, api_key, first_name, lastfm_name):
+    """
+    Creates a last played message and keyboard
+    """
+    track_list = get_recently_played(http, api_key, lastfm_name, 1)
     if track_list:
         for track in track_list:
             if track['now_playing']:
@@ -110,11 +126,14 @@ def last_played(http, first_name, lastfm_name):
             return {'text': message, 'keyboard': keyboard}
 
 
-def top_tracks(tg, first_name, lastfm_name):
+def top_tracks(tg, api_key, first_name, lastfm_name):
+    """
+    Sends a users top tracks
+    """
     limit = int(tg.message['match'][1]) if tg.message[
         'matched_regex'] in arguments['text'][3] else 8
     limit = 25 if limit > 25 else limit
-    track_list = get_top_tracks(tg.http, lastfm_name, limit)
+    track_list = get_top_tracks(tg.http, api_key, lastfm_name, limit)
     if track_list:
         message = "<b>{}'s Top Tracks</b>\n".format(first_name)
         for track in track_list:
@@ -123,11 +142,14 @@ def top_tracks(tg, first_name, lastfm_name):
         tg.send_message(message, disable_web_page_preview=True)
 
 
-def top_artists(tg, first_name, lastfm_name):
+def top_artists(tg, api_key, first_name, lastfm_name):
+    """
+    Sends a users top artists
+    """
     limit = int(tg.message['match'][1]) if tg.message[
         'matched_regex'] in arguments['text'][6] else 8
     limit = 25 if limit > 25 else limit
-    artists = get_top_artists(tg.http, lastfm_name, limit)
+    artists = get_top_artists(tg.http, api_key, lastfm_name, limit)
     if artists:
         message = "<b>{}'s Top Artists</b>\n".format(first_name)
         for artist in artists:
@@ -136,7 +158,10 @@ def top_artists(tg, first_name, lastfm_name):
         tg.send_message(message, disable_web_page_preview=True)
 
 
-def get_top_artists(local_http, user_name, limit, period='1month', page=1):
+def get_top_artists(local_http, api_key, user_name, limit, period='1month', page=1):
+    """
+    getTopArtists method. Returns a list of top artists.
+    """
     artist_list = list()
     method = 'user.getTopArtists'
     url = (base_url + '&user={}&limit={}&period={}&page={}').format(
@@ -154,7 +179,10 @@ def get_top_artists(local_http, user_name, limit, period='1month', page=1):
     return artist_list
 
 
-def get_top_tracks(local_http, user_name, limit, period='1month', page=1):
+def get_top_tracks(local_http, api_key, user_name, limit, period='1month', page=1):
+    """
+    getTopTracks method. Returns a list of top tracks.
+    """
     track_list = list()
     method = 'user.getTopTracks'
     url = (base_url + '&user={}&limit={}&period={}&page={}').format(
@@ -174,7 +202,10 @@ def get_top_tracks(local_http, user_name, limit, period='1month', page=1):
     return track_list
 
 
-def get_recently_played(local_http, user_name, limit, page=1):
+def get_recently_played(local_http, api_key, user_name, limit, page=1):
+    """
+    getRecentTracks method. Returns a users recently played tracks.
+    """
     method = 'user.getRecentTracks'
     url = (base_url + '&user={}&limit={}&page={}').format(
         method, api_key, user_name, limit, page)
@@ -185,10 +216,7 @@ def get_recently_played(local_http, user_name, limit, page=1):
     tracks = response['recenttracks']['track']
     track_list = list()
     for track in tracks:
-        if '@attr' in track:
-            now_playing = True
-        else:
-            now_playing = False
+        now_playing = bool('@attr' in track)
         song = {
             'name': clean_up(track['name']),
             'artist': clean_up(track['artist']['#text']),
@@ -206,6 +234,9 @@ def get_recently_played(local_http, user_name, limit, page=1):
 
 
 def get_lastfm_username(user_id):
+    """
+    Tries to grab a users lastfm username from their profile
+    """
     try:
         with open('data/profile/{}.json'.format(int(user_id))) as json_file:
             profile = json.load(json_file)
@@ -216,8 +247,13 @@ def get_lastfm_username(user_id):
 
 
 def determine_names(tg):
-    matched_regex = tg.message[
-        'matched_regex'] if tg.message else tg.inline_query['matched_regex']
+    """
+    Determines a users first_name, last_name, and a determiner
+    """
+    if tg.message:
+        matched_regex = tg.message['matched_regex']
+    else:
+        matched_regex = tg.inline_query['matched_regex']
     if '(.*)' in matched_regex:
         determiner = None
         name = tg.message['match'] if tg.message else tg.inline_query['match']
@@ -249,7 +285,10 @@ def determine_names(tg):
     return first_name, lastfm_name, determiner
 
 
-def link_profile(tg):
+def link_profile(tg, api_key):
+    """
+    Links a profile and sends the last played
+    """
     if not os.path.exists('data/profile'):
         os.makedirs('data/profile')
     user_id = tg.message['from']['id']
@@ -265,7 +304,7 @@ def link_profile(tg):
         else:
             message = "Successfully set your LastFM!"
         profile['lastfm'] = tg.message['text'].replace('\n', '')
-        track_list = get_recently_played(tg.http, profile['lastfm'], 1)
+        track_list = get_recently_played(tg.http, api_key, profile['lastfm'], 1)
         keyboard = [[]]
         if track_list:
             track_list = track_list.pop()
@@ -286,13 +325,18 @@ def link_profile(tg):
 
 
 def create_keyboard(lastfm_name, song_url):
+    """
+    Creates a keyboard for the song
+    """
     profile_url = "http://www.lastfm.com/user/{}".format(lastfm_name)
-    return [[{'text': "Profile",
-              'url': profile_url}, {'text': "Song",
-                                    'url': song_url}]]
+    keyboard = [[{'text': "Profile", 'url': profile_url}, {'text': "Song", 'url': song_url}]]
+    return keyboard
 
 
 def how_long(epoch_time):
+    """
+    Determine how long ago the user listened to the song
+    """
     if epoch_time:
         diff = int(time.time() - int(epoch_time))
         if diff < 240:
@@ -308,6 +352,9 @@ def how_long(epoch_time):
 
 
 def clean_up(text):
+    """
+    Remove "tags" from text
+    """
     text = text.replace('<', '&lt;')
     return text.replace('>', '&gt;')
 
@@ -324,8 +371,8 @@ parameters = {
 arguments = {
     'text': [
         "^/lastfm (.*)", "^/lastfm$", "^/toptracks$",
-        u"^/toptracks (--|\u2014)(\d+)$", "^/toptracks (.*)", "^/topartists$",
-        u"^/topartists (--|\u2014)(\d+)$", "^/topartists (.*)"
+        r"^/toptracks (--|\u2014)(\d+)$", "^/toptracks (.*)", "^/topartists$",
+        r"^/topartists (--|\u2014)(\d+)$", "^/topartists (.*)"
     ]
 }
 

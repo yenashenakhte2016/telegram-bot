@@ -44,6 +44,7 @@ def compress_image(image):
     """
     compressed_image = io.BytesIO()
     image.save(compressed_image, format='JPEG', quality=100)
+    image.close()
     compressed_image.seek(0)
     return compressed_image
 

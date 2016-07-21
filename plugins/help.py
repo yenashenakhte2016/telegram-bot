@@ -23,7 +23,7 @@ def main(tg):
         remaining = len(rows)
         for plugin in rows:
             pretty_name = plugin['pretty_name']
-            row_length = 4 if remaining >= 4 or remaining == 1 else 3
+            row_length = 3 if remaining >= 3 or remaining == 1 else 2
             button = {'text': pretty_name,
                       'callback_data': '%%help%%{}'.format(pretty_name)}
             if keyboard and len(keyboard[-1]) < row_length:

@@ -5,6 +5,7 @@ import html
 import json
 import time
 
+import urllib.parse
 import _mysql_exceptions
 
 base_url = "https://anilist.co/api/"
@@ -338,6 +339,7 @@ def manga_model(tg, manga_id):
 
 
 def search(method, http, query):
+    query = urllib.parse.quote(query)
     url = base_url + method.format(query)
     post = http.request('GET', url, fields={'access_token': token})
     if post.status == 200:

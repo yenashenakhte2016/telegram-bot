@@ -99,8 +99,7 @@ def chat_stats(tg):
     message = "<b>Global Chat Statistics:</b>\n\n"
     message += "<b>Total Messages Sent:</b> {:,}".format(total_messages)
     message += "\n<b>Total Characters Sent:</b> {:,}".format(total_characters)
-    message += "\n<b>Average Characters Per Message:</b> {0:.1f}".format(
-        average_chars)
+    message += "\n<b>Average Characters Per Message:</b> {0:.1f}".format(average_chars)
 
     message += "\n\n<b>Types of Messages Sent</b>"
     message_types = types_breakdown(tg.database)
