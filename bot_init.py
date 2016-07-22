@@ -49,11 +49,11 @@ def init_database(cursor):
                    "NOT NULL, PRIMARY KEY (plugin_name, parameter)) CHARACTER SET utf8mb4;")
 
     cursor.execute(
-        "CREATE TABLE IF NOT EXISTS downloaded_files(file_id VARCHAR(62) NOT NULL, UNIQUE file_path VARCHAR(100),"
+        "CREATE TABLE IF NOT EXISTS downloaded_files(file_id VARCHAR(62) NOT NULL,file_path VARCHAR(100) UNIQUE,"
         "file_hash VARCHAR(64)) CHARACTER SET utf8mb4;")
 
     cursor.execute(
-        "CREATE TABLE IF NOT EXISTS uploaded_files(UNIQUE file_id VARCHAR(62) NOT NULL, file_hash VARCHAR(64),"
+        "CREATE TABLE IF NOT EXISTS uploaded_files(file_id VARCHAR(62) NOT NULL UNIQUE, file_hash VARCHAR(64),"
         "file_type VARCHAR(16)) CHARACTER SET utf8mb4;")
 
     cursor.execute("CREATE TABLE IF NOT EXISTS inline_queries(plugin_name VARCHAR(16) NOT NULL, inline_id VARCHAR(64) "

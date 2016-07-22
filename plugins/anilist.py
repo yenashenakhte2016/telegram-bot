@@ -60,36 +60,76 @@ def handle_inline_query(tg):
         query_start, query_end = [int(x) for x in tg.inline_query['offset'].split(',')]
     else:
         query_start, query_end = 0, 8
-    if tg.inline_query['matched_regex'] == inline_arguments[2]:
-        search_results = search('character/search/{}', tg.http, tg.inline_query['match'])
-        if search_results:
-            futures = [executor.submit(create_character_box, tg, character)
-                       for character in search_results[query_start:query_end]]
+    if tg.inline_query['matched_regex'] is None:
+        futures = default_query(tg, query_start, query_end)
+    elif tg.inline_query['matched_regex'] == inline_arguments[2]:
+        search_results = return_character_result(tg, query_start, query_end)
+        futures = [executor.submit(create_character_box, tg, character) for character in search_results]
     elif tg.inline_query['matched_regex'] == inline_arguments[3]:
-        search_results = search('manga/search/{}', tg.http, tg.inline_query['match'])
-        if search_results:
-            futures = [executor.submit(create_manga_box, tg, manga) for manga in search_results[query_start:query_end]]
+        search_results = return_manga_query(tg, query_start, query_end, True)
+        futures = [executor.submit(create_manga_box, tg, manga) for manga in search_results]
     else:
         if tg.inline_query['matched_regex'] == inline_arguments[1]:
-            search_results = search('anime/search/{}', tg.http, tg.inline_query['match'])
+            search_results = return_anime_query(tg, query_start, query_end)
         else:
-            url = base_url + 'browse/anime'
-            fields = {'year': 2016,
-                      'season': "spring",
-                      'access_token': token,
-                      'status': "Currently Airing",
-                      'type': "TV",
-                      'sort': "popularity-desc"}
-            post = tg.http.request('GET', url, fields=fields)
-            search_results = json.loads(post.data.decode('UTF-8'))
-        if search_results:
-            futures = [executor.submit(create_anime_box, tg, anime) for anime in search_results[query_start:query_end]]
-    if search_results:
-        concurrent.futures.wait(futures)
-        offset = '{},{}'.format(query_end, query_end + 8) if len(search_results) > query_end else ""
-        tg.answer_inline_query([box.result() for box in futures], cache_time=259200, next_offset=offset)
+            search_results = return_anime_query(tg, query_start, query_end, True)
+        futures = [executor.submit(create_anime_box, tg, anime) for anime in search_results]
+    concurrent.futures.wait(futures)
+    offset = '{},{}'.format(query_end, query_end + 8) if len(futures) >= (query_end - query_start) else None
+    tg.answer_inline_query([box.result() for box in futures], cache_time=0, next_offset=offset)
+
+
+def default_query(tg, query_start, query_end):
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=16)
+    futures = []
+    character_results = return_character_query(tg, query_start, query_end)
+    manga_results = return_manga_query(tg, query_start, query_end)
+    anime_results = return_anime_query(tg, query_start, query_end)
+    while character_results or manga_results or anime_results:
+        for i in range(0, 3):
+            if anime_results:
+                futures.append(executor.submit(create_anime_box, tg, anime_results[0]))
+                del anime_results[0]
+        for i in range(0, 2):
+            if manga_results:
+                futures.append(executor.submit(create_manga_box, tg, manga_results[0]))
+                del manga_results[0]
+        if character_results:
+            futures.append(executor.submit(create_character_box, tg, character_results[0]))
+            del character_results[0]
+    return futures
+
+
+def return_anime_query(tg, query_start, query_end, default=False):
+    if default:
+        url = base_url + 'browse/anime'
+        fields = {'year': 2016,
+                  'season': "spring",
+                  'access_token': token,
+                  'status': "Currently Airing",
+                  'type': "TV",
+                  'sort': "popularity-desc"}
+        post = tg.http.request('GET', url, fields=fields)
+        search_results = json.loads(post.data.decode('UTF-8'))
     else:
-        tg.answer_inline_query(list(), cache_time=259200)
+        search_results = search('anime/search/{}', tg.http, tg.inline_query['match'])
+    return search_results[query_start:query_end] if search_results else list()
+
+
+def return_manga_query(tg, query_start, query_end, default=False):
+    if default:
+        pass
+    else:
+        search_results = search('manga/search/{}', tg.http, tg.inline_query['match'])
+    return search_results[query_start:query_end] if search_results else list()
+
+
+def return_character_query(tg, query_start, query_end, default=False):
+    if default:
+        pass
+    else:
+        search_results = search('character/search/{}', tg.http, tg.inline_query['match'])
+    return search_results[query_start:query_end] if search_results else list()
 
 
 def return_anime_result(tg):
@@ -161,11 +201,11 @@ def return_character_result(tg):
 def create_anime_box(tg, anime):
     message = anime_model(tg, anime['id'])
     message_content = tg.input_text_message_content(message['text'], parse_mode="markdown")
-    description = "{} - {}".format(anime['title_japanese'], anime['airing_status'].title())
     if 'image_url_lge' in anime and anime['image_url_lge']:
         thumb_url = anime['image_url_lge']
     else:
         thumb_url = "http://anilist.co/img/dir/anime/reg/noimg.jpg"
+    description = "{} {}".format(anime['airing_status'].title(), anime['type'])
     box = tg.inline_query_result_article(anime['title_romaji'],
                                          message_content,
                                          reply_markup=message['reply_markup'],
@@ -178,22 +218,30 @@ def create_character_box(tg, character):
     message, big_model = character_model(tg, character['id'], True)
     message_content = tg.input_text_message_content(message['text'], parse_mode="markdown")
     title = "{} {}".format(character['name_first'], character['name_last'])
+    if 'name_japanese' in character:
+        description = "Character - {}".format(manga['name_japanese'])
+    else:
+        description = "Character"
     box = tg.inline_query_result_article(title,
                                          message_content,
                                          reply_markup=message['reply_markup'],
                                          thumb_url=character['image_url_lge'],
-                                         description=big_model['name_japanese'])
+                                         description=description)
     return box
 
 
 def create_manga_box(tg, manga):
     message = manga_model(tg, manga['id'])
     message_content = tg.input_text_message_content(message['text'], parse_mode="markdown")
+    if 'publishing_status' in manga and 'type' in manga:
+        description = "{} {}".format(manga['publishing_status'].title(), manga['type'].title())
+    else:
+        description = "Manga"
     box = tg.inline_query_result_article(manga['title_romaji'],
                                          message_content,
                                          reply_markup=message['reply_markup'],
                                          thumb_url=manga['image_url_lge'],
-                                         description=manga['title_japanese'])
+                                         description=description)
     return box
 
 

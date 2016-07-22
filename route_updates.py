@@ -23,7 +23,6 @@ class RouteMessage(object):
     Routes standard telegram messages.
     https://core.telegram.org/bots/api#message
     """
-
     def __init__(self, plugins, http, get_me, config):
         self.plugins = plugins
         self.http = http
@@ -243,7 +242,7 @@ class RouteMessage(object):
         api_object = TelegramApi(database, self.get_me, plugin_name, self.config, self.http, message)
         try:
             plugin_module.main(api_object)
-        except BaseException:
+        except Exception:
             admin_list = self.config['BOT_CONFIG']['admins'].split(',')
             for admin_id in admin_list:
                 message = "<code>{}</code>".format(traceback.format_exc())
@@ -296,6 +295,7 @@ def route_inline_query(plugins, get_me, config, http, inline_query):
     Routes inline arguments to the appropriate plugin. Only the first match runs.
     https://core.telegram.org/bots/api#inlinequery
     """
+    default_plugin = config['BOT_CONFIG']['default_inline_plugin']
     for plugin_name, plugin in plugins.items():
         if hasattr(plugin, 'inline_arguments'):
             for argument in plugin.inline_arguments:
@@ -308,3 +308,10 @@ def route_inline_query(plugins, get_me, config, http, inline_query):
                     database.commit()
                     database.close()
                     return
+    if default_plugin:
+        database = MySQLdb.connect(**config['DATABASE'])
+        inline_query['matched_regex'] = None
+        inline_query['match'] = inline_query['query']
+        plugins[default_plugin].main(TelegramInlineAPI(database, get_me, plugin_name, config, http, inline_query))
+        database.commit()
+        database.close()

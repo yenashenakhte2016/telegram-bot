@@ -52,7 +52,8 @@ class TelegramInlineAPI(object):
             except _mysql_exceptions.IntegrityError:
                 pass
             database.close()
-        post = self.http.request_encode_body('POST', url.format(self.token), fields=package).data
+        fields = {param: val for param, val in package.items() if val is not None}
+        post = self.http.request_encode_body('POST', url.format(self.token), fields=fields).data
         return json.loads(post.decode('UTF-8'))
 
     def inline_query_result_article(self, title, input_message_content, **kwargs):
