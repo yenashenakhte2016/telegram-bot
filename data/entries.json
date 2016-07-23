@@ -63,5 +63,12 @@
     "aliases": [
       "fb"
     ]
+  },
+  "instagram": {
+    "pretty_name": "Instagram",
+    "url": "https://www.instagram.com/{}",
+    "aliases": [
+      "ig"
+    ]
   }
 }

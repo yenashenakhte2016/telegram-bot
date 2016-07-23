@@ -23,6 +23,7 @@ class RouteMessage(object):
     Routes standard telegram messages.
     https://core.telegram.org/bots/api#message
     """
+
     def __init__(self, plugins, http, get_me, config):
         self.plugins = plugins
         self.http = http
@@ -144,8 +145,11 @@ class RouteMessage(object):
                         self.database.query(statement.format(chat_id, plugin_name))
                     query = self.database.store_result()
                     result = query.fetch_row(how=1)
-                    enabled = result[0]['plugin_status'] if result else self.add_plugin(plugin_name)
-                    if enabled:
+                    if result:
+                        enabled = result[0]['plugin_status']
+                    else:
+                        enabled = self.add_plugin(plugin_name)
+                    if enabled == 1:
                         message = copy.copy(self.message)
                         self.futures.append(self.executor.submit(self.run_plugin, plugin_name, plugin_module, message))
                         return True
@@ -210,7 +214,10 @@ class RouteMessage(object):
             enabled = int(perms[1])
         else:
             enabled = int(perms[0])
-        self.cursor.execute("INSERT INTO `{}` VALUES(%s, %s, 0000)".format(chat_name), (plugin_name, enabled))
+        try:
+            self.cursor.execute("INSERT INTO `{}` VALUES(%s, %s, 0000)".format(chat_name), (plugin_name, enabled))
+        except _mysql_exceptions.IntegrityError:
+            pass
         self.database.commit()
         return enabled
 

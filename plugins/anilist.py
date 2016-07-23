@@ -8,7 +8,7 @@ import time
 import urllib.parse
 import _mysql_exceptions
 
-base_url = "https://anilist.co/api/"
+base_url = "http://anilist.co/api/"
 client_id = None
 client_secret = None
 token = None
@@ -62,18 +62,24 @@ def handle_inline_query(tg):
         query_start, query_end = 0, 8
     if tg.inline_query['matched_regex'] is None:
         futures = default_query(tg, query_start, query_end)
-    elif tg.inline_query['matched_regex'] == inline_arguments[2]:
-        search_results = return_character_result(tg, query_start, query_end)
-        futures = [executor.submit(create_character_box, tg, character) for character in search_results]
-    elif tg.inline_query['matched_regex'] == inline_arguments[3]:
-        search_results = return_manga_query(tg, query_start, query_end, True)
-        futures = [executor.submit(create_manga_box, tg, manga) for manga in search_results]
-    else:
-        if tg.inline_query['matched_regex'] == inline_arguments[1]:
-            search_results = return_anime_query(tg, query_start, query_end)
-        else:
+    elif tg.inline_query['matched_regex'] in inline_arguments[0:2]:
+        if tg.inline_query['matched_regex'] == inline_arguments[0]:
             search_results = return_anime_query(tg, query_start, query_end, True)
+        elif tg.inline_query['matched_regex'] == inline_query[1]:
+            search_results = return_anime_query(tg, query_start, query_end)
         futures = [executor.submit(create_anime_box, tg, anime) for anime in search_results]
+    elif tg.inline_query['matched_regex'] in inline_arguments[2:4]:
+        if tg.inline_query['matched_regex'] == inline_arguments[2]:
+            search_results = return_character_query(tg, query_start, query_end, True)
+        elif tg.inline_query['matched_regex'] == inline_query[3]:
+            search_results = return_character_query(tg, query_start, query_end)
+        futures = [executor.submit(create_character_box, tg, character) for character in search_results]
+    elif tg.inline_query['matched_regex'] in inline_arguments[4:6]:
+        if tg.inline_query['matched_regex'] == inline_arguments[4]:
+            search_results = return_manga_query(tg, query_start, query_end, True)
+        elif tg.inline_query['matched_regex'] == inline_arguments[5]:
+            search_results = return_manga_query(tg, query_start, query_end)
+        futures = [executor.submit(create_manga_box, tg, manga) for manga in search_results]
     concurrent.futures.wait(futures)
     offset = '{},{}'.format(query_end, query_end + 8) if len(futures) >= (query_end - query_start) else None
     tg.answer_inline_query([box.result() for box in futures], cache_time=0, next_offset=offset)
@@ -82,9 +88,13 @@ def handle_inline_query(tg):
 def default_query(tg, query_start, query_end):
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=16)
     futures = []
-    character_results = return_character_query(tg, query_start, query_end)
-    manga_results = return_manga_query(tg, query_start, query_end)
-    anime_results = return_anime_query(tg, query_start, query_end)
+    if not tg.inline_query['match']:
+        default = True
+    else:
+        default = False
+    character_results = return_character_query(tg, query_start, query_end, default)
+    manga_results = return_manga_query(tg, query_start, query_end, default)
+    anime_results = return_anime_query(tg, query_start, query_end, default)
     while character_results or manga_results or anime_results:
         for i in range(0, 3):
             if anime_results:
@@ -104,7 +114,6 @@ def return_anime_query(tg, query_start, query_end, default=False):
     if default:
         url = base_url + 'browse/anime'
         fields = {'year': 2016,
-                  'season': "spring",
                   'access_token': token,
                   'status': "Currently Airing",
                   'type': "TV",
@@ -118,7 +127,10 @@ def return_anime_query(tg, query_start, query_end, default=False):
 
 def return_manga_query(tg, query_start, query_end, default=False):
     if default:
-        pass
+        url = base_url + 'browse/manga'
+        fields = {'access_token': token, 'sort': "score-desc"}
+        post = tg.http.request('GET', url, fields=fields)
+        search_results = json.loads(post.data.decode('UTF-8'))
     else:
         search_results = search('manga/search/{}', tg.http, tg.inline_query['match'])
     return search_results[query_start:query_end] if search_results else list()
@@ -126,7 +138,7 @@ def return_manga_query(tg, query_start, query_end, default=False):
 
 def return_character_query(tg, query_start, query_end, default=False):
     if default:
-        pass
+        search_results = None
     else:
         search_results = search('character/search/{}', tg.http, tg.inline_query['match'])
     return search_results[query_start:query_end] if search_results else list()
@@ -336,17 +348,19 @@ def manga_model(tg, manga_id):
         elif 'image_url_lge' in manga and manga['image_url_lge']:
             message += '[​]({})'.format(manga['image_url_lge'])
 
-        message += "\n*Type:* {}".format(manga['type'])
-        message += "\n*Status:* {}".format(manga['publishing_status'].title())
-
-        if manga['total_chapters']:
+        if 'type' in manga and manga['type']:
+            message += "\n*Type:* {}".format(manga['type'])
+        if 'publishing_status' in manga and manga['publishing_status']:
+            message += "\n*Status:* {}".format(manga['publishing_status'].title())
+        if 'total_chapters' in manga and manga['total_chapters']:
             message += "\n*Chapter Count:* {}".format(manga['total_chapters'])
-        if manga['total_volumes']:
+        if 'total_volumes' in manga and manga['total_volumes']:
             message += "\n*Volume Count:* {}".format(manga['total_volumes'])
-
-        message += "\n*Score:* {}".format(manga['average_score'])
-        message += "\n*Genres: {}*".format(', '.join(manga['genres']))
-        if manga['description']:
+        if 'average_score' in manga and manga['average_score']:
+            message += "\n*Score:* {}".format(manga['average_score'])
+        if 'genres' in manga and manga['genres']:
+            message += "\n*Genres: {}*".format(', '.join(manga['genres']))
+        if 'description' in manga and manga['description']:
             message += "\n\n{}".format(clean_description(manga['description']))
 
         manga_page = "http://anilist.co/manga/{}".format(manga['id'])
@@ -416,11 +430,16 @@ def parse_date(anime):
     if time_left < 240:
         time_statement = "A few minutes"
     elif time_left < 3600:
-        time_statement = "{} minutes".format(int(time_left / 60))
+        time_left = int(time_left / 60)
+        time_statement = "{} minute".format(time_left)
     elif 86399 > time_left > 3600:
-        time_statement = "{} hours".format(int(time_left / 3600))
+        time_left = int(time_left / 3600)
+        time_statement = "{} hour".format(time_left)
     else:
-        time_statement = "{} days".format(int(time_left / 86400))
+        time_left = int(time_left / 86400)
+        time_statement = "{} day".format(time_left)
+    if time_left > 1:
+        time_statement += 's'
     return next_episode, time_statement
 
 
@@ -471,4 +490,11 @@ arguments = {
     ]
 }
 
-inline_arguments = ['^/?anime$', '^/?anime (.*)', '^/?character (.*)', '^/?manga (.*)']
+inline_arguments = [
+    "^/?anime$",
+    "^/?anime (.*)",
+    "^/?character$",
+    "^/?character (.*)",
+    "^/?manga$",
+    "^/?manga (.*)",
+]
