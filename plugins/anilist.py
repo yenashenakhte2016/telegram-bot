@@ -65,7 +65,7 @@ def handle_inline_query(tg):
     elif tg.inline_query['matched_regex'] in inline_arguments[0:2]:
         if tg.inline_query['matched_regex'] == inline_arguments[0]:
             search_results = return_anime_query(tg, query_start, query_end, True)
-        elif tg.inline_query['matched_regex'] == inline_query[1]:
+        elif tg.inline_query['matched_regex'] == inline_arguments[1]:
             search_results = return_anime_query(tg, query_start, query_end)
         futures = [executor.submit(create_anime_box, tg, anime) for anime in search_results]
     elif tg.inline_query['matched_regex'] in inline_arguments[2:4]:
