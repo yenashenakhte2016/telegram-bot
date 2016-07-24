@@ -157,5 +157,5 @@ def numerate_permissions(permission):
     elif permission is False:
         permission = '00'
     if isinstance(permission, int):
-        permission = char(permission)
+        permission = str(permission)
     return permission

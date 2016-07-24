@@ -71,7 +71,7 @@ def handle_inline_query(tg):
     elif tg.inline_query['matched_regex'] in inline_arguments[2:4]:
         if tg.inline_query['matched_regex'] == inline_arguments[2]:
             search_results = return_character_query(tg, query_start, query_end, True)
-        elif tg.inline_query['matched_regex'] == inline_query[3]:
+        elif tg.inline_query['matched_regex'] == inline_arguments[3]:
             search_results = return_character_query(tg, query_start, query_end)
         futures = [executor.submit(create_character_box, tg, character) for character in search_results]
     elif tg.inline_query['matched_regex'] in inline_arguments[4:6]:
@@ -82,7 +82,7 @@ def handle_inline_query(tg):
         futures = [executor.submit(create_manga_box, tg, manga) for manga in search_results]
     concurrent.futures.wait(futures)
     offset = '{},{}'.format(query_end, query_end + 8) if len(futures) >= (query_end - query_start) else None
-    tg.answer_inline_query([box.result() for box in futures], cache_time=0, next_offset=offset)
+    tg.answer_inline_query([box.result() for box in futures], cache_time=10800, next_offset=offset)
 
 
 def default_query(tg, query_start, query_end):

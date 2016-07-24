@@ -265,6 +265,7 @@ class RouteMessage(object):
         self.message['matched_argument'] = None
         self.message['cleaned_message'] = False
         self.message['pm_parameter'] = False
+        self.message['time_id'] = None
 
 
 def route_callback_query(plugins, get_me, config, http, callback_query):

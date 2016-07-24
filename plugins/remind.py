@@ -210,6 +210,6 @@ parameters = {
 arguments = {
     'text': [
         r"(?i)remind .* (\d+\.\d|\d+) ?([mhd]) (.*)",
-        r"(?i)remind .* (\d+\.\d|\d+) (minutes?|mins?|hours?|days?) (.*)",
+        r"(?i)remind .* (\d+\.\d|\d+) ?(minutes?|mins?|hours?|days?) (.*)",
     ]
 }

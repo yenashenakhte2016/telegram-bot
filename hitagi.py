@@ -124,7 +124,10 @@ def check_time_args():
         for result in rows:
             time_id = result['time_id']
             plugin_name = result['plugin_name']
-            plugin_data = json.loads(result['plugin_data'])
+            if result['plugin_data']:
+                plugin_data = json.loads(result['plugin_data'])
+            else:
+                plugin_data = None
             previous_message = json.loads(result['previous_message'])
             previous_message['time_id'] = time_id
             if 'message_id' in previous_message:
