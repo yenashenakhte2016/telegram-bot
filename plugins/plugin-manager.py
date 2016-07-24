@@ -66,7 +66,7 @@ def create_plugin_keyboard():
     keyboard = list()
     tg.database.query("SELECT b.plugin_name, pretty_name, plugin_status FROM `plugins` p "
                       "LEFT JOIN `{}blacklist` b ON p.plugin_name=b.plugin_name WHERE "
-                      "b.plugin_name != \"admin\" AND hidden=0 AND inline_only=0;".format(chat_id))
+                      "b.plugin_name != \"{}\" AND hidden=0 AND inline_only=0;".format(chat_id, tg.plugin_name))
     query = tg.database.store_result()
     rows = query.fetch_row(how=1, maxrows=0)
     remaining = len(rows)

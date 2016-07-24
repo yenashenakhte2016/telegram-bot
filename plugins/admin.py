@@ -83,12 +83,13 @@ def kick_user(tg, from_warning=False):
     kick_reason = None
     reply_to_message_id = tg.message['reply_to_message']['message_id']
     kick = tg.kick_chat_member(user_id)
-    if not kick['ok']:
+    if not kick or not kick['ok']:
         if from_warning:
             tg.send_message("{} has reached the maximum warning count but I was unable to kick them.".format(
                 first_name))
         else:
-            tg.send_message("It seems I'm not an admin :(")
+            tg.send_message("It seems I'm not an admin or this person isn't here anymore :(")
+        return
     if kick_duration:
         if from_warning:
             kick_reason = "MAX WARNINGS"
@@ -134,7 +135,9 @@ def check_message(tg):
     if any(user['user']['id'] == user_id for user in admins):
         if 'reply_to_message' in tg.message:
             user_id = tg.message['reply_to_message']['from']['id']
-            if not any(user['user']['id'] == user_id for user in admins):
+            if user_id == tg.get_me['result']['id']:
+                tg.send_message("You can't kick/warn me :'(")
+            elif not any(user['user']['id'] == user_id for user in admins):
                 return True
             elif user_id == tg.message['from']['id']:
                 tg.send_message("You can't kick/warn yourself :(")
