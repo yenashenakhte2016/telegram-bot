@@ -73,11 +73,11 @@ def kick_user(tg, from_warning=False):
     kick_count = rows[0][0]
     try:
         kick_duration = stepping_stones[kick_count]
+        if kick_duration <= 0:
+            tg.send_message("Invalid time")
+            return
     except IndexError:
         kick_duration = 0
-    if kick_duration <= 0:
-        tg.send_message("Invalid time")
-        return
     kick_time = tg.message['date']
     kicked_by = tg.message['from']['id']
     kick_reason = None
