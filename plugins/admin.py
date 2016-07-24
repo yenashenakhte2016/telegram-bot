@@ -75,13 +75,21 @@ def kick_user(tg, from_warning=False):
         kick_duration = stepping_stones[kick_count]
     except IndexError:
         kick_duration = 0
+    if kick_duration <= 0:
+        tg.send_message("Invalid time")
+        return
     kick_time = tg.message['date']
     kicked_by = tg.message['from']['id']
     kick_reason = None
     reply_to_message_id = tg.message['reply_to_message']['message_id']
-
+    kick = tg.kick_chat_member(user_id)
+    if not kick['ok']:
+        if from_warning:
+            tg.send_message("{} has reached the maximum warning count but I was unable to kick them.".format(
+                first_name))
+        else:
+            tg.send_message("It seems I'm not an admin :(")
     if kick_duration:
-        tg.kick_chat_member(user_id)
         if from_warning:
             kick_reason = "MAX WARNINGS"
             time_stamp = datetime.datetime.fromtimestamp(kick_time + kick_duration).strftime('%Y-%m-%d %H:%M')
@@ -101,7 +109,6 @@ def kick_user(tg, from_warning=False):
         tg.cursor.execute("INSERT INTO kicks VALUES(%s, FROM_UNIXTIME(%s), %s, %s, %s, %s, %s, %s)", values)
         tg.cursor.execute("UPDATE warnings SET active_warning=0")
     else:
-        tg.kick_chat_member(user_id)
         tg.send_message("{} has been permanently banned.".format(first_name))
 
 
@@ -130,9 +137,9 @@ def check_message(tg):
             if not any(user['user']['id'] == user_id for user in admins):
                 return True
             elif user_id == tg.message['from']['id']:
-                tg.send_message("You can't kick yourself :(")
+                tg.send_message("You can't kick/warn yourself :(")
             else:
-                tg.send_message("You can't kick another admin")
+                tg.send_message("You can't kick/warn another admin")
         else:
             tg.send_message("This command only works by reply :(")
 
