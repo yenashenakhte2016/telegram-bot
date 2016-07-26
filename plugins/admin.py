@@ -4,6 +4,7 @@ Allows chat admins to kick and warn chat members.
 """
 
 import datetime
+import uuid
 
 
 def main(tg):
@@ -27,18 +28,21 @@ def warn_user(tg):
     max_warnings = 3
     first_name = tg.message['reply_to_message']['from']['first_name']
 
+    warn_id = str(uuid.uuid4())
     user_id = tg.message['reply_to_message']['from']['id']
-    warning_time = tg.message['date']
+    warned_by_id = tg.message['from']['id']
+    warned_message_id = tg.message['reply_to_message']['message_id']
     chat_id = tg.message['chat']['id']
+    warning_time = tg.message['date']
     if tg.message['matched_regex'] == arguments['text'][1]:
         warning_reason = tg.message['match']
     else:
         warning_reason = None
-    warned_by = tg.message['from']['id']
-    reply_to_message_id = tg.message['reply_to_message']['message_id']
-    values = (user_id, warning_time, chat_id, warning_reason, warned_by, reply_to_message_id, 1)
+    active_warning = True
 
-    tg.cursor.execute("INSERT INTO warnings VALUES(%s, FROM_UNIXTIME(%s), %s, %s, %s, %s, %s)", values)
+    values = (warn_id, user_id, warned_by_id, warned_message_id, chat_id, warning_time, warning_reason, active_warning)
+    tg.cursor.execute("INSERT INTO warnings VALUES(%s, %s, %s, %s, %s, FROM_UNIXTIME(%s), %s, %s)", values)
+
     tg.database.query("SELECT COUNT(*) FROM warnings WHERE user_id={} AND chat_id={} AND active_warning=1".format(
         user_id, chat_id))
     query = tg.database.store_result()
@@ -61,10 +65,18 @@ def kick_user(tg, from_warning=False):
     """
     Kicks a user based on inputed time or total kick infractions.
     """
-    first_name = tg.message['reply_to_message']['from']['first_name']
-    user_id = tg.message['reply_to_message']['from']['id']
-    chat_id = tg.message['chat']['id']
     stepping_stones = [10800, 43200, 86400, 259200, 604800, 1209600]
+
+    first_name = tg.message['reply_to_message']['from']['first_name']
+    kick_id = None
+    user_id = tg.message['reply_to_message']['from']['id']
+    kicked_by_id = tg.message['from']['id']
+    kicked_message_id = tg.message['reply_to_message']['message_id']
+    chat_id = tg.message['chat']['id']
+    kicked_time = tg.message['date']
+    kicked_duration = None
+    kicked_reason = None
+    active_kick = 1
 
     tg.database.query("SELECT COUNT(*) FROM kicks WHERE user_id={} AND chat_id={} AND active_kick=1".format(user_id,
                                                                                                             chat_id))
@@ -72,16 +84,13 @@ def kick_user(tg, from_warning=False):
     rows = query.fetch_row()
     kick_count = rows[0][0]
     try:
-        kick_duration = stepping_stones[kick_count]
-        if kick_duration <= 0:
+        kicked_duration = stepping_stones[kick_count]
+        if kicked_duration <= 0:
             tg.send_message("Invalid time")
             return
     except IndexError:
-        kick_duration = 0
-    kick_time = tg.message['date']
-    kicked_by = tg.message['from']['id']
-    kick_reason = None
-    reply_to_message_id = tg.message['reply_to_message']['message_id']
+        kicked_duration = -1
+
     kick = tg.kick_chat_member(user_id)
     if not kick or not kick['ok']:
         if from_warning:
@@ -90,26 +99,32 @@ def kick_user(tg, from_warning=False):
         else:
             tg.send_message("It seems I'm not an admin or this person isn't here anymore :(")
         return
-    if kick_duration:
+
+    if kicked_duration > 0:
         if from_warning:
-            kick_reason = "MAX WARNINGS"
-            time_stamp = datetime.datetime.fromtimestamp(kick_time + kick_duration).strftime('%Y-%m-%d %H:%M')
+            kicked_reason = "MAX WARNINGS"
+            time_stamp = datetime.datetime.fromtimestamp(kicked_time + kicked_duration).strftime('%Y-%m-%d %H:%M')
             tg.send_message("{} has reached the maximum warning count. They will be unbanned on {}. "
                             "Sayonara \U0001F44B".format(first_name, time_stamp))
         else:
             if tg.message['matched_regex'] in arguments['text'][3:5]:
-                kick_duration = determine_duration(tg.message['match'][0], tg.message['match'][1])
-                kick_reason = tg.message['match'][2]
+                kicked_duration = determine_duration(tg.message['match'][0], tg.message['match'][1])
+                kicked_reason = tg.message['match'][2]
             elif tg.message['matched_regex'] == arguments['text'][5]:
-                kick_reason = tg.message['match']
-            time_stamp = datetime.datetime.fromtimestamp(kick_time + kick_duration).strftime('%Y-%m-%d %H:%M')
+                kicked_reason = tg.message['match']
+            time_stamp = datetime.datetime.fromtimestamp(kicked_time + kicked_duration).strftime('%Y-%m-%d %H:%M')
             tg.send_message("Successfully kicked {}. You will recieve a reminder to add them on {} (UTC)".format(
                 first_name, time_stamp))
-        time_id = tg.flag_time(kick_time + kick_duration)
-        values = (user_id, kick_time, chat_id, kick_reason, kicked_by, time_id, reply_to_message_id, 1)
-        tg.cursor.execute("INSERT INTO kicks VALUES(%s, FROM_UNIXTIME(%s), %s, %s, %s, %s, %s, %s)", values)
+
+        kick_id = tg.flag_time(kicked_time + kicked_duration)
+        values = (kick_id, user_id, kicked_by_id, kicked_message_id, chat_id, kicked_time, kicked_duration,
+                  kicked_reason, active_kick)
+        tg.cursor.execute("INSERT INTO kicks VALUES(%s, %s, %s, %s, %s, FROM_UNIXTIME(%s), %s, %s, %s)", values)
         tg.cursor.execute("UPDATE warnings SET active_warning=0")
-    else:
+    elif kicked_duration == 0:
+        tg.send_message("{} has been kicked".format(first_name))
+        tg.unban_chat_member(user_id)
+    elif kicked_duration == -1:
         tg.send_message("{} has been permanently banned.".format(first_name))
 
 
@@ -118,8 +133,9 @@ def unban_member(tg):
     Unbans a member and alerts the chat
     """
     first_name = tg.message['reply_to_message']['from']['first_name']
-    tg.send_message("{}'s ban duration has ended. Please add them back.".format(first_name))
     tg.unban_chat_member(tg.message['reply_to_message']['from']['id'])
+    message = "{}'s ban duration has ended. Please add them back.".format(first_name)
+    tg.send_message(message, reply_to_message_id=None)
 
 
 def check_message(tg):
@@ -167,12 +183,14 @@ def init_db(database):
     Create warning and kick tables
     """
     cursor = database.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS warnings(user_id BIGINT NOT NULL, warning_time DATETIME NOT NULL, "
-                   "chat_id BIGINT, warning_reason TEXT, warned_by BIGINT NOT NULL, reply_to_message_id BIGINT NOT "
-                   "NULL, active_warning TINYINT)")
-    cursor.execute("CREATE TABLE IF NOT EXISTS kicks(user_id BIGINT NOT NULL, kick_time DATETIME NOT NULL, chat_id "
-                   "BIGINT, kick_reason TEXT, kicked_by BIGINT NOT NULL, time_id VARCHAR(190), reply_to_message_id "
-                   "BIGINT NOT NULL, active_kick TINYINT)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS warnings(warn_id VARCHAR(80) NOT NULL UNIQUE, user_id BIGINT NOT NULL, "
+                   "warned_by_id BIGINT NOT NULL, warned_message_id BIGINT NOT NULL, chat_id BIGINT NOT NULL, "
+                   "warning_time DATETIME NOT NULL, warning_reason TEXT, active_warning TINYINT NOT NULL)")
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS kicks(kick_id VARCHAR(80), user_id BIGINT NOT NULL, "
+        "kicked_by_id BIGINT NOT NULL, kicked_message_id BIGINT, chat_id BIGINT NOT NULL, kicked_time DATETIME NOT "
+        "NULL, kicked_duration BIGINT NOT NULL,kicked_reason TEXT, "
+        "active_kick TINYINT NOT NULL);")
     cursor.close()
 
 

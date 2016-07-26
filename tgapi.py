@@ -4,7 +4,6 @@ Contains API Object for standard Telegram messages
 https://core.telegram.org/bots/api#available-methods
 """
 
-import _io
 import hashlib
 import json
 import os
@@ -16,6 +15,11 @@ from functools import partial
 import MySQLdb
 import _mysql_exceptions
 import urllib3.exceptions
+
+try:
+    JSONDecodeError = json.JSONDecodeError
+except AttributeError:
+    JSONDecodeError = ValueError
 
 
 class TelegramApi(object):
@@ -92,8 +96,10 @@ class TelegramApi(object):
             post = self.http.request_encode_body('POST', url, fields=fields)
         except urllib3.exceptions.HTTPError:
             return
-        if post.status == 200:
+        try:
             return json.loads(post.data.decode('UTF-8'))
+        except JSONDecodeError:
+            return
 
     def get_something(self, method, chat_id=None):
         """
