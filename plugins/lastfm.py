@@ -161,7 +161,10 @@ def get_top_artists(local_http, api_key, user_name, limit, period='1month', page
     url = (base_url + '&user={}&limit={}&period={}&page={}').format(method, api_key, user_name, limit, period, page)
     result = local_http.request('GET', url).data
     response = json.loads(result.decode('UTF-8'))
-    artists = response['topartists']['artist']
+    try:
+        artists = response['topartists']['artist']
+    except KeyError:
+        return
     for artist in artists:
         info = {
             'name': clean_up(artist['name']),

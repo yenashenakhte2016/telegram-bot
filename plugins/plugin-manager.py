@@ -124,4 +124,4 @@ parameters = {
     'permissions': True
 }
 
-arguments = {'text': ["^/admin$"]}
+arguments = {'text': ["^/admin$", "^/plugins$"]}

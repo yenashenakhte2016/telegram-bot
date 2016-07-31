@@ -142,12 +142,14 @@ def added_time(time, unit):
     Returns time to be added in seconds
     """
     time = float(time)
-    if "min" in unit:
+    if "m" in unit:
         multiplier = 60
-    elif "hour" in unit:
+    elif "h" in unit:
         multiplier = 3600
-    elif "day" in unit:
+    elif "d" in unit:
         multiplier = 86400
+    elif "w" in unit:
+        multiplier = 604800
     if time:
         return int(time * multiplier)
 
@@ -175,6 +177,8 @@ def create_message(message):
         unit = "hour"
     elif message['match'][1] == 'd' or "day" in message['match'][1]:
         unit = "day"
+    elif message['match'][1] == 'w' or "week" in message['match'][1]:
+        unit = "week"
     unit = unit if time == 1 else (unit + 's')
     return "{} {} {}".format(random.choice(responses), time, unit)
 
@@ -209,7 +213,7 @@ parameters = {
 
 arguments = {
     'text': [
-        r"(?i)remind .* (\d+\.\d|\d+) ?([mhd]) (.*)",
-        r"(?i)remind .* (\d+\.\d|\d+) ?(minutes?|mins?|hours?|days?) (.*)",
+        r"(?i)remind .* (\d+\.\d|\d+) ?([mhdw]) (.*)",
+        r"(?i)remind .* (\d+\.\d|\d+) ?(minutes?|mins?|hours?|days?|weeks?) (.*)",
     ]
 }

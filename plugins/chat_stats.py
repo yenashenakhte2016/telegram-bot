@@ -165,6 +165,10 @@ def global_user_stats(tg):
 
 
 def types_breakdown(database, user_id=None):
+    """
+    Returns totals of each message type
+    """
+    database.commit()
     message_types = dict()
     statement = "SELECT message_type, COUNT(*) FROM `{}stats`".format(chat_id)
     if user_id:
@@ -179,22 +183,38 @@ def types_breakdown(database, user_id=None):
 
 
 def metrics(database, user_id=None):
-    statement = "SELECT COUNT(*), SUM(char_length), AVG(char_length), SUM(word_count) FROM `{}stats`".format(chat_id)
+    """
+    Returns total messages, total characters, average chat length, and average word count.
+    """
+    database.commit()
+    statement = "SELECT COUNT(*), SUM(char_length), AVG(char_length), AVG(word_count) FROM `{}stats`".format(chat_id)
     if user_id:
         statement += " WHERE user_id={}".format(user_id)
     database.query(statement)
-    query = database.store_result()
+    try:
+        query = database.store_result()
+    except _mysql_exceptions.OperationalError:
+        database.commit()
+        return metrics(database, user_id)
     rows = query.fetch_row(maxrows=0)[0]
     return rows[0], rows[1], rows[2], rows[3]
 
 
 def hourly_time(total, database, user_id=None):
+    """
+    Determines how many messages are sent within 4 6 hour time intervals
+    """
+    database.commit()
     if user_id:
         database.query("SELECT hour(time_sent), Count(*) FROM `{}stats` WHERE user_id={} "
                        "GROUP BY HOUR(time_sent);".format(chat_id, user_id))
     else:
         database.query("SELECT hour(time_sent), Count(*) FROM `{}stats` GROUP BY HOUR(time_sent);".format(chat_id))
-    query = database.store_result()
+    try:
+        query = database.store_result()
+    except _mysql_exceptions.OperationalError:
+        database.commit()
+        return hourly_time(database, user_id)
     rows = query.fetch_row(maxrows=0)
     times = {'0to6': 0, '6to12': 0, '12to18': 0, '18to0': 0}
     for result in rows:
@@ -210,8 +230,10 @@ def hourly_time(total, database, user_id=None):
 
 
 def parse_times(total, times):
+    """
+    Creates formatted message displaying times with percentage of activity
+    """
     message = "<b>\n\nActivity By Time</b>"
-    '12 AM - 6 AM: {}\n6 AM - 12 PM\n12 PM - 6 PM\n6 PM - 12 AM'
     message += "\n<b>00:00 - 06:00:</b> {:.1f}%".format((times['0to6'] / total) * 100)
     message += "\n<b>06:00 - 12:00:</b> {:.1f}%".format((times['6to12'] / total) * 100)
     message += "\n<b>12:00 - 18:00:</b> {:.1f}%".format((times['12to18'] / total) * 100)
@@ -220,13 +242,23 @@ def parse_times(total, times):
 
 
 def check_status(database):
+    """
+    Check is a chat is opted into stat collection
+    """
     database.query("SELECT status FROM chat_opt_status WHERE status=True and chat_id={}".format(chat_id))
-    query = database.store_result()
+    try:
+        query = database.store_result()
+    except _mysql_exceptions.OperationalError:
+        database.commit()
+        return check_status(database, user_id)
     rows = query.fetch_row()
     return True if rows else False
 
 
 def check_if_mod(tg):
+    """
+    Check if a user is a moderator of the current chat
+    """
     admins = tg.get_chat_administrators()
     user_id = tg.callback_query['from']['id']
     if admins['ok']:
