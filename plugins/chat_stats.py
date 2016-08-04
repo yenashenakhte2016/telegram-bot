@@ -67,7 +67,11 @@ def opt_out(tg):
             tg.answer_callback_query("Only mods can disable stats!")
     elif tg.message:
         tg.database.query("SELECT status FROM chat_opt_status WHERE chat_id={} AND status=TRUE".format(chat_id))
-        query = tg.database.store_result()
+        try:
+            query = tg.database.store_result()
+        except _mysql_exceptions.OperationalError:
+            tg.database.commit()
+            opt_out(tg)
         rows = query.fetch_row()
         if rows:
             keyboard = [[{'text': 'Disable & Remove Stats', 'callback_data': '%%toggle_off%%'}]]
@@ -124,7 +128,11 @@ def global_user_stats(tg):
     tg.database.query("SELECT first_name, s.user_id, COUNT(*) as `message_count` FROM `{}stats` s "
                       "LEFT JOIN users_list u ON s.user_id = u.user_id GROUP BY user_id "
                       "ORDER BY message_count DESC;".format(chat_id))
-    query = tg.database.store_result()
+    try:
+        query = tg.database.store_result()
+    except _mysql_exceptions.OperationalError:
+        tg.database.commit()
+        global_user_stats(tg)
     results = query.fetch_row(maxrows=0)
     text = "Global User Stats For Chat: {}\r\nGenerated On: {}\r\n".format(
         tg.message['chat']['title'], datetime.now().strftime("%A, %d. %B %Y %I:%M%p"))
@@ -175,7 +183,11 @@ def types_breakdown(database, user_id=None):
         statement += " WHERE user_id={}".format(user_id)
     statement += " GROUP BY message_type;"
     database.query(statement)
-    query = database.store_result()
+    try:
+        query = database.store_result()
+    except _mysql_exceptions.OperationalError:
+        database.commit()
+        return types_breakdown(database, user_id)
     rows = query.fetch_row(maxrows=0)
     for result in rows:
         message_types[result[0]] = result[1]
@@ -250,7 +262,7 @@ def check_status(database):
         query = database.store_result()
     except _mysql_exceptions.OperationalError:
         database.commit()
-        return check_status(database, user_id)
+        return check_status(database)
     rows = query.fetch_row()
     return True if rows else False
 
