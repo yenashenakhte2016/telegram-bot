@@ -10,10 +10,7 @@ import time
 from multiprocessing import Process, Queue, Value
 from multiprocessing.dummy import Process as ThreadProcess
 
-import certifi
-import urllib3
 
-import bot_init
 from route_updates import RouteMessage, route_callback_query, route_inline_query
 from tgapi import TelegramApi
 
