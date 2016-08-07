@@ -10,7 +10,6 @@ import time
 from multiprocessing import Process, Queue, Value
 from multiprocessing.dummy import Process as ThreadProcess
 
-import MySQLdb
 import certifi
 import urllib3
 
